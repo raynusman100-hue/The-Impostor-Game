@@ -72,12 +72,10 @@ workflows:
       - name: Build iOS app
         script: |
           cd ios
-          # Use the generated UUID as a fallback in case use-profiles missed a target
           xcode-project build-ipa \
             --workspace "ImposterGame.xcworkspace" \
             --scheme "ImposterGame" \
-            --config Release \
-            --xcargs PROVISIONING_PROFILE_SPECIFIER="" CODE_SIGN_STYLE="Manual" CODE_SIGN_IDENTITY="Apple Distribution"
+            --config Release
 
     artifacts:
       - ios/build/ios/ipa/*.ipa
