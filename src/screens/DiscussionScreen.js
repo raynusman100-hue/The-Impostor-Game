@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../utils/ThemeContext';
 import Button from '../components/Button';
+import KodakButton from '../components/KodakButton';
 import AnimatedHourglass from '../components/AnimatedHourglass';
 import ConfirmModal from '../components/ConfirmModal';
 import { playHaptic } from '../utils/haptics';
@@ -11,6 +12,41 @@ import { database } from '../utils/firebase';
 import { ref, onValue, off, update, set, get, serverTimestamp, remove } from 'firebase/database';
 import { safeFirebaseUpdate, verifyRoomAccess } from '../utils/connectionUtils';
 import ChatSystem from '../components/ChatSystem';
+
+// Film perforation component for Kodak aesthetic (same as SetupScreen)
+const FilmPerforations = ({ side, theme }) => {
+    const perforationColor = theme.colors.primary + '40';
+    
+    return (
+        <View style={[filmPerforationStyles.perforationStrip, side === 'left' ? filmPerforationStyles.leftStrip : filmPerforationStyles.rightStrip]}>
+            {[...Array(12)].map((_, i) => (
+                <View key={i} style={[filmPerforationStyles.perforation, { backgroundColor: perforationColor }]} />
+            ))}
+        </View>
+    );
+};
+
+const filmPerforationStyles = StyleSheet.create({
+    perforationStrip: {
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        width: 18,
+        justifyContent: 'space-evenly',
+        alignItems: 'center',
+        paddingVertical: 40,
+        zIndex: 1,
+    },
+    leftStrip: { left: 2 },
+    rightStrip: { right: 2 },
+    perforation: {
+        width: 10,
+        height: 14,
+        borderRadius: 2,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 184, 0, 0.3)',
+    },
+});
 
 export default function DiscussionScreen({ route, navigation }) {
     const { theme } = useTheme();
@@ -511,12 +547,32 @@ export default function DiscussionScreen({ route, navigation }) {
     const isLowTime = timeLeft < 30;
 
     return (
-        <LinearGradient style={styles.container} colors={theme.colors.backgroundGradient}>
+        <LinearGradient style={styles.container} colors={['#0a0a0a', '#121212', '#0a0a0a']}>
+            {/* Film perforations - side strips */}
+            <FilmPerforations side="left" theme={theme} />
+            <FilmPerforations side="right" theme={theme} />
+            
             <SafeAreaView style={styles.safeArea}>
+                {/* Kodak Film Header - Both modes */}
+                <View style={styles.filmHeader}>
+                    <View style={styles.filmStrip}>
+                        {[...Array(16)].map((_, i) => (
+                            <View key={i} style={styles.filmHole} />
+                        ))}
+                    </View>
+                </View>
+                
                 {/* Header / Room Code */}
                 <View style={styles.header}>
-                    {isWifi && (
-                        <Text style={styles.roomCodeSmall}>ROOM: {roomCode}</Text>
+                    {isWifi ? (
+                        <View style={styles.roomCodeContainer}>
+                            <Text style={styles.roomCodeLabel}>ROOM</Text>
+                            <Text style={styles.roomCodeSmall}>{roomCode}</Text>
+                        </View>
+                    ) : (
+                        <View style={styles.roomCodeContainer}>
+                            <Text style={styles.roomCodeLabel}>PASS & PLAY</Text>
+                        </View>
                     )}
                 </View>
 
@@ -534,7 +590,7 @@ export default function DiscussionScreen({ route, navigation }) {
                             onPress={() => {
                                 playHaptic('light');
                                 setShowChat(true);
-                                setUnreadMessages(0); // Clear unread when opening chat
+                                setUnreadMessages(0);
                             }}
                         >
                             <View style={styles.tabContent}>
@@ -559,32 +615,32 @@ export default function DiscussionScreen({ route, navigation }) {
                     ) : (
                         <>
                             <View style={styles.titleContainer}>
-                                <Text style={styles.title}>DISCUSSION</Text>
+                                <Text style={styles.kodakTitle}>DISCUSSION</Text>
                                 {voteTied ? (
                                     <Text style={[styles.subtitle, styles.tiedText]}>VOTE ENDED IN A DRAW!</Text>
                                 ) : (
-                                    <Text style={styles.subtitle}>FIND THE IMPOSTOR</Text>
+                                    <Text style={styles.kodakSubtitle}>FIND THE IMPOSTOR</Text>
                                 )}
                             </View>
 
                             <Animated.View style={[styles.timerContainer, { transform: [{ scale: isLowTime ? pulseAnim : 1 }] }]}>
-                                <View style={[styles.timerCircle, isLowTime && styles.timerCircleAlert]}>
-                                    <View style={styles.timeTextContainer}>
-                                        <Text style={styles.timer}>{formatTime(timeLeft)}</Text>
-                                        <Text style={styles.timerLabel}>{isPaused ? 'PAUSED' : 'REMAINING'}</Text>
-                                    </View>
+                                <View style={[styles.timerCircle, styles.kodakTimerCircle, isLowTime && styles.timerCircleAlert]}>
                                     <AnimatedHourglass
                                         isRunning={!isPaused && timeLeft > 0}
-                                        style={{ position: 'absolute', top: 70, zIndex: -1 }}
+                                        style={styles.hourglassPosition}
                                     />
+                                    <View style={styles.timeTextContainer}>
+                                        <Text style={styles.kodakTimer}>{formatTime(timeLeft)}</Text>
+                                        <Text style={styles.kodakTimerLabel}>{isPaused ? 'PAUSED' : 'REMAINING'}</Text>
+                                    </View>
                                 </View>
                             </Animated.View>
 
                             {/* Consensus Overlay */}
                             {consensusCountdown !== null && (
-                                <View style={styles.countdownOverlay}>
+                                <View style={styles.kodakOverlay}>
                                     <Text style={styles.countdownTitle}>VOTING IN</Text>
-                                    <Text style={styles.countdownBig}>{consensusCountdown}</Text>
+                                    <Text style={styles.kodakCountdown}>{consensusCountdown}</Text>
                                     <Text style={styles.countdownNote}>MAJORITY VOTED TO END</Text>
                                 </View>
                             )}
@@ -602,6 +658,15 @@ export default function DiscussionScreen({ route, navigation }) {
                             />
                         </>
                     )}
+                </View>
+                
+                {/* Kodak Film Footer - Both modes */}
+                <View style={styles.filmFooter}>
+                    <View style={styles.filmStrip}>
+                        {[...Array(16)].map((_, i) => (
+                            <View key={i} style={styles.filmHole} />
+                        ))}
+                    </View>
                 </View>
             </SafeAreaView>
             
@@ -637,19 +702,22 @@ const ControlButtons = memo(({ isPaused, isWifi, onPause, onEnd, endRequests, ne
 
     const endTitle = isWifi ? `END (${currentReady}/${total})` : "END GAME";
 
+    // Use KodakButton for both modes (Kodak cinematic style)
     return (
         <View style={styles.controls}>
-            <Button
+            <KodakButton
                 title={isPaused ? "RESUME" : "PAUSE"}
                 onPress={onPause}
                 variant="secondary"
                 style={styles.controlBtn}
+                size="medium"
             />
-            <Button
+            <KodakButton
                 title={endTitle}
                 onPress={onEnd}
                 style={styles.controlBtn}
-                variant={allReady ? "success" : countdownReady ? "warning" : "primary"}
+                variant={allReady ? "success" : countdownReady ? "danger" : "primary"}
+                size="medium"
             />
         </View>
     );
@@ -659,35 +727,78 @@ const getStyles = (theme) => StyleSheet.create({
     container: { flex: 1 },
     safeArea: { flex: 1, alignItems: 'center' },
 
+    // Kodak Film Strip Decorations
+    filmHeader: {
+        width: '100%',
+        paddingTop: 5,
+    },
+    filmFooter: {
+        width: '100%',
+        paddingBottom: 10,
+    },
+    filmStrip: {
+        flexDirection: 'row',
+        justifyContent: 'space-evenly',
+        paddingHorizontal: 5,
+    },
+    filmHole: {
+        width: 12,
+        height: 8,
+        backgroundColor: '#D4A000',
+        borderRadius: 2,
+        opacity: 0.8,
+    },
+
     header: {
         width: '100%',
         alignItems: 'center',
         paddingVertical: 10,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        paddingHorizontal: 20,
+    },
+    roomCodeContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(212, 160, 0, 0.15)',
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 25,
+        borderWidth: 2,
+        borderColor: '#D4A000',
+    },
+    roomCodeLabel: {
+        color: '#D4A000',
+        fontSize: 12,
+        fontFamily: theme.fonts.bold,
+        marginRight: 10,
+        letterSpacing: 3,
     },
     roomCodeSmall: {
-        color: theme.colors.textSecondary,
-        fontSize: 14,
-        fontFamily: theme.fonts.bold
+        color: '#FFD54F',
+        fontSize: 20,
+        fontFamily: theme.fonts.header,
+        letterSpacing: 6,
     },
 
     tabContainer: {
         flexDirection: 'row',
         marginBottom: 10,
-        backgroundColor: theme.colors.surface,
+        backgroundColor: 'rgba(26, 26, 26, 0.9)',
         borderRadius: 25,
         padding: 4,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        borderWidth: 2,
+        borderColor: '#D4A000',
         alignSelf: 'center',
         zIndex: 50
     },
     tab: {
-        paddingVertical: 8,
-        paddingHorizontal: 30,
+        paddingVertical: 10,
+        paddingHorizontal: 35,
         borderRadius: 20,
     },
     activeTab: {
-        backgroundColor: theme.colors.primary,
+        backgroundColor: '#D4A000',
     },
     tabContent: {
         flexDirection: 'row',
@@ -695,42 +806,43 @@ const getStyles = (theme) => StyleSheet.create({
         position: 'relative',
     },
     tabText: {
-        color: theme.colors.textSecondary,
-        fontFamily: theme.fonts.medium,
+        color: 'rgba(255, 213, 79, 0.6)',
+        fontFamily: theme.fonts.bold,
         fontSize: 14,
+        letterSpacing: 2,
     },
     activeTabText: {
-        color: '#fff',
+        color: '#0a0a0a',
         fontFamily: theme.fonts.bold,
     },
     notificationDot: {
         position: 'absolute',
         top: -6,
         right: -8,
-        backgroundColor: theme.colors.error,
+        backgroundColor: '#ff3b30',
         borderRadius: 6,
         width: 12,
         height: 12,
         borderWidth: 2,
-        borderColor: theme.colors.background,
+        borderColor: '#0a0a0a',
     },
 
     contentContainer: {
         flex: 1,
         width: '100%',
         alignItems: 'center',
-        justifyContent: 'space-around',
-        paddingHorizontal: theme.spacing.l,
-        paddingBottom: 20
+        justifyContent: 'space-between',
+        paddingHorizontal: theme.spacing.m,
+        paddingBottom: 15,
+        paddingTop: 10,
     },
 
-    titleContainer: { alignItems: 'center' },
-    title: {
-        fontSize: 48,
-        color: theme.colors.tertiary,
+    titleContainer: { alignItems: 'center', marginTop: 5 },
+    kodakTitle: {
+        fontSize: 42,
+        color: '#FFD54F',
         fontFamily: theme.fonts.header,
-        letterSpacing: 2,
-        ...theme.textShadows.depth
+        letterSpacing: 3,
     },
     subtitle: {
         fontSize: theme.fontSize.medium,
@@ -740,8 +852,15 @@ const getStyles = (theme) => StyleSheet.create({
         fontFamily: theme.fonts.medium,
         textTransform: 'uppercase'
     },
+    kodakSubtitle: {
+        fontSize: 14,
+        color: 'rgba(212, 160, 0, 0.8)',
+        letterSpacing: 5,
+        marginTop: 4,
+        fontFamily: theme.fonts.medium,
+    },
     tiedText: {
-        color: theme.colors.error,
+        color: '#ff3b30',
         fontFamily: theme.fonts.bold,
     },
 
@@ -749,7 +868,7 @@ const getStyles = (theme) => StyleSheet.create({
         width: 280,
         height: 280,
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
     },
     timerCircle: {
         width: 260,
@@ -760,33 +879,78 @@ const getStyles = (theme) => StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: 'transparent',
+        position: 'relative',
     },
-    timerCircleAlert: { borderColor: theme.colors.error },
-    timeTextContainer: { alignItems: 'center', justifyContent: 'center', zIndex: 10, marginTop: -60 },
+    kodakTimerCircle: {
+        width: 260,
+        height: 260,
+        borderRadius: 130,
+        borderWidth: 3,
+        borderColor: '#D4A000',
+        backgroundColor: 'transparent',
+    },
+    timerCircleAlert: { borderColor: '#ff3b30' },
+    hourglassPosition: {
+        position: 'absolute',
+        top: 55,
+        zIndex: 1,
+    },
+    timeTextContainer: { 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        zIndex: 10,
+        position: 'absolute',
+        top: 25,
+    },
     timer: { fontSize: 64, color: theme.colors.text, fontFamily: theme.fonts.header, letterSpacing: 4 },
+    kodakTimer: {
+        fontSize: 64,
+        color: '#FFD54F',
+        fontFamily: theme.fonts.header,
+        letterSpacing: 4,
+    },
     timerLabel: { fontSize: theme.fontSize.small, color: theme.colors.textMuted, fontFamily: theme.fonts.medium, letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 },
+    kodakTimerLabel: {
+        fontSize: 12,
+        color: '#D4A000',
+        letterSpacing: 4,
+        fontFamily: theme.fonts.medium,
+        marginTop: 4,
+    },
 
     controls: {
         width: '100%',
         flexDirection: 'row',
         justifyContent: 'space-around',
-        gap: theme.spacing.m
+        gap: theme.spacing.s,
+        paddingHorizontal: theme.spacing.s,
     },
-    controlBtn: { flex: 1, paddingVertical: theme.spacing.l },
+    controlBtn: { flex: 1 },
 
-    countdownOverlay: {
+    kodakOverlay: {
         position: 'absolute',
         top: '30%',
-        backgroundColor: 'rgba(0,0,0,0.9)',
+        backgroundColor: 'rgba(0,0,0,0.95)',
         padding: 30,
         borderRadius: 20,
         alignItems: 'center',
         zIndex: 100,
-        borderWidth: 2,
-        borderColor: theme.colors.primary,
-        width: '90%'
+        width: '90%',
+        borderWidth: 3,
+        borderColor: '#D4A000',
+        shadowColor: '#FFB800',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.7,
+        shadowRadius: 30,
     },
-    countdownTitle: { color: theme.colors.textSecondary, fontSize: 16, fontFamily: theme.fonts.bold, letterSpacing: 2 },
-    countdownBig: { color: theme.colors.tertiary, fontSize: 80, fontFamily: theme.fonts.header },
-    countdownNote: { color: theme.colors.textMuted, fontSize: 12, fontFamily: theme.fonts.medium, textAlign: 'center' }
+    countdownTitle: { color: 'rgba(255, 213, 79, 0.8)', fontSize: 16, fontFamily: theme.fonts.bold, letterSpacing: 4 },
+    kodakCountdown: {
+        fontSize: 80,
+        color: '#FFD54F',
+        fontFamily: theme.fonts.header,
+        textShadowColor: '#D4A000',
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 25,
+    },
+    countdownNote: { color: 'rgba(212, 160, 0, 0.6)', fontSize: 12, fontFamily: theme.fonts.medium, textAlign: 'center', letterSpacing: 2 }
 });

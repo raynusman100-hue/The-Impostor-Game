@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Animated, ActivityIndicator, TouchableOpacity, 
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../utils/ThemeContext';
 import Button from '../components/Button';
+import KodakButton from '../components/KodakButton';
 import { playHaptic } from '../utils/haptics';
 import { database } from '../utils/firebase';
 import { ref, onValue, off, remove, get } from 'firebase/database';
@@ -10,6 +11,41 @@ import { CustomAvatar } from '../utils/AvatarGenerator';
 
 import ChatSystem from '../components/ChatSystem';
 // ... existing imports
+
+// Film perforation component for Kodak aesthetic (same as SetupScreen)
+const FilmPerforations = ({ side, theme }) => {
+    const perforationColor = theme.colors.primary + '40';
+    
+    return (
+        <View style={[filmPerforationStyles.perforationStrip, side === 'left' ? filmPerforationStyles.leftStrip : filmPerforationStyles.rightStrip]}>
+            {[...Array(12)].map((_, i) => (
+                <View key={i} style={[filmPerforationStyles.perforation, { backgroundColor: perforationColor }]} />
+            ))}
+        </View>
+    );
+};
+
+const filmPerforationStyles = StyleSheet.create({
+    perforationStrip: {
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        width: 18,
+        justifyContent: 'space-evenly',
+        alignItems: 'center',
+        paddingVertical: 40,
+        zIndex: 1,
+    },
+    leftStrip: { left: 2 },
+    rightStrip: { right: 2 },
+    perforation: {
+        width: 10,
+        height: 14,
+        borderRadius: 2,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 184, 0, 0.3)',
+    },
+});
 
 export default function WifiLobbyScreen({ route, navigation }) {
     const { theme } = useTheme();
@@ -162,9 +198,22 @@ export default function WifiLobbyScreen({ route, navigation }) {
 
     return (
         <LinearGradient
-            colors={theme.colors.backgroundGradient}
+            colors={['#0a0a0a', '#121212', '#0a0a0a']}
             style={styles.container}
         >
+            {/* Film perforations - side strips */}
+            <FilmPerforations side="left" theme={theme} />
+            <FilmPerforations side="right" theme={theme} />
+            
+            {/* Kodak Film Header */}
+            <View style={styles.filmHeader}>
+                <View style={styles.filmStrip}>
+                    {[...Array(16)].map((_, i) => (
+                        <View key={i} style={styles.filmHole} />
+                    ))}
+                </View>
+            </View>
+            
             <View style={styles.header}>
                 <Text style={styles.roomLabel}>WAITING IN ROOM</Text>
                 <Animated.Text style={[styles.roomCode, { transform: [{ scale: pulseAnim }] }]}>
@@ -188,7 +237,7 @@ export default function WifiLobbyScreen({ route, navigation }) {
                     onPress={() => {
                         playHaptic('light');
                         setShowChat(true);
-                        setUnreadMessages(0); // Clear unread when opening chat
+                        setUnreadMessages(0);
                     }}
                 >
                     <View style={styles.tabContent}>
@@ -210,15 +259,17 @@ export default function WifiLobbyScreen({ route, navigation }) {
                     />
                 ) : (
                     <>
-                        <ActivityIndicator size="large" color={theme.colors.primary} style={styles.loader} />
-                        <Text style={styles.statusText}>WAITING FOR HOST TO START...</Text>
+                        <View style={styles.loaderContainer}>
+                            <ActivityIndicator size="large" color="#D4A000" style={styles.loader} />
+                            <Text style={styles.statusText}>WAITING FOR HOST TO START...</Text>
+                        </View>
 
-                        <View style={[styles.playerBox, { backgroundColor: theme.colors.surface }]}>
+                        <View style={styles.playerBox}>
                             <Text style={styles.playerCount}>PLAYERS JOINED: {players.length + 1}</Text>
 
                             {/* Host Row */}
                             <View style={styles.playerRow}>
-                                <CustomAvatar id={hostAvatar} size={30} />
+                                <CustomAvatar id={hostAvatar} size={32} />
                                 <Text style={styles.playerName} numberOfLines={1} ellipsizeMode="tail">
                                     {hostName.toUpperCase()} (HOST)
                                 </Text>
@@ -227,7 +278,7 @@ export default function WifiLobbyScreen({ route, navigation }) {
                             {/* Players Rows */}
                             {players.map(p => (
                                 <View key={p.id} style={styles.playerRow}>
-                                    <CustomAvatar id={p.avatarId || 1} size={30} />
+                                    <CustomAvatar id={p.avatarId || 1} size={32} />
                                     <Text style={styles.playerName} numberOfLines={1} ellipsizeMode="tail">
                                         {p.name}
                                     </Text>
@@ -239,7 +290,7 @@ export default function WifiLobbyScreen({ route, navigation }) {
             </View>
 
             {!showChat && (
-                <Button
+                <KodakButton
                     title="LEAVE ROOM"
                     onPress={async () => {
                         playHaptic('medium');
@@ -253,6 +304,15 @@ export default function WifiLobbyScreen({ route, navigation }) {
                     style={styles.leaveBtn}
                 />
             )}
+            
+            {/* Kodak Film Footer */}
+            <View style={styles.filmFooter}>
+                <View style={styles.filmStrip}>
+                    {[...Array(16)].map((_, i) => (
+                        <View key={i} style={styles.filmHole} />
+                    ))}
+                </View>
+            </View>
         </LinearGradient>
     );
 }
@@ -263,47 +323,83 @@ const getStyles = (theme) => StyleSheet.create({
         padding: theme.spacing.xl,
         alignItems: 'center',
     },
+    
+    // Kodak Film Strip Decorations
+    filmHeader: {
+        width: '100%',
+        position: 'absolute',
+        top: 40,
+        left: 0,
+        right: 0,
+    },
+    filmFooter: {
+        width: '100%',
+        position: 'absolute',
+        bottom: 15,
+        left: 0,
+        right: 0,
+    },
+    filmStrip: {
+        flexDirection: 'row',
+        justifyContent: 'space-evenly',
+        paddingHorizontal: 5,
+    },
+    filmHole: {
+        width: 12,
+        height: 8,
+        backgroundColor: '#D4A000',
+        borderRadius: 2,
+        opacity: 0.8,
+    },
+    
     header: {
-        marginTop: 40,
+        marginTop: 60,
         alignItems: 'center',
         marginBottom: 20,
+        position: 'relative',
+        width: '100%',
     },
     roomLabel: {
-        fontSize: 18,
-        color: theme.colors.tertiary,
-        fontFamily: theme.fonts.medium,
-        letterSpacing: 4,
+        fontSize: 14,
+        color: '#D4A000',
+        fontFamily: theme.fonts.bold,
+        letterSpacing: 6,
     },
     roomCode: {
-        fontSize: 56,
-        color: theme.colors.text,
+        fontSize: 52,
+        color: '#FFD54F',
         fontFamily: theme.fonts.header,
-        letterSpacing: 8,
+        letterSpacing: 10,
+        textShadowColor: '#D4A000',
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 30,
     },
+    
     tabContainer: {
         flexDirection: 'row',
-        marginBottom: 10,
-        backgroundColor: theme.colors.surface,
+        marginBottom: 15,
+        backgroundColor: 'rgba(26, 26, 26, 0.9)',
         borderRadius: 25,
         padding: 4,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        borderWidth: 2,
+        borderColor: '#D4A000',
     },
     tab: {
-        paddingVertical: 8,
-        paddingHorizontal: 30,
+        paddingVertical: 10,
+        paddingHorizontal: 35,
         borderRadius: 20,
     },
     activeTab: {
-        backgroundColor: theme.colors.primary,
+        backgroundColor: '#D4A000',
     },
     tabText: {
-        color: theme.colors.textSecondary,
-        fontFamily: theme.fonts.medium,
+        color: 'rgba(255, 213, 79, 0.6)',
+        fontFamily: theme.fonts.bold,
         fontSize: 14,
+        letterSpacing: 2,
     },
     activeTabText: {
-        color: '#fff',
+        color: '#0a0a0a',
         fontFamily: theme.fonts.bold,
     },
     tabContent: {
@@ -315,60 +411,70 @@ const getStyles = (theme) => StyleSheet.create({
         position: 'absolute',
         top: -6,
         right: -8,
-        backgroundColor: theme.colors.error,
+        backgroundColor: '#ff3b30',
         borderRadius: 6,
         width: 12,
         height: 12,
         borderWidth: 2,
-        borderColor: theme.colors.background,
+        borderColor: '#0a0a0a',
     },
+    
     content: {
         flex: 1,
         width: '100%',
-        justifyContent: 'center', // Center content vertically
+        justifyContent: 'center',
         alignItems: 'center',
+    },
+    loaderContainer: {
+        alignItems: 'center',
+        marginBottom: 30,
     },
     loader: {
         marginBottom: 20,
     },
     statusText: {
-        fontSize: 20,
-        color: theme.colors.text,
-        fontFamily: theme.fonts.medium,
+        fontSize: 18,
+        color: '#FFD54F',
+        fontFamily: theme.fonts.bold,
         textAlign: 'center',
-        marginBottom: 40,
-        letterSpacing: 2,
+        letterSpacing: 3,
+        textShadowColor: '#D4A000',
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 15,
     },
+    
     playerBox: {
         width: '100%',
         padding: 20,
         borderRadius: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        borderWidth: 2,
+        borderColor: '#D4A000',
+        backgroundColor: 'rgba(212, 160, 0, 0.08)',
     },
     playerCount: {
-        fontSize: 16,
-        color: theme.colors.primary,
+        fontSize: 14,
+        color: '#D4A000',
         fontFamily: theme.fonts.bold,
-        marginBottom: 10,
-        letterSpacing: 2,
+        marginBottom: 15,
+        letterSpacing: 3,
     },
     playerName: {
         fontSize: 18,
-        color: theme.colors.text,
+        color: '#FFD54F',
         fontFamily: theme.fonts.medium,
         marginBottom: 4,
         flex: 1,
-    },
-    leaveBtn: {
-        width: '100%',
-        marginBottom: 40,
-        backgroundColor: 'transparent',
+        letterSpacing: 1,
     },
     playerRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10,
-        marginBottom: 4
-    }
+        gap: 12,
+        marginBottom: 8
+    },
+    
+    leaveBtn: {
+        width: '100%',
+        marginBottom: 50,
+    },
 });

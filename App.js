@@ -82,6 +82,8 @@ export default function App() {
     'CabinetGrotesk-Bold': require('./assets/CabinetGrotesk-Bold.otf'),
     'CabinetGrotesk-Black': require('./assets/CabinetGrotesk-Black.otf'),
     'Nippo-Bold': require('./assets/Nippo-Bold.otf'),
+    'Comico-Regular': require('./assets/Comico_Complete/Comico_Complete/Fonts/OTF/Comico-Regular.otf'),
+    'Kola-Regular': require('./assets/Kola_Complete/Kola_Complete/Fonts/OTF/Kola-Regular.otf'),
   });
 
   if (!fontsLoaded) {
