@@ -4,6 +4,9 @@ workflows:
     max_build_duration: 120
     instance_type: mac_mini_m2
 
+    integrations:
+      app_store_connect: Codemagic # Name of API key added in Codemagic UI
+
     environment:
       node: 20
       xcode: latest
@@ -78,4 +81,4 @@ workflows:
         auth: integration
         submit_to_testflight: true
         beta_groups:
-          - "Internal Testers" # Create this group in App Store Connect
+          - "Internal Testers"
