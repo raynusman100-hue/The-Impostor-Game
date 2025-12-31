@@ -1,0 +1,69 @@
+import React, { useRef, useEffect, useMemo } from 'react';
+import { View, StyleSheet } from 'react-native';
+import LottieView from 'lottie-react-native';
+import { useTheme } from '../utils/ThemeContext';
+
+const AnimatedHourglass = React.memo(({ isRunning = true, style }) => {
+    const animationRef = useRef(null);
+    const { theme } = useTheme();
+
+    // Map Lottie layers to theme colors
+    const colorFilters = useMemo(() => {
+        const primaryColor = theme.colors.primary;
+        const textColor = theme.colors.text;
+
+        return [
+            // Sand / Active Elements -> Primary Color
+            { keypath: 'time-down.time.Fill 1', color: primaryColor },
+            { keypath: 'time-down.time 2.Fill 1', color: primaryColor },
+            { keypath: 'time-up.time.Fill 1', color: primaryColor },
+            { keypath: 'time-up.time 2.Fill 1', color: primaryColor },
+            { keypath: 'bubble.Rectangle 1.Fill 1', color: primaryColor },
+            { keypath: 'timeline.Shape 1.Stroke 1', color: primaryColor },
+
+            // Structure / Frame Elements -> Text Color
+            { keypath: 'top.top.Fill 1', color: textColor },
+            { keypath: 'bottom.bottom.Fill 1', color: textColor },
+            { keypath: 'outline-shape.shape.Stroke 1', color: textColor },
+            { keypath: 'bubble.Rectangle 1.Stroke 1', color: textColor },
+        ];
+    }, [theme.colors.primary, theme.colors.text]);
+
+    useEffect(() => {
+        if (animationRef.current) {
+            if (isRunning) {
+                animationRef.current.play();
+            } else {
+                animationRef.current.pause();
+            }
+        }
+    }, [isRunning]);
+
+    return (
+        <View style={[styles.container, style]}>
+            <LottieView
+                ref={animationRef}
+                source={require('../../assets/hourglass.json')}
+                style={styles.animation}
+                resizeMode="contain"
+                loop
+                colorFilters={colorFilters}
+            />
+        </View>
+    );
+});
+
+export default AnimatedHourglass;
+
+const styles = StyleSheet.create({
+    container: {
+        width: 220,
+        height: 220,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    animation: {
+        width: '100%',
+        height: '100%',
+    }
+});
