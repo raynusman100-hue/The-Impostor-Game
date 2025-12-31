@@ -75,7 +75,7 @@ workflows:
             --workspace "ImposterGame.xcworkspace" \
             --scheme "ImposterGame" \
             --config Release \
-            --build_args PROVISIONING_PROFILE_SPECIFIER="" CODE_SIGN_STYLE="Manual" CODE_SIGN_IDENTITY="Apple Distribution"
+            --xcargs PROVISIONING_PROFILE_SPECIFIER="" CODE_SIGN_STYLE="Manual" CODE_SIGN_IDENTITY="Apple Distribution"
 
     artifacts:
       - ios/build/ios/ipa/*.ipa
