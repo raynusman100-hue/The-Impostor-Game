@@ -45,19 +45,21 @@ workflows:
         script: |
           npx expo prebuild --platform ios --clean
 
-      - name: Install CocoaPods dependencies
-        script: |
-          cd ios && pod install
-
       - name: Set up code signing
         script: |
           keychain initialize
           app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
           keychain add-certificates
-          # Apply profiles from root directory to the project
+
+          # Force Manual Signing in the project file (Critical for Expo)
+          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' ios/ImposterGame.xcodeproj/project.pbxproj
+
+          # Apply profiles
           xcode-project use-profiles --project ios/ImposterGame.xcodeproj
-          # Debug: List profiles to confirm they were fetched
-          ls ~/Library/MobileDevice/Provisioning\ Profiles/
+
+      - name: Install CocoaPods dependencies
+        script: |
+          cd ios && pod install
 
       - name: Increment build number
         script: |
