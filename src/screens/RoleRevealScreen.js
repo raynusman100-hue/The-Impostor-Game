@@ -9,6 +9,8 @@ import { setPlayerReady } from '../utils/multiplayerLogic';
 import { database } from '../utils/firebase';
 import { ref, onValue, off, get, update } from 'firebase/database';
 import { CustomAvatar } from '../utils/AvatarGenerator';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SUPPORTED_LANGUAGES } from '../utils/translationService';
 
 export default function RoleRevealScreen({ route, navigation }) {
     const { theme } = useTheme();
@@ -25,6 +27,24 @@ export default function RoleRevealScreen({ route, navigation }) {
     // WiFi State
     const [allPlayersStatus, setAllPlayersStatus] = useState([]); // Array of { name, ready, avatarId }
     const [isRoomClosed, setIsRoomClosed] = useState(false);
+    const [gameLanguage, setGameLanguage] = useState(params.language || 'en');
+
+    // Load language from AsyncStorage for WiFi mode
+    useEffect(() => {
+        if (isWifi) {
+            const loadLanguage = async () => {
+                try {
+                    const savedLanguage = await AsyncStorage.getItem('player_language_pref');
+                    if (savedLanguage && SUPPORTED_LANGUAGES.some(l => l.code === savedLanguage)) {
+                        setGameLanguage(savedLanguage);
+                    }
+                } catch (error) {
+                    console.log('Failed to load language', error);
+                }
+            };
+            loadLanguage();
+        }
+    }, [isWifi]);
 
     // Disable Android back button in WiFi mode
     useEffect(() => {
@@ -318,9 +338,20 @@ export default function RoleRevealScreen({ route, navigation }) {
     }
 
     return (
-        <LinearGradient style={styles.container} colors={theme.colors.backgroundGradient}>
+        <LinearGradient style={styles.container} colors={isWifi ? ['#0a0a0a', '#121212', '#0a0a0a'] : theme.colors.backgroundGradient}>
+            {/* Kodak Film Header for WiFi */}
+            {isWifi && (
+                <View style={styles.filmHeader}>
+                    <View style={styles.filmStrip}>
+                        {[...Array(16)].map((_, i) => (
+                            <View key={i} style={styles.filmHole} />
+                        ))}
+                    </View>
+                </View>
+            )}
+            
             <Text
-                style={styles.header}
+                style={[styles.header, isWifi && styles.kodakHeader]}
                 numberOfLines={1}
                 adjustsFontSizeToFit
                 minimumFontScale={0.5}
@@ -333,34 +364,35 @@ export default function RoleRevealScreen({ route, navigation }) {
                 category={params.category || params.crewCategory}
                 hintsEnabled={params.hintsEnabled}
                 onNext={handleNext}
-                language={params.language || 'en'}
+                language={isWifi ? gameLanguage : (params.language || 'en')}
                 buttonTitle={buttonTitle}
                 disabled={readyStatus}
+                isWifi={isWifi}
             />
 
             {/* Ready Status List for WiFi Mode */}
             {isWifi && (
                 <View style={styles.statusListContainer}>
-                    <Text style={styles.statusHeader}>PLAYER STATUS</Text>
+                    <Text style={[styles.statusHeader, styles.kodakStatusHeader]}>PLAYER STATUS</Text>
                     <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
                         contentContainerStyle={styles.statusListContent}
                     >
                         {allPlayersStatus.map((p) => (
-                            <View key={p.id} style={[styles.statusItem, p.ready && styles.statusItemReady]}>
+                            <View key={p.id} style={[styles.statusItem, styles.kodakStatusItem, p.ready && styles.statusItemReady, p.ready && styles.kodakStatusItemReady]}>
                                 <CustomAvatar id={p.avatarId} size={30} />
-                                <View style={styles.statusBadge}>
+                                <View style={[styles.statusBadge, styles.kodakStatusBadge]}>
                                     {p.ready ? (
                                         <Text style={styles.checkMark}>✓</Text>
                                     ) : (
-                                        <ActivityIndicator size={10} color={theme.colors.background} />
+                                        <ActivityIndicator size={10} color="#0a0a0a" />
                                     )}
                                 </View>
                             </View>
                         ))}
                     </ScrollView>
-                    <Text style={styles.statusCount}>
+                    <Text style={[styles.statusCount, styles.kodakStatusCount]}>
                         {allPlayersStatus.filter(p => p.ready).length} / {allPlayersStatus.length} READY
                     </Text>
                 </View>
@@ -385,6 +417,17 @@ export default function RoleRevealScreen({ route, navigation }) {
                     </View>
                 </View>
             )}
+            
+            {/* Kodak Film Footer for WiFi */}
+            {isWifi && (
+                <View style={styles.filmFooter}>
+                    <View style={styles.filmStrip}>
+                        {[...Array(16)].map((_, i) => (
+                            <View key={i} style={styles.filmHole} />
+                        ))}
+                    </View>
+                </View>
+            )}
         </LinearGradient>
     );
 }
@@ -397,14 +440,50 @@ const getStyles = (theme) => StyleSheet.create({
         justifyContent: 'center',
         padding: theme.spacing.m,
     },
+    
+    // Kodak Film Strip Decorations
+    filmHeader: {
+        width: '100%',
+        position: 'absolute',
+        top: 45,
+        left: 0,
+        right: 0,
+    },
+    filmFooter: {
+        width: '100%',
+        position: 'absolute',
+        bottom: 10,
+        left: 0,
+        right: 0,
+    },
+    filmStrip: {
+        flexDirection: 'row',
+        justifyContent: 'space-evenly',
+        paddingHorizontal: 5,
+    },
+    filmHole: {
+        width: 12,
+        height: 8,
+        backgroundColor: '#D4A000',
+        borderRadius: 2,
+        opacity: 0.8,
+    },
+    
     header: {
-        fontSize: 32,
+        fontSize: 28,
         color: theme.colors.tertiary,
-        marginBottom: theme.spacing.m,
+        marginBottom: theme.spacing.s,
         textAlign: 'center',
         fontFamily: theme.fonts.header,
         letterSpacing: 2,
         textTransform: 'uppercase',
+    },
+    kodakHeader: {
+        color: '#FFD54F',
+        textShadowColor: '#D4A000',
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 20,
+        letterSpacing: 4,
     },
     loading: {
         color: theme.colors.text,
@@ -447,8 +526,8 @@ const getStyles = (theme) => StyleSheet.create({
     },
     // WiFi Status
     statusListContainer: {
-        marginTop: 20,
-        height: 80,
+        marginTop: 15,
+        height: 75,
         width: '100%',
         alignItems: 'center',
     },
@@ -458,6 +537,10 @@ const getStyles = (theme) => StyleSheet.create({
         fontFamily: theme.fonts.bold,
         letterSpacing: 1,
         marginBottom: 8,
+    },
+    kodakStatusHeader: {
+        color: '#D4A000',
+        letterSpacing: 3,
     },
     statusListContent: {
         alignItems: 'center',
@@ -474,8 +557,14 @@ const getStyles = (theme) => StyleSheet.create({
         alignItems: 'center',
         position: 'relative'
     },
+    kodakStatusItem: {
+        borderColor: 'rgba(212, 160, 0, 0.4)',
+    },
     statusItemReady: {
         borderColor: theme.colors.success
+    },
+    kodakStatusItemReady: {
+        borderColor: '#D4A000',
     },
     statusBadge: {
         position: 'absolute',
@@ -490,6 +579,10 @@ const getStyles = (theme) => StyleSheet.create({
         borderWidth: 1,
         borderColor: theme.colors.background
     },
+    kodakStatusBadge: {
+        backgroundColor: '#D4A000',
+        borderColor: '#0a0a0a',
+    },
     checkMark: {
         color: theme.colors.background,
         fontSize: 10,
@@ -499,5 +592,9 @@ const getStyles = (theme) => StyleSheet.create({
         marginTop: 8,
         color: theme.colors.primary,
         fontFamily: theme.fonts.bold
+    },
+    kodakStatusCount: {
+        color: '#FFD54F',
+        letterSpacing: 2,
     }
 });

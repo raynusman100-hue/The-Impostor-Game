@@ -1,10 +1,19 @@
-// Simple full-width solid button - no shadows, no gradients (like SetupScreen ACTION! button)
+// Kodak Cinematic Button - Simple solid color style (like SetupScreen)
 import React, { useRef } from 'react';
 import { TouchableOpacity, Text, StyleSheet, Animated, View } from 'react-native';
 import { useTheme } from '../utils/ThemeContext';
 import { playHaptic } from '../utils/haptics';
 
-export default function FullWidthButton({ title, onPress, variant = 'secondary', style, textStyle, disabled }) {
+export default function KodakButton({ 
+    title, 
+    onPress, 
+    variant = 'primary', 
+    style, 
+    textStyle, 
+    disabled,
+    icon, // Optional icon component
+    size = 'medium', // 'small', 'medium', 'large'
+}) {
     const { theme } = useTheme();
     const scaleAnim = useRef(new Animated.Value(1)).current;
 
@@ -31,7 +40,7 @@ export default function FullWidthButton({ title, onPress, variant = 'secondary',
         onPress && onPress();
     };
 
-    const getButtonColors = () => {
+    const getButtonStyle = () => {
         if (disabled) {
             return {
                 backgroundColor: '#2a2a2a',
@@ -42,61 +51,71 @@ export default function FullWidthButton({ title, onPress, variant = 'secondary',
         switch (variant) {
             case 'primary':
                 return {
-                    backgroundColor: theme.colors.primary,
-                    textColor: theme.colors.background || '#0a0a0a',
+                    backgroundColor: '#FFB800', // Kodak amber
+                    textColor: '#0a0a0a',
                 };
             case 'secondary':
                 return {
                     backgroundColor: '#2a2a2a',
-                    textColor: theme.colors.primary,
+                    textColor: '#FFD54F',
                 };
-            case 'error':
+            case 'danger':
                 return {
-                    backgroundColor: theme.colors.error || '#D32F2F',
+                    backgroundColor: '#D32F2F',
                     textColor: '#FFFFFF',
                 };
             case 'success':
                 return {
-                    backgroundColor: theme.colors.success || '#2E7D32',
+                    backgroundColor: '#2E7D32',
                     textColor: '#FFFFFF',
                 };
             default:
                 return {
-                    backgroundColor: '#2a2a2a',
-                    textColor: theme.colors.primary,
+                    backgroundColor: '#FFB800',
+                    textColor: '#0a0a0a',
                 };
         }
     };
 
-    const colors = getButtonColors();
+    const getSizeStyle = () => {
+        switch (size) {
+            case 'small':
+                return { paddingVertical: 12, paddingHorizontal: 20, fontSize: 14, letterSpacing: 2 };
+            case 'large':
+                return { paddingVertical: 18, paddingHorizontal: 36, fontSize: 20, letterSpacing: 4 };
+            default:
+                return { paddingVertical: 16, paddingHorizontal: 28, fontSize: 16, letterSpacing: 3 };
+        }
+    };
+
+    const buttonStyle = getButtonStyle();
+    const sizeStyle = getSizeStyle();
 
     const styles = StyleSheet.create({
         container: {
-            width: '100%',
-            paddingHorizontal: 8,
+            alignItems: 'center',
         },
         buttonWrapper: {
             borderRadius: 30,
             overflow: 'hidden',
-            width: '100%',
         },
         button: {
+            backgroundColor: buttonStyle.backgroundColor,
+            paddingVertical: sizeStyle.paddingVertical,
+            paddingHorizontal: sizeStyle.paddingHorizontal,
+            borderRadius: 30,
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: colors.backgroundColor,
-            borderRadius: 30,
-            height: 60,
-            paddingHorizontal: 20,
-            paddingVertical: 14,
-            width: '100%',
+            flexDirection: 'row',
+            gap: 10,
         },
         text: {
             fontFamily: 'CabinetGrotesk-Black',
-            fontSize: 16,
+            fontSize: sizeStyle.fontSize,
             fontWeight: '900',
-            color: colors.textColor,
+            color: buttonStyle.textColor,
             textAlign: 'center',
-            letterSpacing: 2,
+            letterSpacing: sizeStyle.letterSpacing,
             textTransform: 'uppercase',
         },
         disabled: {
@@ -109,7 +128,9 @@ export default function FullWidthButton({ title, onPress, variant = 'secondary',
             <Animated.View
                 style={[
                     styles.buttonWrapper,
-                    { transform: [{ scale: scaleAnim }] }
+                    {
+                        transform: [{ scale: scaleAnim }],
+                    }
                 ]}
             >
                 <TouchableOpacity
@@ -120,6 +141,7 @@ export default function FullWidthButton({ title, onPress, variant = 'secondary',
                     disabled={disabled}
                     style={[styles.button, disabled && styles.disabled]}
                 >
+                    {icon && icon}
                     <Text
                         style={[styles.text, textStyle]}
                         numberOfLines={1}

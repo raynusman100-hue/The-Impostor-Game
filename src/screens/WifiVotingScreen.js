@@ -926,13 +926,22 @@ export default function WifiVotingScreen({ route, navigation }) {
     };
 
     return (
-        <LinearGradient style={styles.container} colors={theme.colors.backgroundGradient}>
+        <LinearGradient style={styles.container} colors={['#0a0a0a', '#121212', '#0a0a0a']}>
+            {/* Kodak Film Header */}
+            <View style={styles.filmHeader}>
+                <View style={styles.filmStrip}>
+                    {[...Array(16)].map((_, i) => (
+                        <View key={i} style={styles.filmHole} />
+                    ))}
+                </View>
+            </View>
+            
             <View style={styles.header}>
                 <View style={styles.timerBadge}>
                     <Text style={[
                         styles.timerText,
-                        votingTimeLeft <= 5 && !votingConcluded && { color: theme.colors.error },
-                        votingConcluded && { color: theme.colors.success }
+                        votingTimeLeft <= 5 && !votingConcluded && { color: '#ff3b30' },
+                        votingConcluded && { color: '#4cd964' }
                     ]}>
                         {votingConcluded ? (isSubmitted ? "✓ VOTED" : "SKIPPED") : `${votingTimeLeft}s`}
                     </Text>
@@ -1079,35 +1088,99 @@ export default function WifiVotingScreen({ route, navigation }) {
 
 const getStyles = (theme) => StyleSheet.create({
     container: { flex: 1, alignItems: 'center' },
-    header: { marginTop: 40, alignItems: 'center', marginBottom: 10, width: '100%' },
-    title: { fontSize: 40, color: theme.colors.tertiary, fontFamily: theme.fonts.header, letterSpacing: 4 },
-    subtitle: { fontSize: 14, color: theme.colors.primary, fontFamily: theme.fonts.medium, letterSpacing: 2, marginBottom: 5, textAlign: 'center' },
+    // Kodak Film Strip Decorations
+    filmHeader: {
+        width: '100%',
+        paddingTop: 50,
+    },
+    filmFooter: {
+        width: '100%',
+        paddingBottom: 10,
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+    },
+    filmStrip: {
+        flexDirection: 'row',
+        justifyContent: 'space-evenly',
+        paddingHorizontal: 5,
+    },
+    filmHole: {
+        width: 12,
+        height: 8,
+        backgroundColor: '#D4A000',
+        borderRadius: 2,
+        opacity: 0.8,
+    },
+    header: { marginTop: 10, alignItems: 'center', marginBottom: 10, width: '100%' },
+    title: { 
+        fontSize: 40, 
+        color: '#FFD54F', 
+        fontFamily: theme.fonts.header, 
+        letterSpacing: 4,
+        textShadowColor: '#D4A000',
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 25,
+    },
+    subtitle: { 
+        fontSize: 14, 
+        color: '#D4A000', 
+        fontFamily: theme.fonts.medium, 
+        letterSpacing: 3, 
+        marginBottom: 5, 
+        textAlign: 'center' 
+    },
     scrollContent: { padding: 20, width: '100%' },
-    playerGrid: { gap: 12, width: '100%' },
-    playerCard: { padding: 20, borderRadius: 12, borderWidth: 2, borderColor: 'transparent', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%' },
-    selectedCard: { borderColor: theme.colors.primary, backgroundColor: 'rgba(255,255,255,0.1)' },
-    selfCard: { opacity: 0.6 },
-    playerName: { fontSize: 20, fontFamily: theme.fonts.header, letterSpacing: 2 },
-    voteMarker: { color: theme.colors.primary, fontFamily: theme.fonts.bold, fontSize: 14 },
+    playerGrid: { gap: 10, width: '100%' },
+    playerCard: { 
+        padding: 18, 
+        borderRadius: 10, 
+        borderWidth: 2, 
+        borderColor: 'rgba(212, 160, 0, 0.3)', 
+        flexDirection: 'row', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        width: '100%',
+        backgroundColor: 'rgba(26, 26, 26, 0.9)',
+    },
+    selectedCard: { 
+        borderColor: '#FFD54F', 
+        backgroundColor: 'rgba(212, 160, 0, 0.15)',
+        shadowColor: '#FFB800',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.5,
+        shadowRadius: 12,
+        elevation: 8,
+    },
+    selfCard: { opacity: 0.5 },
+    playerName: { fontSize: 18, fontFamily: theme.fonts.header, letterSpacing: 2, color: '#FFD54F' },
+    voteMarker: { color: '#FFD54F', fontFamily: theme.fonts.bold, fontSize: 13, letterSpacing: 2 },
     footer: { padding: 20, gap: 10, marginBottom: 20, width: '100%' },
-    statusText: { textAlign: 'center', color: theme.colors.textSecondary, fontFamily: theme.fonts.medium, fontSize: 16, letterSpacing: 2 },
+    statusText: { 
+        textAlign: 'center', 
+        color: '#D4A000', 
+        fontFamily: theme.fonts.medium, 
+        fontSize: 14, 
+        letterSpacing: 3 
+    },
     submitBtn: { width: '100%' },
     timerBadge: {
         position: 'absolute',
         top: -30,
         right: 20,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        paddingHorizontal: 15,
-        paddingVertical: 5,
+        backgroundColor: 'rgba(212, 160, 0, 0.2)',
+        paddingHorizontal: 16,
+        paddingVertical: 6,
         borderRadius: 20,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)'
+        borderWidth: 2,
+        borderColor: '#D4A000'
     },
     timerText: {
-        color: theme.colors.primary,
+        color: '#FFD54F',
         fontFamily: theme.fonts.bold,
         fontSize: 18,
-        letterSpacing: 1
+        letterSpacing: 2
     },
     connectionBadge: {
         position: 'absolute',
@@ -1129,143 +1202,156 @@ const getStyles = (theme) => StyleSheet.create({
     votingStatusContainer: {
         width: '100%',
         marginBottom: 20,
-        backgroundColor: 'rgba(0,0,0,0.3)',
+        backgroundColor: 'rgba(212, 160, 0, 0.1)',
         borderRadius: 12,
         padding: 15,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)'
+        borderWidth: 2,
+        borderColor: 'rgba(212, 160, 0, 0.3)'
     },
-    // NEW PLAYER STATUS STYLES
+    // NEW PLAYER STATUS STYLES - KODAK CINEMATIC
     playerStatusContainer: {
         width: '100%',
         alignItems: 'center',
-        marginBottom: 30,
+        marginBottom: 25,
+        backgroundColor: 'rgba(212, 160, 0, 0.08)',
+        borderRadius: 12,
+        padding: 15,
+        borderWidth: 2,
+        borderColor: 'rgba(212, 160, 0, 0.25)',
     },
     playerStatusTitle: {
-        color: theme.colors.textSecondary,
-        fontFamily: theme.fonts.header, // Using header font for cool look
-        fontSize: 16,
-        marginBottom: 15,
-        letterSpacing: 3,
+        color: '#D4A000',
+        fontFamily: theme.fonts.header,
+        fontSize: 14,
+        marginBottom: 12,
+        letterSpacing: 4,
         textTransform: 'uppercase'
     },
     playerStatusRow: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'center',
-        gap: 20,
-        marginBottom: 15
+        gap: 16,
+        marginBottom: 12
     },
     playerStatusAvatarContainer: {
         position: 'relative',
-        width: 60,
-        height: 60,
+        width: 54,
+        height: 54,
     },
     playerAvatarCircle: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        borderWidth: 4,
+        width: 54,
+        height: 54,
+        borderRadius: 27,
+        borderWidth: 3,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'rgba(255,255,255,0.1)'
+        backgroundColor: 'rgba(212, 160, 0, 0.1)'
     },
     avatarActive: {
-        borderColor: theme.colors.textSecondary // Grey for not voted yet
+        borderColor: 'rgba(212, 160, 0, 0.4)'
     },
     avatarVoted: {
-        borderColor: theme.colors.success // Green for voted
+        borderColor: '#FFD54F',
+        shadowColor: '#FFB800',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.6,
+        shadowRadius: 10,
     },
     avatarText: {
-        color: '#fff',
+        color: '#FFD54F',
         fontFamily: theme.fonts.bold,
-        fontSize: 24
+        fontSize: 22
     },
     statusBadge: {
         position: 'absolute',
-        bottom: 0,
-        right: -5,
-        width: 24,
-        height: 24,
-        borderRadius: 12,
+        bottom: -2,
+        right: -4,
+        width: 22,
+        height: 22,
+        borderRadius: 11,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 2,
-        borderColor: '#000' // Match BG color roughly
+        borderColor: '#0a0a0a'
     },
     statusBadgeVoted: {
-        backgroundColor: '#fff' // White bg for checkmark
+        backgroundColor: '#FFD54F'
     },
     statusBadgePending: {
-        backgroundColor: theme.colors.textSecondary,
-        width: 20, // Smaller for pending dot
-        height: 20,
-        bottom: 2,
+        backgroundColor: 'rgba(212, 160, 0, 0.5)',
+        width: 18,
+        height: 18,
+        bottom: 0,
         right: -2
     },
     checkmarkIcon: {
-        color: theme.colors.success,
-        fontSize: 14,
+        color: '#0a0a0a',
+        fontSize: 12,
         fontWeight: 'bold'
     },
     pendingDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: '#000'
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#0a0a0a'
     },
     readyText: {
-        color: '#fff',
+        color: '#FFD54F',
         fontFamily: theme.fonts.header,
-        fontSize: 24,
-        letterSpacing: 2
+        fontSize: 20,
+        letterSpacing: 3,
+        textShadowColor: '#D4A000',
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 10,
     },
-    // TAB STYLES
+    // TAB STYLES - KODAK CINEMATIC
     tabContainer: {
         flexDirection: 'row',
         marginTop: 10,
-        backgroundColor: 'rgba(0,0,0,0.3)',
+        backgroundColor: 'rgba(26, 26, 26, 0.9)',
         borderRadius: 25,
         padding: 4,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        borderWidth: 2,
+        borderColor: '#D4A000',
         alignSelf: 'center',
     },
     tab: {
         paddingVertical: 8,
-        paddingHorizontal: 30,
+        paddingHorizontal: 28,
         borderRadius: 20,
     },
     activeTab: {
-        backgroundColor: theme.colors.primary,
+        backgroundColor: '#D4A000',
     },
     tabContent: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     tabText: {
-        color: theme.colors.textSecondary,
-        fontFamily: theme.fonts.medium,
-        fontSize: 14,
+        color: 'rgba(212, 160, 0, 0.6)',
+        fontFamily: theme.fonts.bold,
+        fontSize: 13,
+        letterSpacing: 2,
     },
     activeTabText: {
-        color: '#fff',
+        color: '#0a0a0a',
         fontFamily: theme.fonts.bold,
     },
     notificationBadge: {
         position: 'absolute',
         top: -12,
         right: -25,
-        backgroundColor: theme.colors.error,
+        backgroundColor: '#ff3b30',
         paddingHorizontal: 6,
         paddingVertical: 2,
         borderRadius: 10,
-        borderWidth: 1,
-        borderColor: '#fff'
+        borderWidth: 2,
+        borderColor: '#0a0a0a'
     },
     notificationText: {
         color: '#fff',
-        fontSize: 10,
+        fontSize: 9,
         fontFamily: theme.fonts.bold
     }
 });

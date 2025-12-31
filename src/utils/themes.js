@@ -1,31 +1,36 @@
 // Multiple theme definitions for the game
-// Each theme has a unique visual identity
+// Kodak-inspired cinematic themes
 
 export const ALL_THEMES = [
     {
-        id: 'sunset-coral',
-        name: 'Sunset Coral',
+        id: 'kodak-daylight',
+        name: 'Kodak Daylight',
         colors: {
-            background: '#FFF5E4',
-            backgroundGradient: ['#FFF5E4', '#FFE4D6', '#FFD1DC'],
-            surface: '#FFE4D6',
-            primary: '#FF6B6B',
-            secondary: '#4ECDC4',
-            tertiary: '#FF8E72',
-            accent: '#FF6B6B',
-            text: '#2C3E50',
-            textSecondary: '#34495E',
-            textMuted: '#7F8C8D',
-            error: '#E74C3C',
-            success: '#2ECC71',
-            cardCover: '#FF6B6B',
-            cardRevealed: '#2C3E50',
+            // Warm cream/beige base like vintage Kodak film packaging
+            background: '#F5F0E6',
+            backgroundGradient: ['#F5F0E6', '#EDE5D8', '#E8DFD0'],
+            surface: '#FFFDF8',
+            // Kodak yellow/amber as primary
+            primary: '#FFB800',
+            secondary: '#1a1a1a',
+            tertiary: '#D4A000',
+            accent: '#FFB800',
+            // Dark text for readability
+            text: '#1a1a1a',
+            textSecondary: '#4a4a4a',
+            textMuted: '#8a8a8a',
+            error: '#D32F2F',
+            success: '#388E3C',
+            // Card colors
+            cardCover: '#FFB800',
+            cardRevealed: '#1a1a1a',
         },
         borderRadius: {
             s: 8,
             m: 12,
             l: 16,
-            pill: 25,
+            xl: 20,
+            pill: 30,
         },
         spacing: {
             xs: 4,
@@ -50,12 +55,12 @@ export const ALL_THEMES = [
         },
         textShadows: {
             depth: {
-                textShadowColor: 'rgba(0, 0, 0, 0.3)',
-                textShadowOffset: { width: 2, height: 2 },
-                textShadowRadius: 4,
+                textShadowColor: 'rgba(0, 0, 0, 0.15)',
+                textShadowOffset: { width: 1, height: 2 },
+                textShadowRadius: 3,
             },
             softDepth: {
-                textShadowColor: 'rgba(0, 0, 0, 0.2)',
+                textShadowColor: 'rgba(0, 0, 0, 0.1)',
                 textShadowOffset: { width: 1, height: 1 },
                 textShadowRadius: 2,
             }
@@ -67,44 +72,49 @@ export const ALL_THEMES = [
             },
             soft: {
                 shadowColor: "#000",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 4.65,
-                elevation: 8,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 3,
             },
             medium: {
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.2,
+                shadowOpacity: 0.15,
                 shadowRadius: 8,
-                elevation: 4,
+                elevation: 6,
             },
         },
     },
     {
-        id: 'retro-pop',
-        name: 'Midnight',
+        id: 'kodak-cinema',
+        name: 'Kodak Cinema',
         colors: {
-            background: '#000000',
-            backgroundGradient: ['#000000', '#121212'],
+            // Deep cinematic black
+            background: '#0a0a0a',
+            backgroundGradient: ['#1a1a1a', '#0d0d0d', '#000000'],
             surface: '#1a1a1a',
-            primary: '#E0E0E0',
-            secondary: '#333333',
-            tertiary: '#E0E0E0',
-            accent: '#E0E0E0',
+            // Kodak amber/gold as primary
+            primary: '#FFB800',
+            secondary: '#2a2a2a',
+            tertiary: '#FFB800',
+            accent: '#FFB800',
+            // Light text for dark mode
             text: '#ffffff',
-            textSecondary: '#cccccc',
-            textMuted: '#666666',
+            textSecondary: 'rgba(255, 255, 255, 0.7)',
+            textMuted: 'rgba(255, 255, 255, 0.4)',
             error: '#ff3b30',
             success: '#4cd964',
-            cardCover: '#ffffff',
-            cardRevealed: '#000000',
+            // Card colors
+            cardCover: '#FFB800',
+            cardRevealed: '#0a0a0a',
         },
         borderRadius: {
             s: 8,
             m: 12,
             l: 16,
-            pill: 25,
+            xl: 20,
+            pill: 30,
         },
         spacing: {
             xs: 4,
@@ -129,14 +139,14 @@ export const ALL_THEMES = [
         },
         textShadows: {
             depth: {
-                textShadowColor: 'rgba(255, 255, 255, 0.4)',
-                textShadowOffset: { width: 1, height: 1 },
-                textShadowRadius: 2,
+                textShadowColor: '#FFB800',
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 15,
             },
             softDepth: {
-                textShadowColor: 'rgba(255, 255, 255, 0.2)',
-                textShadowOffset: { width: 1, height: 1 },
-                textShadowRadius: 1,
+                textShadowColor: 'rgba(255, 184, 0, 0.3)',
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 8,
             }
         },
         shadows: {
@@ -145,17 +155,17 @@ export const ALL_THEMES = [
                 shadowOpacity: 0,
             },
             soft: {
-                shadowColor: "#fff",
+                shadowColor: "#FFB800",
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.2,
-                shadowRadius: 4,
+                shadowRadius: 6,
                 elevation: 4,
             },
             medium: {
-                shadowColor: '#fff',
+                shadowColor: '#FFB800',
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.3,
-                shadowRadius: 8,
+                shadowRadius: 12,
                 elevation: 8,
             },
         },
@@ -167,9 +177,9 @@ export const getThemeById = (themeId) => {
     return ALL_THEMES.find(theme => theme.id === themeId) || ALL_THEMES[0];
 };
 
-// Default export is the first theme (Sunset Coral)
+// Default export is the first theme (Kodak Daylight)
 export default ALL_THEMES[0];
 
-// For backward compatibility
+// For backward compatibility - map old names to new themes
 export const sunsetCoralTheme = ALL_THEMES[0];
 export const retroPopTheme = ALL_THEMES[1];

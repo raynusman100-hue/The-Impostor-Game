@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, ScrollView, Alert, KeyboardAvoidingView, Platform, LayoutAnimation, UIManager, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, StyleSheet, TextInput, ScrollView, Alert, KeyboardAvoidingView, Platform, LayoutAnimation, TouchableOpacity, Modal } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 import NetInfo from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../utils/ThemeContext';
-import Button from '../components/Button';
-import FullWidthButton from '../components/FullWidthButton';
 import { getRandomWord, CATEGORY_LABELS } from '../utils/words';
 import { translateText, SUPPORTED_LANGUAGES } from '../utils/translationService';
 import LanguageSelectorModal from '../components/LanguageSelectorModal';
@@ -17,31 +14,66 @@ import { playHaptic } from '../utils/haptics';
 
 
 
-// Memoized input row to prevent text glitching on Android
+// Film perforation component for Kodak aesthetic
+const FilmPerforations = ({ side, theme }) => {
+    // Use primary color with opacity for visibility on both light/dark themes
+    const perforationColor = theme.colors.primary + '40'; // 40 = 25% opacity
+    
+    return (
+        <View style={[filmStyles.perforationStrip, side === 'left' ? filmStyles.leftStrip : filmStyles.rightStrip]}>
+            {[...Array(12)].map((_, i) => (
+                <View key={i} style={[filmStyles.perforation, { backgroundColor: perforationColor }]} />
+            ))}
+        </View>
+    );
+};
+
+const filmStyles = StyleSheet.create({
+    perforationStrip: {
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        width: 18,
+        justifyContent: 'space-evenly',
+        alignItems: 'center',
+        paddingVertical: 40,
+        zIndex: 1,
+    },
+    leftStrip: { left: 2 },
+    rightStrip: { right: 2 },
+    perforation: {
+        width: 10,
+        height: 14,
+        borderRadius: 2,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 184, 0, 0.3)',
+    },
+});
+
+// Compact player input row with Kodak styling
 const PlayerRow = React.memo(({ name, index, onChange, onRemove, showRemove, theme, styles }) => (
     <View style={styles.playerRow}>
+        <View style={styles.playerNumber}>
+            <Text style={styles.playerNumberText}>{String(index + 1).padStart(2, '0')}</Text>
+        </View>
         <View style={styles.inputContainer}>
             <TextInput
                 style={styles.input}
                 placeholder={`PLAYER ${index + 1}`}
-                placeholderTextColor={theme.colors.textSecondary}
+                placeholderTextColor={theme.colors.textMuted}
                 value={name}
                 onChangeText={(text) => onChange(text, index)}
                 autoCorrect={false}
                 importantForAutofill="no"
-                keyboardType="visible-password" // Disables predictive text on Android (fixes Samsung bug)
+                keyboardType="visible-password"
                 autoCapitalize="words"
-                maxLength={20}
+                maxLength={15}
             />
         </View>
         {showRemove && (
-            <Button
-                title="×"
-                variant="error"
-                onPress={() => onRemove(index)}
-                style={styles.removeBtn}
-                textStyle={{ fontSize: 24, lineHeight: 28 }}
-            />
+            <TouchableOpacity onPress={() => onRemove(index)} style={styles.removeBtn}>
+                <Text style={styles.removeBtnText}>×</Text>
+            </TouchableOpacity>
         )}
     </View>
 ));
@@ -328,97 +360,114 @@ export default function SetupScreen({ navigation, route }) {
                 style={StyleSheet.absoluteFillObject}
             />
 
+            {/* Film grain overlay */}
+            <View style={styles.filmGrainOverlay} pointerEvents="none" />
 
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                <Text style={styles.title}>SETUP GAME</Text>
+            {/* Film perforations */}
+            <FilmPerforations side="left" theme={theme} />
+            <FilmPerforations side="right" theme={theme} />
 
-                {/* Categories Section */}
-                <View style={styles.section}>
-                    <FullWidthButton
-                        title={`CATEGORIES ${isCategoriesOpen ? '(-)' : '(+)'}`}
-                        onPress={toggleCategoriesOpen}
-                        variant="secondary"
-                    />
-
-                    {isCategoriesOpen && (
-                        <View style={styles.categoryDropdownContainer}>
-                            <View style={styles.categoryGrid}>
-                                {CATEGORY_LABELS.map((cat) => {
-                                    const isSelected = selectedCategories.includes(cat.key);
-                                    return (
-                                        <View key={cat.key} style={styles.gridItemWrapper}>
-                                            <TouchableOpacity
-                                                style={[
-                                                    styles.categoryBtn,
-                                                    isSelected && styles.categoryBtnSelected
-                                                ]}
-                                                onPress={() => toggleCategory(cat.key)}
-                                            >
-                                                <Text style={[
-                                                    styles.categoryText,
-                                                    isSelected && { color: theme.colors.secondary } // White text when selected
-                                                ]}>
-                                                    {cat.label.toUpperCase()}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                    );
-                                })}
-                            </View>
-                        </View>
-                    )}
+            <ScrollView 
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+            >
+                {/* Kodak-style header */}
+                <View style={styles.headerFrame}>
+                    <View style={styles.kodakBadge}>
+                        <Text style={styles.kodakText}>PASS & PLAY</Text>
+                    </View>
+                    <Text style={styles.title}>SETUP</Text>
+                    <View style={styles.frameNumber}>
+                        <Text style={styles.frameNumberText}>{players.length} PLAYERS</Text>
+                    </View>
                 </View>
 
-                {/* Impostor Count Section */}
-                <View style={styles.section}>
-                    <Text style={styles.label}>IMPOSTORS</Text>
-                    <View style={styles.counterRow}>
-                        <TouchableOpacity
-                            style={styles.counterBtn}
-                            onPress={decrementImpostors}
-                        >
-                            <Text style={styles.counterBtnText}>-</Text>
-                        </TouchableOpacity>
-
-                        <View style={styles.counterDisplay}>
-                            <Text style={styles.counterValue}>{impostorCount}</Text>
+                {/* Compact settings row */}
+                <View style={styles.settingsRow}>
+                    {/* Impostor Counter */}
+                    <View style={styles.compactSection}>
+                        <Text style={styles.compactLabel}>IMPOSTORS</Text>
+                        <View style={styles.miniCounterRow}>
+                            <TouchableOpacity style={styles.miniCounterBtn} onPress={decrementImpostors}>
+                                <Text style={styles.miniCounterBtnText}>−</Text>
+                            </TouchableOpacity>
+                            <Text style={styles.miniCounterValue}>{impostorCount}</Text>
+                            <TouchableOpacity style={styles.miniCounterBtn} onPress={incrementImpostors}>
+                                <Text style={styles.miniCounterBtnText}>+</Text>
+                            </TouchableOpacity>
                         </View>
+                    </View>
 
-                        <TouchableOpacity
-                            style={styles.counterBtn}
-                            onPress={incrementImpostors}
+                    {/* Hints Toggle */}
+                    <View style={styles.compactSection}>
+                        <Text style={styles.compactLabel}>HINTS</Text>
+                        <TouchableOpacity 
+                            style={[styles.toggleBtn, hintsEnabled && styles.toggleBtnActive]}
+                            onPress={() => { playHaptic('light'); setHintsEnabled(!hintsEnabled); }}
                         >
-                            <Text style={styles.counterBtnText}>+</Text>
+                            <Text style={[styles.toggleBtnText, hintsEnabled && styles.toggleBtnTextActive]}>
+                                {hintsEnabled ? 'ON' : 'OFF'}
+                            </Text>
                         </TouchableOpacity>
                     </View>
                 </View>
-                {/* ... (lines 202-246 skipped for brevity, keeping context if needed in replace logic, but here I target specific blocks) */}
-                {/* Actually, I need to be careful with the replace range. I'll split this if needed. Let's do the Category fix first. */
-                /* Wait, I should do the player map key fix. */}
 
-                {/* Hints Toggle */}
-                <View style={styles.section}>
-                    <FullWidthButton
-                        title={`HINTS: ${hintsEnabled ? 'ON' : 'OFF'}`}
-                        onPress={() => setHintsEnabled(!hintsEnabled)}
-                        variant="secondary"
-                    />
-                </View>
-
-                {/* Language Selector */}
-                <View style={styles.section}>
-                    <FullWidthButton
-                        title={`LANGUAGE: ${SUPPORTED_LANGUAGES.find(l => l.code === language)?.nativeLabel || 'ENGLISH'}`}
+                {/* Language & Categories - Compact buttons */}
+                <View style={styles.optionsRow}>
+                    <TouchableOpacity 
+                        style={styles.optionBtn}
                         onPress={() => setIsLanguageModalVisible(true)}
-                        variant="secondary"
-                    />
+                    >
+                        <Text style={styles.optionBtnLabel}>LANG</Text>
+                        <Text style={styles.optionBtnValue}>
+                            {SUPPORTED_LANGUAGES.find(l => l.code === language)?.code.toUpperCase() || 'EN'}
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                        style={styles.optionBtn}
+                        onPress={toggleCategoriesOpen}
+                    >
+                        <Text style={styles.optionBtnLabel}>CATEGORY</Text>
+                        <Text style={styles.optionBtnValue}>
+                            {selectedCategories.includes('all') ? 'ALL' : selectedCategories.length}
+                        </Text>
+                    </TouchableOpacity>
                 </View>
 
-                {/* Players Section */}
-                <View style={styles.section}>
-                    <Text style={styles.label}>PLAYERS ({players.length})</Text>
-                    {
-                        players.map((p, i) => (
+                {/* Categories Dropdown */}
+                {isCategoriesOpen && (
+                    <View style={styles.categoryDropdown}>
+                        <View style={styles.categoryGrid}>
+                            {CATEGORY_LABELS.map((cat) => {
+                                const isSelected = selectedCategories.includes(cat.key);
+                                return (
+                                    <TouchableOpacity
+                                        key={cat.key}
+                                        style={[styles.categoryChip, isSelected && styles.categoryChipSelected]}
+                                        onPress={() => toggleCategory(cat.key)}
+                                    >
+                                        <Text style={[styles.categoryChipText, isSelected && styles.categoryChipTextSelected]}>
+                                            {cat.label.toUpperCase()}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    </View>
+                )}
+
+                {/* Players Section - Film frame style */}
+                <View style={styles.playersFrame}>
+                    <View style={styles.frameHeader}>
+                        <Text style={styles.frameHeaderText}>CAST</Text>
+                        <TouchableOpacity style={styles.addPlayerBtn} onPress={addPlayer}>
+                            <Text style={styles.addPlayerBtnText}>+ ADD</Text>
+                        </TouchableOpacity>
+                    </View>
+                    
+                    <View style={styles.playersList}>
+                        {players.map((p, i) => (
                             <PlayerRow
                                 key={i}
                                 name={p}
@@ -429,41 +478,31 @@ export default function SetupScreen({ navigation, route }) {
                                 theme={theme}
                                 styles={styles}
                             />
-                        ))
-                    }
-                    <Button
-                        title="+ ADD PLAYER"
-                        onPress={addPlayer}
-                        variant="secondary"
-                        style={{ marginTop: theme.spacing.s }}
-                    />
-                </View >
-
-                <View style={styles.footer}>
-                    <Button
-                        title={isStarting ? "STARTING..." : "START GAME"}
-                        onPress={startGame}
-                        style={styles.startButton}
-                        textStyle={{
-                            fontSize: 32,
-                            letterSpacing: 4,
-                            fontFamily: theme.fonts.header,
-                            lineHeight: 40, // Add line height for iOS
-                            paddingTop: 4, // Add top padding for iOS
-                            includeFontPadding: false, // Remove extra padding
-                            textAlignVertical: 'center' // Center text vertically
-                        }}
-                    />
+                        ))}
+                    </View>
                 </View>
-            </ScrollView >
+
+                {/* Start Button - Kodak style */}
+                <TouchableOpacity 
+                    style={[styles.startButton, isStarting && styles.startButtonDisabled]}
+                    onPress={startGame}
+                    disabled={isStarting}
+                    activeOpacity={0.8}
+                >
+                    <View style={styles.startButtonInner}>
+                        <Text style={styles.startButtonText}>
+                            {isStarting ? 'LOADING...' : 'ACTION!'}
+                        </Text>
+                    </View>
+                </TouchableOpacity>
+
+                <View style={styles.bottomSpacer} />
+            </ScrollView>
 
             <LanguageSelectorModal
                 visible={isLanguageModalVisible}
                 onClose={() => setIsLanguageModalVisible(false)}
-                onSelect={(langCode) => {
-                    setLanguage(langCode);
-                    setIsLanguageModalVisible(false);
-                }}
+                onSelect={handleLanguageChange}
                 currentLanguage={language}
             />
 
@@ -476,260 +515,373 @@ export default function SetupScreen({ navigation, route }) {
             >
                 <View style={styles.warningOverlay}>
                     <View style={styles.warningContent}>
-                        <View style={styles.warningIconContainer}>
-                            <Text style={styles.warningIcon}>⚠️</Text>
-                        </View>
-                        <Text style={styles.warningTitle}>NO INTERNET CONNECTION</Text>
+                        <Text style={styles.warningIcon}>📡</Text>
+                        <Text style={styles.warningTitle}>NO CONNECTION</Text>
                         <Text style={styles.warningMessage}>
-                            You need an active internet connection to start the game in {SUPPORTED_LANGUAGES.find(l => l.code === language)?.nativeLabel || 'this language'}. Please reconnect or switch to English.
+                            Internet required for {SUPPORTED_LANGUAGES.find(l => l.code === language)?.nativeLabel || 'this language'}.
                         </Text>
                         <TouchableOpacity
                             style={styles.warningButton}
-                            onPress={() => {
-                                playHaptic('light');
-                                setShowOfflineWarning(false);
-                            }}
+                            onPress={() => { playHaptic('light'); setShowOfflineWarning(false); }}
                         >
                             <Text style={styles.warningButtonText}>GOT IT</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
             </Modal>
-        </KeyboardAvoidingView >
+        </KeyboardAvoidingView>
     );
 }
 
 const getStyles = (theme) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: theme.colors.background,
+    },
+    filmGrainOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'transparent',
+        opacity: 0.03,
     },
     scrollContent: {
-        paddingVertical: theme.spacing.l,
-        paddingTop: Platform.OS === 'ios' ? 40 : 24,
-        paddingBottom: 50,
-        paddingHorizontal: 0, // No horizontal padding - let buttons control their own spacing
+        paddingTop: Platform.OS === 'ios' ? 50 : 30,
+        paddingBottom: 30,
+        paddingHorizontal: 24,
+    },
+    // Kodak Header
+    headerFrame: {
+        alignItems: 'center',
+        marginBottom: 16,
+        paddingVertical: 12,
+        borderTopWidth: 2,
+        borderBottomWidth: 2,
+        borderColor: theme.colors.primary,
+    },
+    kodakBadge: {
+        backgroundColor: theme.colors.primary,
+        paddingHorizontal: 16,
+        paddingVertical: 4,
+        borderRadius: 4,
+        marginBottom: 4,
+    },
+    kodakText: {
+        color: theme.colors.secondary,
+        fontSize: 10,
+        fontFamily: theme.fonts.bold,
+        letterSpacing: 3,
     },
     title: {
-        fontSize: 72,
-        color: theme.colors.tertiary, // Synchronized silver
+        fontSize: 48,
+        color: theme.colors.text,
         fontFamily: theme.fonts.header,
-        marginBottom: theme.spacing.xl,
-        textAlign: 'center',
-        letterSpacing: 4,
-        transform: [{ scaleY: 1.1 }],
-        lineHeight: 90,
-        paddingVertical: 16,
-        paddingTop: 20,
-        includeFontPadding: false,
-        textAlignVertical: 'center',
+        letterSpacing: 8,
         ...theme.textShadows.depth,
     },
-    section: {
-        marginBottom: theme.spacing.xl,
-        paddingHorizontal: theme.spacing.l, // Only for title and other content, not buttons
-        marginHorizontal: 0,
+    frameNumber: {
+        marginTop: 4,
     },
-    label: {
-        color: theme.colors.textSecondary,
-        fontSize: theme.fontSize.large,
+    frameNumberText: {
+        color: theme.colors.primary,
+        fontSize: 11,
         fontFamily: theme.fonts.medium,
         letterSpacing: 2,
-        marginBottom: theme.spacing.m,
     },
-    categoryText: {
-        color: theme.colors.textSecondary, // Dark brown for unselected
-        fontFamily: theme.fonts.medium,
-        fontSize: theme.fontSize.medium,
+    // Compact Settings Row
+    settingsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 12,
+        gap: 12,
+    },
+    compactSection: {
+        flex: 1,
+        backgroundColor: theme.colors.surface,
+        borderRadius: 12,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: theme.colors.primary + '50',
+    },
+    compactLabel: {
+        color: theme.colors.primary,
+        fontSize: 10,
+        fontFamily: theme.fonts.bold,
+        letterSpacing: 2,
+        marginBottom: 8,
         textAlign: 'center',
-        paddingVertical: 12, // Ensure touch target
+    },
+    miniCounterRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 12,
+    },
+    miniCounterBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: theme.colors.primary + '30',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: theme.colors.primary,
+    },
+    miniCounterBtnText: {
+        color: theme.colors.primary,
+        fontSize: 20,
+        fontFamily: theme.fonts.bold,
+        lineHeight: 22,
+    },
+    miniCounterValue: {
+        color: theme.colors.text,
+        fontSize: 28,
+        fontFamily: theme.fonts.header,
+        minWidth: 30,
+        textAlign: 'center',
+    },
+    toggleBtn: {
+        backgroundColor: theme.colors.surface,
+        borderRadius: 20,
+        paddingVertical: 10,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: theme.colors.textMuted,
+    },
+    toggleBtnActive: {
+        backgroundColor: theme.colors.primary,
+        borderColor: theme.colors.primary,
+    },
+    toggleBtnText: {
+        color: theme.colors.textSecondary,
+        fontSize: 14,
+        fontFamily: theme.fonts.bold,
+        letterSpacing: 2,
+    },
+    toggleBtnTextActive: {
+        color: theme.colors.secondary,
+    },
+    // Options Row
+    optionsRow: {
+        flexDirection: 'row',
+        gap: 12,
+        marginBottom: 12,
+    },
+    optionBtn: {
+        flex: 1,
+        backgroundColor: theme.colors.surface,
+        borderRadius: 12,
+        padding: 12,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: theme.colors.textMuted + '40',
+    },
+    optionBtnLabel: {
+        color: theme.colors.textMuted,
+        fontSize: 9,
+        fontFamily: theme.fonts.medium,
+        letterSpacing: 2,
+        marginBottom: 4,
+    },
+    optionBtnValue: {
+        color: theme.colors.text,
+        fontSize: 18,
+        fontFamily: theme.fonts.bold,
         letterSpacing: 1,
     },
-    categoryToggle: {
-        marginBottom: theme.spacing.m,
-        width: '100%',
-        minHeight: 60,
-        marginHorizontal: 0, // Remove any horizontal margins
-        paddingHorizontal: 0, // Remove any horizontal padding
-    },
-    categoryDropdownContainer: {
-        backgroundColor: theme.colors.surface, // Use theme surface instead of hardcoded creme
-        borderRadius: theme.borderRadius.xl,
-        padding: theme.spacing.m,
-        marginTop: theme.spacing.s,
-        borderWidth: 3, // Thicker border as requested
-        borderColor: theme.colors.textSecondary,
-        ...theme.shadows.soft,
+    // Category Dropdown
+    categoryDropdown: {
+        backgroundColor: theme.colors.surface,
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: theme.colors.primary + '40',
     },
     categoryGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        justifyContent: 'space-between',
-        gap: theme.spacing.s,
+        gap: 8,
     },
-    gridItemWrapper: {
-        width: '48%', // Two per row
-    },
-    categoryBtn: {
-        width: '100%', // Fill wrapper
-        backgroundColor: 'transparent',
+    categoryChip: {
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 16,
+        backgroundColor: theme.colors.background,
         borderWidth: 1,
-        borderColor: theme.colors.textSecondary,
-        borderRadius: theme.borderRadius.pill, // Pill shape
+        borderColor: theme.colors.textMuted + '50',
     },
-    categoryBtnSelected: {
+    categoryChipSelected: {
         backgroundColor: theme.colors.primary,
         borderColor: theme.colors.primary,
     },
-    counterRow: {
-        flexDirection: 'row',
-        gap: theme.spacing.m,
-        alignItems: 'center',
-    },
-    counterBtn: {
-        flex: 1,
-        borderWidth: 1,
-        borderColor: theme.colors.textSecondary,
-        borderRadius: theme.borderRadius.pill, // Fix rectangle issue
-        backgroundColor: 'transparent',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: 60,
-    },
-    counterBtnText: {
-        fontSize: 40,
-        color: theme.colors.text, // Use dynamic theme color
+    categoryChipText: {
+        color: theme.colors.textSecondary,
+        fontSize: 11,
         fontFamily: theme.fonts.medium,
-        textAlign: 'center',
-        lineHeight: 45, // Center vertically
-        includeFontPadding: false,
+        letterSpacing: 1,
     },
-    counterDisplay: {
-        paddingHorizontal: theme.spacing.xl,
-        minWidth: 80,
+    categoryChipTextSelected: {
+        color: theme.colors.secondary,
+    },
+    // Players Frame
+    playersFrame: {
+        backgroundColor: theme.colors.surface,
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 20,
+        borderWidth: 2,
+        borderColor: theme.colors.primary + '50',
+    },
+    frameHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
+        marginBottom: 12,
+        paddingBottom: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.primary + '30',
     },
-    counterValue: {
-        fontSize: 64,
-        color: theme.colors.text,
-        fontFamily: theme.fonts.header,
+    frameHeaderText: {
+        color: theme.colors.primary,
+        fontSize: 14,
+        fontFamily: theme.fonts.bold,
+        letterSpacing: 4,
     },
-    hintToggle: {
-        width: '100%',
-        minHeight: 60,
+    addPlayerBtn: {
+        backgroundColor: theme.colors.primary + '30',
+        paddingHorizontal: 14,
+        paddingVertical: 6,
+        borderRadius: 12,
         borderWidth: 1,
-        borderColor: theme.colors.textSecondary,
-        borderRadius: theme.borderRadius.pill,
-        marginHorizontal: 0, // Remove any horizontal margins
-        paddingHorizontal: 0, // Remove any horizontal padding
-    },
-    hintToggleActive: {
-        backgroundColor: 'rgba(50,205,50,0.1)',
         borderColor: theme.colors.primary,
+    },
+    addPlayerBtnText: {
+        color: theme.colors.primary,
+        fontSize: 12,
+        fontFamily: theme.fonts.bold,
+        letterSpacing: 1,
+    },
+    playersList: {
+        gap: 8,
     },
     playerRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: theme.spacing.m,
-        gap: theme.spacing.s,
+        gap: 10,
+    },
+    playerNumber: {
+        width: 28,
+        height: 28,
+        borderRadius: 6,
+        backgroundColor: theme.colors.primary + '25',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    playerNumberText: {
+        color: theme.colors.primary,
+        fontSize: 11,
+        fontFamily: theme.fonts.bold,
     },
     inputContainer: {
         flex: 1,
-        borderRadius: theme.borderRadius.pill, // ELONGATED OVAL
-        backgroundColor: 'transparent', // Matte look
+        height: 44,
+        borderRadius: 10,
+        backgroundColor: theme.colors.background,
         borderWidth: 1,
-        borderColor: theme.colors.textSecondary,
-        minHeight: 60, // Ensure height for scaling
+        borderColor: theme.colors.textMuted + '40',
         justifyContent: 'center',
     },
     input: {
         color: theme.colors.text,
-        paddingHorizontal: theme.spacing.l,
-        fontSize: theme.fontSize.large,
+        paddingHorizontal: 14,
+        fontSize: 15,
         fontFamily: theme.fonts.medium,
-        letterSpacing: 2,
-        textTransform: 'uppercase',
-        flex: 1,
-    },
-    screenTitle: { // New style added as per instruction
-        fontSize: 48,
-        fontFamily: 'Teko-Medium',
-        letterSpacing: 3,
-        textAlign: 'center',
-        marginBottom: 24,
-        marginTop: 50,
-        color: theme.colors.tertiary, // Synchronized silver
+        letterSpacing: 1,
     },
     removeBtn: {
-        paddingHorizontal: theme.spacing.m,
-        backgroundColor: 'transparent',
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: theme.colors.error + '30',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: theme.colors.error + '80',
     },
-    footer: {
-        marginTop: theme.spacing.l,
+    removeBtnText: {
+        color: theme.colors.error,
+        fontSize: 20,
+        fontFamily: theme.fonts.bold,
+        lineHeight: 22,
     },
+    // Start Button - Kodak style (simple, no shadow)
     startButton: {
-        width: '100%',
         backgroundColor: theme.colors.primary,
-        borderRadius: theme.borderRadius.pill,
-        paddingVertical: 18, // Increased vertical padding for iOS
-        minHeight: 70, // Ensure minimum height for text
+        borderRadius: 30,
+        overflow: 'hidden',
     },
-    // Warning Modal Styles
+    startButtonDisabled: {
+        opacity: 0.6,
+    },
+    startButtonInner: {
+        paddingVertical: 18,
+        alignItems: 'center',
+    },
+    startButtonText: {
+        color: theme.colors.secondary,
+        fontSize: 28,
+        fontFamily: theme.fonts.header,
+        letterSpacing: 6,
+    },
+    bottomSpacer: {
+        height: 20,
+    },
+    // Warning Modal
     warningOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.85)',
+        backgroundColor: 'rgba(0, 0, 0, 0.9)',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: theme.spacing.l,
+        padding: 24,
     },
     warningContent: {
-        backgroundColor: theme.colors.background,
-        borderRadius: theme.borderRadius.xl,
-        padding: theme.spacing.xl,
-        width: '90%',
-        maxWidth: 400,
+        backgroundColor: theme.colors.surface,
+        borderRadius: 20,
+        padding: 24,
+        width: '100%',
+        maxWidth: 320,
         alignItems: 'center',
-        ...theme.shadows.soft,
         borderWidth: 2,
-        borderColor: theme.colors.error,
-    },
-    warningIconContainer: {
-        marginBottom: theme.spacing.m,
+        borderColor: theme.colors.primary,
     },
     warningIcon: {
-        fontSize: 64,
+        fontSize: 48,
+        marginBottom: 12,
     },
     warningTitle: {
-        fontSize: theme.fontSize.large,
-        color: theme.colors.error,
+        fontSize: 18,
+        color: theme.colors.primary,
         fontFamily: theme.fonts.bold,
         letterSpacing: 2,
-        marginBottom: theme.spacing.m,
+        marginBottom: 12,
         textAlign: 'center',
     },
     warningMessage: {
-        fontSize: theme.fontSize.medium,
-        color: theme.colors.text,
+        fontSize: 14,
+        color: theme.colors.textSecondary,
         fontFamily: theme.fonts.medium,
         textAlign: 'center',
-        marginBottom: theme.spacing.xl,
-        lineHeight: 24,
-        letterSpacing: 0.5,
+        marginBottom: 20,
+        lineHeight: 20,
     },
     warningButton: {
         backgroundColor: theme.colors.primary,
-        paddingVertical: theme.spacing.m,
-        paddingHorizontal: theme.spacing.xl,
-        borderRadius: theme.borderRadius.pill,
-        minWidth: 150,
-        alignItems: 'center',
-        ...theme.shadows.medium,
+        paddingVertical: 12,
+        paddingHorizontal: 32,
+        borderRadius: 20,
     },
     warningButtonText: {
         color: theme.colors.secondary,
-        fontSize: theme.fontSize.medium,
+        fontSize: 14,
         fontFamily: theme.fonts.bold,
         letterSpacing: 2,
     },
-
 });

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Share, Alert, ActivityIndicator, TextInput, Platform, TouchableOpacity, LayoutAnimation, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Share, Alert, ActivityIndicator, Platform, TouchableOpacity, LayoutAnimation, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import QRCode from 'react-native-qrcode-svg';
 import { useTheme } from '../utils/ThemeContext';
-import Button from '../components/Button';
+import KodakButton from '../components/KodakButton';
 import { playHaptic } from '../utils/haptics';
 import { database } from '../utils/firebase';
 import { ref, set, onValue, off, onDisconnect, update, remove } from 'firebase/database';
@@ -15,6 +15,41 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import ChatSystem from '../components/ChatSystem';
 import { CustomAvatar } from '../utils/AvatarGenerator';
 
+// Film perforation component for Kodak aesthetic
+const FilmPerforations = ({ side, theme }) => {
+    const perforationColor = theme.colors.primary + '40';
+    
+    return (
+        <View style={[filmPerforationStyles.perforationStrip, side === 'left' ? filmPerforationStyles.leftStrip : filmPerforationStyles.rightStrip]}>
+            {[...Array(12)].map((_, i) => (
+                <View key={i} style={[filmPerforationStyles.perforation, { backgroundColor: perforationColor }]} />
+            ))}
+        </View>
+    );
+};
+
+const filmPerforationStyles = StyleSheet.create({
+    perforationStrip: {
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        width: 18,
+        justifyContent: 'space-evenly',
+        alignItems: 'center',
+        paddingVertical: 40,
+        zIndex: 1,
+    },
+    leftStrip: { left: 2 },
+    rightStrip: { right: 2 },
+    perforation: {
+        width: 10,
+        height: 14,
+        borderRadius: 2,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 184, 0, 0.3)',
+    },
+});
+
 export default function HostScreen({ navigation, route }) {
     const { theme } = useTheme();
     const styles = getStyles(theme);
@@ -22,7 +57,6 @@ export default function HostScreen({ navigation, route }) {
 
     const [roomCode, setRoomCode] = useState(existingRoomCode || '');
     const [players, setPlayers] = useState([]);
-    const [isReturningToLobby, setIsReturningToLobby] = useState(!!existingRoomCode);
 
     // Game Settings
     const [impostorCount, setImpostorCount] = useState(1);
@@ -209,10 +243,15 @@ export default function HostScreen({ navigation, route }) {
         }
     }, [showChat]);
 
-    if (!playerData) return null; // Should be handled by useEffect redirect
+    if (!playerData) return null;
 
     return (
-        <LinearGradient colors={theme.colors.backgroundGradient} style={styles.container}>
+        <LinearGradient colors={['#0a0a0a', '#121212', '#0a0a0a']} style={styles.container}>
+            {/* Film perforations - side strips */}
+            <FilmPerforations side="left" theme={theme} />
+            <FilmPerforations side="right" theme={theme} />
+            
+            {/* Header with room code */}
             <View style={styles.header}>
                 <Text style={styles.title}>ROOM CODE</Text>
                 <Animated.Text style={[styles.codeText, { transform: [{ scale: pulseAnim }] }]}>
@@ -236,7 +275,7 @@ export default function HostScreen({ navigation, route }) {
                     onPress={() => {
                         playHaptic('light');
                         setShowChat(true);
-                        setUnreadMessages(0); // Clear unread when opening chat
+                        setUnreadMessages(0);
                     }}
                 >
                     <View style={styles.tabContent}>
@@ -258,35 +297,39 @@ export default function HostScreen({ navigation, route }) {
                     />
                 </View>
             ) : (
-                <ScrollView contentContainerStyle={styles.scrollContent}>
+                <ScrollView 
+                    contentContainerStyle={styles.scrollContent}
+                    showsVerticalScrollIndicator={false}
+                >
+                    {/* QR Code */}
                     <View style={styles.qrContainer}>
                         {roomCode ? (
-                            <QRCode value={roomCode} size={150} color={theme.colors.primary} backgroundColor="transparent" />
+                            <QRCode value={roomCode} size={120} color="#D4A000" backgroundColor="transparent" />
                         ) : (
-                            <ActivityIndicator color={theme.colors.primary} />
+                            <ActivityIndicator color="#D4A000" />
                         )}
                     </View>
 
-                    {/* Host Info - Replaces Input */}
-                    <View style={[styles.section, { backgroundColor: theme.colors.surface, alignItems: 'center' }]}>
-                        <Text style={styles.sectionTitle}>YOUR PROFILE</Text>
-                        <CustomAvatar id={playerData.avatarId} size={70} />
-                        <Text style={[styles.settingLabel, { marginTop: 10, fontSize: 24, fontFamily: theme.fonts.bold }]}>
-                            {playerData.name.toUpperCase()}
-                        </Text>
-                        <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>HOST</Text>
+                    {/* Host Info - Compact */}
+                    <View style={styles.hostCard}>
+                        <CustomAvatar id={playerData.avatarId} size={50} />
+                        <View style={styles.hostInfo}>
+                            <Text style={styles.hostName}>{playerData.name.toUpperCase()}</Text>
+                            <View style={styles.hostBadge}>
+                                <Text style={styles.hostBadgeText}>HOST</Text>
+                            </View>
+                        </View>
                     </View>
 
-                    {/* Game Settings */}
-                    <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
-                        <Text style={styles.sectionTitle}>GAME SETTINGS</Text>
-
+                    {/* Game Settings - Compact */}
+                    <View style={styles.settingsCard}>
                         <View style={styles.settingRow}>
-                            <Text style={styles.settingLabel}>IMPOSTORS: {impostorCount}</Text>
+                            <Text style={styles.settingLabel}>IMPOSTORS</Text>
                             <View style={styles.counterControls}>
                                 <TouchableOpacity onPress={() => setImpostorCount(Math.max(1, impostorCount - 1))} style={styles.countBtn}>
-                                    <Text style={styles.countBtnText}>-</Text>
+                                    <Text style={styles.countBtnText}>−</Text>
                                 </TouchableOpacity>
+                                <Text style={styles.countValue}>{impostorCount}</Text>
                                 <TouchableOpacity onPress={() => {
                                     const max = getMaxImpostors(players.length + 1);
                                     if (impostorCount < max) {
@@ -300,61 +343,70 @@ export default function HostScreen({ navigation, route }) {
                             </View>
                         </View>
 
-                        <Button
-                            title={`LANGUAGE: ${SUPPORTED_LANGUAGES.find(l => l.code === language)?.label.toUpperCase()}`}
-                            onPress={() => setIsLanguageModalVisible(true)}
-                            variant="secondary"
-                            style={styles.settingBtn}
-                        />
+                        <View style={styles.settingButtons}>
+                            <TouchableOpacity 
+                                style={styles.settingBtn}
+                                onPress={() => setIsLanguageModalVisible(true)}
+                            >
+                                <Text style={styles.settingBtnLabel}>LANG</Text>
+                                <Text style={styles.settingBtnValue}>
+                                    {SUPPORTED_LANGUAGES.find(l => l.code === language)?.code.toUpperCase()}
+                                </Text>
+                            </TouchableOpacity>
 
-                        <Button
-                            title={`CATEGORIES ${isCategoriesOpen ? '(-)' : '(+)'}`}
-                            onPress={() => {
-                                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                                setIsCategoriesOpen(!isCategoriesOpen);
-                            }}
-                            variant="secondary"
-                            style={styles.settingBtn}
-                        />
+                            <TouchableOpacity 
+                                style={styles.settingBtn}
+                                onPress={() => {
+                                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                    setIsCategoriesOpen(!isCategoriesOpen);
+                                }}
+                            >
+                                <Text style={styles.settingBtnLabel}>CATEGORY</Text>
+                                <Text style={styles.settingBtnValue}>
+                                    {selectedCategories.includes('all') ? 'ALL' : selectedCategories.length}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
 
                         {isCategoriesOpen && (
-                            <View style={styles.categoryDropdownContainer}>
-                                <View style={styles.categoryGrid}>
-                                    {CATEGORY_LABELS.map((cat) => (
-                                        <TouchableOpacity
-                                            key={cat.key}
-                                            style={[styles.catItem, selectedCategories.includes(cat.key) && styles.catItemSelected]}
-                                            onPress={() => toggleCategory(cat.key)}
-                                        >
-                                            <Text style={[styles.catText, selectedCategories.includes(cat.key) && styles.catTextSelected]}>
-                                                {cat.label.toUpperCase()}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
+                            <View style={styles.categoryGrid}>
+                                {CATEGORY_LABELS.map((cat) => (
+                                    <TouchableOpacity
+                                        key={cat.key}
+                                        style={[styles.catItem, selectedCategories.includes(cat.key) && styles.catItemSelected]}
+                                        onPress={() => toggleCategory(cat.key)}
+                                    >
+                                        <Text style={[styles.catText, selectedCategories.includes(cat.key) && styles.catTextSelected]}>
+                                            {cat.label.toUpperCase()}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
                             </View>
                         )}
                     </View>
 
-                    <View style={[styles.playerSection, { backgroundColor: theme.colors.surface }]}>
-                        <Text style={styles.playerCount}>PLAYERS: {players.length + 1} / 3 MIN</Text>
+                    {/* Players List */}
+                    <View style={styles.playersCard}>
+                        <Text style={styles.playerCount}>PLAYERS ({players.length + 1}/3 MIN)</Text>
                         <View style={styles.playerList}>
                             <View style={styles.playerRow}>
-                                <CustomAvatar id={playerData.avatarId} size={30} />
-                                <Text style={styles.playerItem}>{playerData.name.toUpperCase()} (YOU)</Text>
+                                <CustomAvatar id={playerData.avatarId} size={28} />
+                                <Text style={styles.playerName}>{playerData.name.toUpperCase()}</Text>
+                                <Text style={styles.youTag}>(YOU)</Text>
                             </View>
                             {players.map((p) => (
                                 <View key={p.id} style={styles.playerRow}>
-                                    <CustomAvatar id={p.avatarId || 1} size={30} />
-                                    <Text style={styles.playerItem}>{p.name}</Text>
+                                    <CustomAvatar id={p.avatarId || 1} size={28} />
+                                    <Text style={styles.playerName}>{p.name}</Text>
                                 </View>
                             ))}
                         </View>
                     </View>
 
+                    {/* Action Buttons */}
                     <View style={styles.footer}>
-                        <Button title="SHARE INVITE" onPress={handleShare} variant="secondary" />
-                        <Button title="START GAME" onPress={handleStartGame} disabled={players.length + 1 < 3} />
+                        <KodakButton title="SHARE INVITE" onPress={handleShare} variant="secondary" />
+                        <KodakButton title="START GAME" onPress={handleStartGame} disabled={players.length + 1 < 3} variant="primary" />
                     </View>
                 </ScrollView>
             )}
@@ -371,19 +423,39 @@ export default function HostScreen({ navigation, route }) {
 
 const getStyles = (theme) => StyleSheet.create({
     container: { flex: 1 },
-    scrollContent: { padding: theme.spacing.l, alignItems: 'center' },
-    header: { marginTop: Platform.OS === 'ios' ? 80 : 40, alignItems: 'center', marginBottom: 10 },
-    title: { fontSize: 20, color: theme.colors.tertiary, fontFamily: theme.fonts.medium, letterSpacing: 4 },
-    codeText: { fontSize: 56, color: theme.colors.text, fontFamily: theme.fonts.header, letterSpacing: 6 },
+    scrollContent: { 
+        paddingHorizontal: 28,
+        paddingTop: 10,
+        paddingBottom: 30,
+    },
+    
+    header: { 
+        marginTop: Platform.OS === 'ios' ? 50 : 35,
+        alignItems: 'center', 
+        marginBottom: 10,
+    },
+    title: { 
+        fontSize: 12, 
+        color: '#D4A000', 
+        fontFamily: theme.fonts.bold, 
+        letterSpacing: 4,
+    },
+    codeText: { 
+        fontSize: 48, 
+        color: '#FFD54F', 
+        fontFamily: theme.fonts.header, 
+        letterSpacing: 8,
+    },
+    
     tabContainer: {
         flexDirection: 'row',
-        marginBottom: 10,
-        backgroundColor: theme.colors.surface,
+        marginBottom: 12,
+        backgroundColor: 'rgba(26, 26, 26, 0.9)',
         borderRadius: 25,
         padding: 4,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
-        alignSelf: 'center'
+        borderWidth: 2,
+        borderColor: '#D4A000',
+        alignSelf: 'center',
     },
     tab: {
         paddingVertical: 8,
@@ -391,86 +463,219 @@ const getStyles = (theme) => StyleSheet.create({
         borderRadius: 20,
     },
     activeTab: {
-        backgroundColor: theme.colors.primary,
+        backgroundColor: '#D4A000',
     },
     tabText: {
-        color: theme.colors.textSecondary,
-        fontFamily: theme.fonts.medium,
-        fontSize: 14,
+        color: 'rgba(255, 213, 79, 0.6)',
+        fontFamily: theme.fonts.bold,
+        fontSize: 13,
+        letterSpacing: 2,
     },
     activeTabText: {
-        color: '#fff',
-        fontFamily: theme.fonts.bold,
+        color: '#0a0a0a',
     },
     tabContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        position: 'relative',
     },
     notificationDot: {
         position: 'absolute',
         top: -6,
         right: -8,
-        backgroundColor: theme.colors.error,
+        backgroundColor: '#ff3b30',
         borderRadius: 6,
         width: 12,
         height: 12,
         borderWidth: 2,
-        borderColor: theme.colors.background,
+        borderColor: '#0a0a0a',
     },
-    qrContainer: { padding: 15, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 15, marginVertical: 20 },
-    section: { width: '100%', padding: 15, borderRadius: 16, marginBottom: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-    sectionTitle: { fontSize: 14, color: theme.colors.primary, fontFamily: theme.fonts.bold, marginBottom: 15, letterSpacing: 2 },
-    settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-    settingLabel: { color: theme.colors.text, fontSize: 18, fontFamily: theme.fonts.medium },
-    counterControls: { flexDirection: 'row', gap: 10 },
-    countBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.textSecondary },
-    countBtnText: { color: theme.colors.text, fontSize: 24 },
-    settingBtn: {
-        width: '100%',
-        marginBottom: 15,
-        minHeight: 60
+    
+    qrContainer: { 
+        padding: 16, 
+        backgroundColor: 'rgba(212, 160, 0, 0.08)', 
+        borderRadius: 16, 
+        marginBottom: 12,
+        borderWidth: 2,
+        borderColor: '#D4A000',
+        alignSelf: 'center',
     },
-    categoryDropdownContainer: {
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        borderRadius: 16,
-        padding: 15,
-        marginTop: 10,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.15)',
-    },
-    categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    catItem: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: theme.colors.textSecondary },
-    catItemSelected: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
-    catText: { color: theme.colors.textSecondary, fontSize: 12, fontFamily: theme.fonts.medium },
-    catTextSelected: { color: theme.colors.secondary },
-    playerSection: { width: '100%', padding: 15, borderRadius: 16, marginBottom: 30, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-    playerCount: { fontSize: 16, color: theme.colors.primary, fontFamily: theme.fonts.bold, marginBottom: 10, letterSpacing: 2 },
-    playerList: { gap: 10 },
-    playerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    playerItem: { fontSize: 18, color: theme.colors.text, fontFamily: theme.fonts.medium },
-    footer: { width: '100%', gap: 10, paddingBottom: 40 },
-    input: {
-        backgroundColor: 'rgba(255,255,255,0.05)',
-        height: 50,
+    
+    // Host Card - Compact horizontal layout
+    hostCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 14,
         borderRadius: 12,
-        paddingHorizontal: 15,
-        fontSize: 18,
-        fontFamily: theme.fonts.medium,
-        borderWidth: 1,
+        borderWidth: 2,
+        borderColor: '#D4A000',
+        backgroundColor: 'rgba(212, 160, 0, 0.08)',
+        marginBottom: 12,
+        gap: 14,
     },
-    inputRow: {
+    hostInfo: {
+        flex: 1,
+    },
+    hostName: {
+        fontSize: 20,
+        fontFamily: theme.fonts.bold,
+        color: '#FFD54F',
+        letterSpacing: 1,
+    },
+    hostBadge: { 
+        marginTop: 4,
+        backgroundColor: '#D4A000',
+        paddingHorizontal: 10,
+        paddingVertical: 3,
+        borderRadius: 8,
+        alignSelf: 'flex-start',
+    },
+    hostBadgeText: {
+        color: '#0a0a0a',
+        fontSize: 10,
+        fontFamily: theme.fonts.bold,
+        letterSpacing: 2,
+    },
+    
+    // Settings Card - Compact
+    settingsCard: {
+        padding: 14,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: '#D4A000',
+        backgroundColor: 'rgba(212, 160, 0, 0.08)',
+        marginBottom: 12,
+    },
+    settingRow: { 
+        flexDirection: 'row', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    settingLabel: { 
+        color: '#D4A000', 
+        fontSize: 12, 
+        fontFamily: theme.fonts.bold, 
+        letterSpacing: 2,
+    },
+    counterControls: { 
+        flexDirection: 'row', 
+        alignItems: 'center',
+        gap: 12,
+    },
+    countBtn: { 
+        width: 36, 
+        height: 36, 
+        borderRadius: 18, 
+        backgroundColor: 'rgba(212, 160, 0, 0.15)', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        borderWidth: 2, 
+        borderColor: '#D4A000',
+    },
+    countBtnText: { 
+        color: '#FFD54F', 
+        fontSize: 20, 
+        fontFamily: theme.fonts.bold,
+        lineHeight: 22,
+    },
+    countValue: {
+        color: '#FFD54F',
+        fontSize: 24,
+        fontFamily: theme.fonts.header,
+        minWidth: 30,
+        textAlign: 'center',
+    },
+    settingButtons: {
         flexDirection: 'row',
         gap: 10,
-        marginTop: 10,
     },
-    generateBtn: {
-        width: 50,
-        height: 50,
-        borderRadius: 12,
-        paddingHorizontal: 0,
-        paddingVertical: 0,
-        justifyContent: 'center',
+    settingBtn: {
+        flex: 1,
+        backgroundColor: 'rgba(212, 160, 0, 0.1)',
+        borderRadius: 10,
+        padding: 10,
         alignItems: 'center',
-    }
+        borderWidth: 1,
+        borderColor: 'rgba(212, 160, 0, 0.4)',
+    },
+    settingBtnLabel: {
+        color: 'rgba(212, 160, 0, 0.7)',
+        fontSize: 9,
+        fontFamily: theme.fonts.medium,
+        letterSpacing: 2,
+    },
+    settingBtnValue: {
+        color: '#FFD54F',
+        fontSize: 16,
+        fontFamily: theme.fonts.bold,
+        letterSpacing: 1,
+    },
+    
+    categoryGrid: { 
+        flexDirection: 'row', 
+        flexWrap: 'wrap', 
+        gap: 8, 
+        marginTop: 12,
+    },
+    catItem: { 
+        paddingHorizontal: 12, 
+        paddingVertical: 8, 
+        borderRadius: 16, 
+        borderWidth: 1, 
+        borderColor: 'rgba(212, 160, 0, 0.5)',
+        backgroundColor: 'rgba(212, 160, 0, 0.1)',
+    },
+    catItemSelected: { 
+        backgroundColor: '#D4A000', 
+        borderColor: '#D4A000',
+    },
+    catText: { 
+        color: 'rgba(255, 213, 79, 0.7)', 
+        fontSize: 11, 
+        fontFamily: theme.fonts.bold, 
+        letterSpacing: 1,
+    },
+    catTextSelected: { 
+        color: '#0a0a0a',
+    },
+    
+    // Players Card
+    playersCard: { 
+        padding: 14, 
+        borderRadius: 12, 
+        marginBottom: 16, 
+        borderWidth: 2, 
+        borderColor: '#D4A000',
+        backgroundColor: 'rgba(212, 160, 0, 0.08)',
+    },
+    playerCount: { 
+        fontSize: 11, 
+        color: '#D4A000', 
+        fontFamily: theme.fonts.bold, 
+        marginBottom: 10, 
+        letterSpacing: 2,
+    },
+    playerList: { 
+        gap: 8,
+    },
+    playerRow: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        gap: 10,
+    },
+    playerName: { 
+        fontSize: 16, 
+        color: '#FFD54F', 
+        fontFamily: theme.fonts.medium, 
+        letterSpacing: 1,
+    },
+    youTag: {
+        fontSize: 12,
+        color: 'rgba(212, 160, 0, 0.6)',
+        fontFamily: theme.fonts.medium,
+    },
+    
+    footer: { 
+        gap: 12,
+    },
 });

@@ -1,12 +1,15 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { retroPopTheme, getThemeById } from './themes';
+import { getThemeById } from './themes';
+
+// Default to Kodak Daylight (light theme)
+const DEFAULT_THEME_ID = 'kodak-daylight';
 
 const ThemeContext = createContext();
 const THEME_STORAGE_KEY = '@imposter_game_theme';
 
 export const ThemeProvider = ({ children }) => {
-    const [currentTheme, setCurrentTheme] = useState(retroPopTheme);
+    const [currentTheme, setCurrentTheme] = useState(getThemeById(DEFAULT_THEME_ID));
 
     // Load theme on mount
     useEffect(() => {

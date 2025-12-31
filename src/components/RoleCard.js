@@ -16,14 +16,9 @@ const SLIDE_RANGE = SLIDER_WIDTH - KNOB_SIZE;
 
 // Theme-Specific Cover Images - Each theme can have its own set of covers
 const THEME_COVER_IMAGES = {
-    // Default covers for all themes
+    // Kodak Daylight covers - will be populated with new images
     'default': [
-        require('../../assets/cover_angry.png'),
-        require('../../assets/cover_smile.png'),
-        require('../../assets/cover_happy.png'),
-        require('../../assets/cover_bronze.png'),
-        require('../../assets/cover_final.png'),
-        require('../../assets/cover_with_star.png'),
+        // TODO: Add new Kodak Daylight cover images here
     ],
     'retro-pop': [
         require('../../assets/cover_midnight_1.png'),
@@ -39,7 +34,7 @@ const THEME_COVER_IMAGES = {
 };
 
 
-export default function RoleCard({ player, category, hintsEnabled, onNext, language, buttonTitle = "NEXT PLAYER", disabled = false }) {
+export default function RoleCard({ player, category, hintsEnabled, onNext, language, buttonTitle = "NEXT PLAYER", disabled = false, isWifi = false }) {
     const { theme } = useTheme();
     const styles = getStyles(theme);
     const [hasPeeked, setHasPeeked] = useState(false);
@@ -240,11 +235,17 @@ export default function RoleCard({ player, category, hintsEnabled, onNext, langu
                                     onNext();
                                 }}
                                 activeOpacity={0.8}
-                                style={styles.nextBtnOuter}
+                                style={[
+                                    styles.nextBtnOuter,
+                                    isWifi && styles.kodakNextBtnOuter
+                                ]}
                                 disabled={disabled}
                             >
                                 <Text
-                                    style={styles.nextBtnText}
+                                    style={[
+                                        styles.nextBtnText,
+                                        isWifi && styles.kodakNextBtnText
+                                    ]}
                                     numberOfLines={1}
                                     adjustsFontSizeToFit
                                     minimumFontScale={0.7}
@@ -258,19 +259,20 @@ export default function RoleCard({ player, category, hintsEnabled, onNext, langu
                 </Animated.View>
 
                 {/* STATIONARY SLIDER BAR - Placed on top of everything but fixed position */}
-                <View style={styles.sliderContainer}>
+                <View style={[styles.sliderContainer, isWifi && styles.kodakSliderContainer]}>
                     <View style={styles.sliderTrack}>
-                        <Text style={styles.sliderText}>SLIDE TO REVEAL</Text>
+                        <Text style={[styles.sliderText, isWifi && styles.kodakSliderText]}>SLIDE TO REVEAL</Text>
                     </View>
 
                     <Animated.View
                         style={[
                             styles.sliderKnob,
+                            isWifi && styles.kodakSliderKnob,
                             { transform: [{ translateX: clampedPanX }] } // Use clamped value for visual knob
                         ]}
                         {...panResponder.panHandlers}
                     >
-                        <Text style={styles.knobIcon}>➜</Text>
+                        <Text style={[styles.knobIcon, isWifi && styles.kodakKnobIcon]}>➜</Text>
                     </Animated.View>
                 </View>
 
@@ -362,6 +364,16 @@ const getStyles = (theme) => StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
+    kodakNextBtnOuter: {
+        backgroundColor: '#E5A500',
+        borderWidth: 2,
+        borderColor: '#FFD54F',
+        shadowColor: '#FFB800',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.6,
+        shadowRadius: 12,
+        elevation: 10,
+    },
     nextBtnText: {
         fontSize: CARD_WIDTH * 0.058,
         color: theme.colors.background, // Use black background for contrast
@@ -369,6 +381,9 @@ const getStyles = (theme) => StyleSheet.create({
         fontFamily: theme.fonts.header,
         letterSpacing: 2.5,
         textTransform: 'uppercase',
+    },
+    kodakNextBtnText: {
+        color: '#0a0a0a',
     },
     // Back Layer
     cardBackLayer: {
@@ -440,6 +455,11 @@ const getStyles = (theme) => StyleSheet.create({
         borderColor: theme.colors.textSecondary,
         zIndex: 20, // Above Front Layer
     },
+    kodakSliderContainer: {
+        backgroundColor: 'rgba(26, 26, 26, 0.95)',
+        borderWidth: 2,
+        borderColor: '#D4A000',
+    },
     sliderTrack: {
         ...StyleSheet.absoluteFillObject,
         alignItems: 'center',
@@ -451,6 +471,10 @@ const getStyles = (theme) => StyleSheet.create({
         fontFamily: theme.fonts.medium,
         letterSpacing: 3,
         paddingLeft: 40,
+    },
+    kodakSliderText: {
+        color: '#D4A000',
+        letterSpacing: 4,
     },
     sliderKnob: {
         width: KNOB_SIZE,
@@ -464,10 +488,23 @@ const getStyles = (theme) => StyleSheet.create({
         top: 4,
         left: 4,
     },
+    kodakSliderKnob: {
+        backgroundColor: '#E5A500',
+        borderWidth: 2,
+        borderColor: '#FFD54F',
+        shadowColor: '#FFB800',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.6,
+        shadowRadius: 8,
+        elevation: 8,
+    },
     knobIcon: {
         color: theme.colors.text,
         fontSize: 24,
         fontWeight: 'bold',
+    },
+    kodakKnobIcon: {
+        color: '#0a0a0a',
     },
     globeIconContainer: {
         position: 'absolute',

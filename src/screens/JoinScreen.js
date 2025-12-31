@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useTheme } from '../utils/ThemeContext';
 import Button from '../components/Button';
+import KodakButton from '../components/KodakButton';
 import { playHaptic } from '../utils/haptics';
 import { database } from '../utils/firebase';
 import { ref, get, set, push, onDisconnect } from 'firebase/database';
@@ -135,7 +136,7 @@ export default function JoinScreen({ navigation, route }) {
                 />
                 <View style={styles.scannerOverlay}>
                     <Text style={styles.scannerText}>SCAN ROOM QR CODE</Text>
-                    <Button
+                    <KodakButton
                         title="CANCEL"
                         onPress={() => setIsScanning(false)}
                         variant="secondary"
@@ -150,9 +151,18 @@ export default function JoinScreen({ navigation, route }) {
 
     return (
         <LinearGradient
-            colors={theme.colors.backgroundGradient}
+            colors={['#0a0a0a', '#121212', '#0a0a0a']}
             style={styles.container}
         >
+            {/* Kodak Film Header */}
+            <View style={styles.filmHeader}>
+                <View style={styles.filmStrip}>
+                    {[...Array(16)].map((_, i) => (
+                        <View key={i} style={styles.filmHole} />
+                    ))}
+                </View>
+            </View>
+            
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <Text style={styles.title}>JOIN GAME</Text>
 
@@ -161,15 +171,17 @@ export default function JoinScreen({ navigation, route }) {
                     <View style={styles.profileCard}>
                         <CustomAvatar id={playerData.avatarId} size={80} />
                         <Text style={styles.profileName}>{playerData.name.toUpperCase()}</Text>
-                        <Text style={styles.label}>LOGGED IN</Text>
+                        <View style={styles.loggedInBadge}>
+                            <Text style={styles.loggedInText}>LOGGED IN</Text>
+                        </View>
                     </View>
 
 
                     <Text style={styles.label}>ROOM CODE</Text>
                     <TextInput
-                        style={[styles.input, { color: theme.colors.text, borderColor: theme.colors.primary }]}
+                        style={styles.input}
                         placeholder="6-Digit Code"
-                        placeholderTextColor={theme.colors.textMuted}
+                        placeholderTextColor="rgba(212, 160, 0, 0.4)"
                         keyboardType="numeric"
                         value={roomCode}
                         onChangeText={setRoomCode}
@@ -178,19 +190,30 @@ export default function JoinScreen({ navigation, route }) {
                 </View>
 
                 <View style={styles.buttonRow}>
-                    <Button
+                    <KodakButton
                         title="JOIN CODE"
                         onPress={() => handleJoin()}
+                        variant="primary"
                         style={styles.modeButton}
                     />
-                    <Button
+                    <KodakButton
                         title="SCAN QR"
                         onPress={startScanner}
+                        variant="secondary"
                         style={styles.modeButton}
                     />
                 </View>
 
             </ScrollView>
+            
+            {/* Kodak Film Footer */}
+            <View style={styles.filmFooter}>
+                <View style={styles.filmStrip}>
+                    {[...Array(16)].map((_, i) => (
+                        <View key={i} style={styles.filmHole} />
+                    ))}
+                </View>
+            </View>
         </LinearGradient>
     );
 }
@@ -199,66 +222,82 @@ const getStyles = (theme) => StyleSheet.create({
     container: {
         flex: 1,
     },
+    
+    // Kodak Film Strip Decorations
+    filmHeader: {
+        width: '100%',
+        paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    },
+    filmFooter: {
+        width: '100%',
+        paddingBottom: 20,
+    },
+    filmStrip: {
+        flexDirection: 'row',
+        justifyContent: 'space-evenly',
+        paddingHorizontal: 5,
+    },
+    filmHole: {
+        width: 12,
+        height: 8,
+        backgroundColor: '#D4A000',
+        borderRadius: 2,
+        opacity: 0.8,
+    },
+    
     scrollContent: {
         padding: theme.spacing.xl,
         alignItems: 'center',
-        paddingTop: Platform.OS === 'ios' ? 100 : 60,
+        paddingTop: 20,
     },
     title: {
-        fontSize: 48,
+        fontSize: 44,
         fontFamily: theme.fonts.header,
-        color: theme.colors.tertiary, // Silver
-        letterSpacing: 4,
-        marginBottom: 40,
-        ...theme.textShadows.depth,
+        color: '#FFD54F',
+        letterSpacing: 6,
+        marginBottom: 30,
+        textShadowColor: '#D4A000',
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 30,
     },
+    
     inputSection: {
         width: '100%',
-        marginBottom: 40,
+        marginBottom: 30,
     },
     label: {
-        color: theme.colors.textSecondary,
-        fontFamily: theme.fonts.medium,
-        fontSize: 16,
-        letterSpacing: 2,
-        marginBottom: 8,
+        color: '#D4A000',
+        fontFamily: theme.fonts.bold,
+        fontSize: 14,
+        letterSpacing: 4,
+        marginBottom: 10,
         marginLeft: 4,
     },
     input: {
-        backgroundColor: 'rgba(255,255,255,0.05)',
-        height: 60,
-        borderRadius: 12,
-        paddingHorizontal: 20,
-        fontSize: 24,
-        fontFamily: theme.fonts.medium,
-        borderWidth: 1,
+        backgroundColor: 'rgba(212, 160, 0, 0.08)',
+        height: 65,
+        borderRadius: 16,
+        paddingHorizontal: 24,
+        fontSize: 28,
+        fontFamily: theme.fonts.header,
+        borderWidth: 2,
+        borderColor: '#D4A000',
+        color: '#FFD54F',
         marginBottom: 20,
+        letterSpacing: 8,
+        textAlign: 'center',
     },
+    
     buttonRow: {
         flexDirection: 'row',
         width: '100%',
-        gap: 12,
+        gap: 15,
         marginBottom: 30,
     },
     modeButton: {
         flex: 1,
     },
-    joinBtn: {
-        width: '100%',
-    },
-    orText: {
-        color: theme.colors.textMuted,
-        fontFamily: theme.fonts.medium,
-        fontSize: 18,
-        textAlign: 'center',
-        letterSpacing: 4,
-    },
-    scanBtn: {
-        width: '100%',
-        borderColor: theme.colors.primary,
-        backgroundColor: 'transparent',
-        borderWidth: 1,
-    },
+    
     scannerContainer: {
         flex: 1,
         backgroundColor: 'black',
@@ -268,31 +307,50 @@ const getStyles = (theme) => StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: 40,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: 'rgba(0,0,0,0.6)',
     },
     scannerText: {
-        color: 'white',
+        color: '#FFD54F',
         fontSize: 24,
         fontFamily: theme.fonts.header,
-        letterSpacing: 2,
+        letterSpacing: 4,
         marginTop: 100,
+        textShadowColor: '#D4A000',
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 20,
     },
+    
     profileCard: {
         alignItems: 'center',
         marginBottom: 30,
-        backgroundColor: 'rgba(255,255,255,0.05)',
-        padding: 20,
+        backgroundColor: 'rgba(212, 160, 0, 0.08)',
+        padding: 25,
         borderRadius: 20,
-        borderWidth: 1,
-        borderColor: theme.colors.primary
+        borderWidth: 2,
+        borderColor: '#D4A000',
     },
     profileName: {
-        color: theme.colors.text,
+        color: '#FFD54F',
         fontSize: 24,
         fontFamily: theme.fonts.bold,
-        marginTop: 10,
-        marginBottom: 5,
-        letterSpacing: 1
+        marginTop: 12,
+        marginBottom: 8,
+        letterSpacing: 2,
+        textShadowColor: '#D4A000',
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 10,
+    },
+    loggedInBadge: {
+        backgroundColor: '#D4A000',
+        paddingHorizontal: 14,
+        paddingVertical: 5,
+        borderRadius: 10,
+    },
+    loggedInText: {
+        color: '#0a0a0a',
+        fontSize: 11,
+        fontFamily: theme.fonts.bold,
+        letterSpacing: 3,
     },
     cancelScanBtn: {
         width: '100%',

@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../utils/ThemeContext';
 import Button from '../components/Button';
+import KodakButton from '../components/KodakButton';
 import { database } from '../utils/firebase';
 import { ref, onValue, off, update, remove, get } from 'firebase/database';
 import { playHaptic } from '../utils/haptics';
@@ -312,22 +313,45 @@ export default function ResultScreen({ route, navigation }) {
     };
 
     return (
-        <LinearGradient style={styles.container} colors={theme.colors.backgroundGradient}>
+        <LinearGradient style={styles.container} colors={isWifi ? ['#0a0a0a', '#121212', '#0a0a0a'] : theme.colors.backgroundGradient}>
             <SafeAreaView style={styles.safeArea}>
+                {/* Kodak Film Header */}
+                {isWifi && (
+                    <View style={styles.filmHeader}>
+                        <View style={styles.filmStrip}>
+                            {[...Array(16)].map((_, i) => (
+                                <View key={i} style={styles.filmHole} />
+                            ))}
+                        </View>
+                    </View>
+                )}
+                
                 {!isRevealed ? (
                     <View style={styles.hiddenContainer}>
-                        <Text style={styles.title}>ROUND OVER</Text>
+                        <Text style={[styles.title, isWifi && styles.kodakTitle]}>ROUND OVER</Text>
                         {isWifi && winners && (
-                            <Text style={[styles.winnerBanner, { color: theme.colors.primary }]}>
-                                {winners} WIN!
-                            </Text>
+                            <View style={styles.winnerContainer}>
+                                <Text style={[styles.winnerBanner, isWifi && styles.kodakWinner]}>
+                                    {winners} WIN!
+                                </Text>
+                            </View>
                         )}
-                        <Text style={styles.subtitle}>READY TO SEE THE TRUTH?</Text>
-                        <Button
-                            title="REVEAL TRUTH"
-                            onPress={handleReveal}
-                            style={styles.revealBtn}
-                        />
+                        <Text style={[styles.subtitle, isWifi && styles.kodakSubtitle]}>READY TO SEE THE TRUTH?</Text>
+                        {isWifi ? (
+                            <KodakButton
+                                title="REVEAL TRUTH"
+                                onPress={handleReveal}
+                                variant="primary"
+                                style={styles.revealBtn}
+                                size="large"
+                            />
+                        ) : (
+                            <Button
+                                title="REVEAL TRUTH"
+                                onPress={handleReveal}
+                                style={styles.revealBtn}
+                            />
+                        )}
                     </View>
                 ) : (
                 <Animated.View
@@ -340,22 +364,30 @@ export default function ResultScreen({ route, navigation }) {
                         contentContainerStyle={styles.scrollContent}
                         showsVerticalScrollIndicator={false}
                     >
-                        <Text style={styles.revealTitle}>TRUTH REVEALED</Text>
+                        <Text style={[styles.revealTitle, isWifi && styles.kodakRevealTitle]}>TRUTH REVEALED</Text>
 
-                        <View style={styles.resultCard}>
+                        <View style={[styles.resultCard, isWifi && styles.kodakCard]}>
                             <View style={styles.cardContent}>
-                                <Text style={styles.label}>SECRET WORD</Text>
-                                <Text style={styles.word}>{secretWord}</Text>
+                                <Text style={[styles.label, isWifi && styles.kodakLabel]}>SECRET WORD</Text>
+                                <Text style={[styles.word, isWifi && styles.kodakWord]}>{secretWord}</Text>
                             </View>
+                            {/* Film perforation decoration */}
+                            {isWifi && (
+                                <View style={styles.cardFilmStrip}>
+                                    {[...Array(8)].map((_, i) => (
+                                        <View key={i} style={styles.cardFilmHole} />
+                                    ))}
+                                </View>
+                            )}
                         </View>
 
-                        <View style={[styles.resultCard, styles.impostorCard]}>
+                        <View style={[styles.resultCard, styles.impostorCard, isWifi && styles.kodakImpostorCard]}>
                             <View style={styles.cardContent}>
-                                <Text style={styles.labelInverted}>
+                                <Text style={[styles.labelInverted, isWifi && styles.kodakImpostorLabel]}>
                                     {impostors.length > 1 ? 'IMPOSTORS' : 'IMPOSTOR'}
                                 </Text>
                                 {impostors.map((imp, index) => (
-                                    <Text key={index} style={styles.impostorName}>
+                                    <Text key={index} style={[styles.impostorName, isWifi && styles.kodakImpostorName]}>
                                         {imp.name || imp.name}
                                     </Text>
                                 ))}
@@ -368,32 +400,35 @@ export default function ResultScreen({ route, navigation }) {
                                 {route.params.playerId === 'host-id' ? (
                                     // HOST BUTTONS
                                     <>
-                                        <Button
+                                        <KodakButton
                                             title="RETURN TO LOBBY"
                                             onPress={handlePlayAgain}
-                                            style={styles.playAgainBtn}
                                             variant="primary"
+                                            style={styles.playAgainBtn}
+                                            size="large"
                                         />
-                                        <Button
+                                        <KodakButton
                                             title="LEAVE ROOM"
                                             onPress={handleLeaveRoom}
-                                            style={styles.leaveBtn}
                                             variant="secondary"
+                                            style={styles.leaveBtn}
+                                            size="medium"
                                         />
                                     </>
                                 ) : (
                                     // NON-HOST BUTTONS
                                     <>
-                                        <View style={styles.waitingContainer}>
+                                        <View style={[styles.waitingContainer, styles.kodakWaiting]}>
                                             <Text style={styles.waitingText}>
                                                 WAITING FOR HOST TO RETURN TO LOBBY...
                                             </Text>
                                         </View>
-                                        <Button
+                                        <KodakButton
                                             title="LEAVE ROOM"
                                             onPress={handleLeaveRoom}
-                                            style={styles.leaveBtn}
                                             variant="secondary"
+                                            style={styles.leaveBtn}
+                                            size="medium"
                                         />
                                     </>
                                 )}
@@ -410,6 +445,17 @@ export default function ResultScreen({ route, navigation }) {
                     </ScrollView>
                 </Animated.View>
             )}
+                
+                {/* Kodak Film Footer */}
+                {isWifi && (
+                    <View style={styles.filmFooter}>
+                        <View style={styles.filmStrip}>
+                            {[...Array(16)].map((_, i) => (
+                                <View key={i} style={styles.filmHole} />
+                            ))}
+                        </View>
+                    </View>
+                )}
             </SafeAreaView>
         </LinearGradient>
     );
@@ -418,26 +464,150 @@ export default function ResultScreen({ route, navigation }) {
 const getStyles = (theme) => StyleSheet.create({
     container: { flex: 1 },
     safeArea: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: theme.spacing.m },
+    
+    // Kodak Film Strip Decorations
+    filmHeader: {
+        width: '100%',
+        paddingTop: 10,
+        position: 'absolute',
+        top: 50,
+        left: 0,
+        right: 0,
+    },
+    filmFooter: {
+        width: '100%',
+        paddingBottom: 10,
+        position: 'absolute',
+        bottom: 20,
+        left: 0,
+        right: 0,
+    },
+    filmStrip: {
+        flexDirection: 'row',
+        justifyContent: 'space-evenly',
+        paddingHorizontal: 5,
+    },
+    filmHole: {
+        width: 12,
+        height: 8,
+        backgroundColor: '#D4A000',
+        borderRadius: 2,
+        opacity: 0.8,
+    },
+    cardFilmStrip: {
+        position: 'absolute',
+        bottom: 8,
+        left: 0,
+        right: 0,
+        flexDirection: 'row',
+        justifyContent: 'space-evenly',
+        paddingHorizontal: 20,
+    },
+    cardFilmHole: {
+        width: 8,
+        height: 5,
+        backgroundColor: '#D4A000',
+        borderRadius: 1,
+        opacity: 0.4,
+    },
+    
     hiddenContainer: { alignItems: 'center', width: '100%', flex: 1, justifyContent: 'center' },
     revealedContainer: { flex: 1, width: '100%' },
     scrollContent: { alignItems: 'center', paddingTop: theme.spacing.l, paddingBottom: theme.spacing.xl },
-    title: { fontSize: 56, fontFamily: theme.fonts.header, color: theme.colors.tertiary, marginBottom: theme.spacing.s, textAlign: 'center', letterSpacing: 4, ...theme.textShadows.depth },
+    
+    title: { fontSize: 48, fontFamily: theme.fonts.header, color: theme.colors.tertiary, marginBottom: theme.spacing.s, textAlign: 'center', letterSpacing: 4, ...theme.textShadows.depth },
+    kodakTitle: {
+        color: '#FFD54F',
+        textShadowColor: '#D4A000',
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 35,
+    },
+    
     subtitle: { fontSize: theme.fontSize.large, color: theme.colors.textSecondary, marginBottom: theme.spacing.xl, fontFamily: theme.fonts.medium, letterSpacing: 2 },
+    kodakSubtitle: {
+        color: 'rgba(212, 160, 0, 0.8)',
+        letterSpacing: 4,
+    },
+    
+    winnerContainer: {
+        marginBottom: 15,
+    },
     winnerBanner: { fontSize: 28, fontFamily: theme.fonts.header, marginBottom: 10, letterSpacing: 4, textTransform: 'uppercase' },
+    kodakWinner: {
+        color: '#FFD54F',
+        textShadowColor: '#D4A000',
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 25,
+    },
+    
     revealBtn: { paddingVertical: theme.spacing.l, paddingHorizontal: theme.spacing.xl, width: '100%' },
-    revealTitle: { fontSize: 32, fontFamily: theme.fonts.header, color: theme.colors.tertiary, marginBottom: theme.spacing.l, textAlign: 'center', letterSpacing: 4, lineHeight: 48, ...theme.textShadows.depth },
+    
+    revealTitle: { fontSize: 28, fontFamily: theme.fonts.header, color: theme.colors.tertiary, marginBottom: theme.spacing.m, textAlign: 'center', letterSpacing: 4, lineHeight: 40, ...theme.textShadows.depth },
+    kodakRevealTitle: {
+        color: '#FFD54F',
+        textShadowColor: '#D4A000',
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 30,
+    },
+    
     resultCard: { width: '100%', marginBottom: theme.spacing.m, borderRadius: theme.borderRadius.l, overflow: 'hidden', borderWidth: 1, borderColor: theme.colors.textSecondary, backgroundColor: theme.colors.surface },
+    kodakCard: {
+        borderWidth: 2,
+        borderColor: '#D4A000',
+        backgroundColor: 'rgba(212, 160, 0, 0.08)',
+        shadowColor: '#FFB800',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.4,
+        shadowRadius: 20,
+        elevation: 8,
+    },
+    
     impostorCard: { borderColor: theme.colors.error, backgroundColor: 'rgba(205, 92, 92, 0.1)' },
+    kodakImpostorCard: {
+        borderWidth: 2,
+        borderColor: '#ff3b30',
+        backgroundColor: 'rgba(255, 59, 48, 0.1)',
+        shadowColor: '#ff3b30',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.4,
+        shadowRadius: 20,
+    },
+    
     cardContent: { padding: theme.spacing.l, alignItems: 'center', justifyContent: 'center' },
+    
     label: { fontSize: theme.fontSize.medium, color: theme.colors.textSecondary, marginBottom: theme.spacing.s, fontFamily: theme.fonts.medium, letterSpacing: 3, textTransform: 'uppercase' },
+    kodakLabel: {
+        color: '#D4A000',
+        letterSpacing: 5,
+    },
+    
     labelInverted: { fontSize: theme.fontSize.medium, color: theme.colors.text, marginBottom: theme.spacing.s, fontFamily: theme.fonts.medium, letterSpacing: 3, textTransform: 'uppercase' },
-    word: { fontSize: 48, color: theme.colors.text, fontFamily: theme.fonts.header, letterSpacing: 2, textAlign: 'center' },
-    impostorName: { fontSize: 36, color: theme.colors.error, fontFamily: theme.fonts.header, marginVertical: theme.spacing.xs, letterSpacing: 2, textTransform: 'uppercase' },
+    kodakImpostorLabel: {
+        color: '#ff6b6b',
+        letterSpacing: 5,
+    },
+    
+    word: { fontSize: 42, color: theme.colors.text, fontFamily: theme.fonts.header, letterSpacing: 2, textAlign: 'center' },
+    kodakWord: {
+        color: '#FFD54F',
+        textShadowColor: '#D4A000',
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 15,
+    },
+    
+    impostorName: { fontSize: 32, color: theme.colors.error, fontFamily: theme.fonts.header, marginVertical: theme.spacing.xs, letterSpacing: 2, textTransform: 'uppercase' },
+    kodakImpostorName: {
+        color: '#ff6b6b',
+        textShadowColor: '#ff3b30',
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 15,
+    },
+    
     homeBtn: { marginTop: theme.spacing.m, width: '100%', paddingVertical: theme.spacing.m },
     buttonContainer: { 
         width: '100%', 
         marginTop: theme.spacing.m,
-        gap: theme.spacing.s 
+        gap: theme.spacing.m 
     },
     playAgainBtn: { 
         width: '100%', 
@@ -446,9 +616,6 @@ const getStyles = (theme) => StyleSheet.create({
     leaveBtn: { 
         width: '100%', 
         paddingVertical: theme.spacing.s,
-        backgroundColor: 'transparent',
-        borderWidth: 1,
-        borderColor: theme.colors.textSecondary
     },
     waitingContainer: {
         width: '100%',
@@ -460,10 +627,16 @@ const getStyles = (theme) => StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center'
     },
+    kodakWaiting: {
+        borderWidth: 2,
+        borderColor: '#D4A000',
+        backgroundColor: 'rgba(212, 160, 0, 0.08)',
+    },
     waitingText: {
-        color: theme.colors.textSecondary,
+        color: '#D4A000',
         fontFamily: theme.fonts.bold,
-        fontSize: 16,
-        letterSpacing: 2
+        fontSize: 14,
+        letterSpacing: 3,
+        textAlign: 'center',
     },
 });
