@@ -8,11 +8,10 @@ workflows:
       node: 20
       xcode: latest
       cocoapods: default
-      groups:
-        - app_store_credentials # Add this group in Codemagic UI
+      # Add these in Codemagic UI -> App Settings -> Environment variables:
+      # - APP_STORE_APP_ID (your App Store Connect App ID)
       vars:
         BUNDLE_ID: "com.rayn100.impostergame"
-        APP_STORE_APP_ID: "YOUR_APP_STORE_APP_ID" # Get from App Store Connect
 
     triggering:
       events:
