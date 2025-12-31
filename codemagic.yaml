@@ -54,8 +54,10 @@ workflows:
           keychain initialize
           app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
           keychain add-certificates
-          cd ios
-          xcode-project use-profiles --project "ImposterGame.xcodeproj"
+          # Apply profiles from root directory to the project
+          xcode-project use-profiles --project ios/ImposterGame.xcodeproj
+          # Debug: List profiles to confirm they were fetched
+          ls ~/Library/MobileDevice/Provisioning\ Profiles/
 
       - name: Increment build number
         script: |
@@ -68,10 +70,12 @@ workflows:
       - name: Build iOS app
         script: |
           cd ios
+          # Use the generated UUID as a fallback in case use-profiles missed a target
           xcode-project build-ipa \
             --workspace "ImposterGame.xcworkspace" \
             --scheme "ImposterGame" \
-            --config Release
+            --config Release \
+            --build_args PROVISIONING_PROFILE_SPECIFIER="" CODE_SIGN_STYLE="Manual" CODE_SIGN_IDENTITY="Apple Distribution"
 
     artifacts:
       - ios/build/ios/ipa/*.ipa
