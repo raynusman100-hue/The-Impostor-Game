@@ -5,7 +5,7 @@ workflows:
     instance_type: mac_mini_m2
 
     integrations:
-      app_store_connect: Codemagic # Name of API key added in Codemagic UI
+      app_store_connect: Codemagic imposter # Name of API key added in Codemagic UI
 
     environment:
       node: 20
