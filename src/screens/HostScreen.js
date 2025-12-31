@@ -98,6 +98,21 @@ export default function HostScreen({ navigation, route }) {
 
     const pulseAnim = React.useRef(new Animated.Value(1)).current;
 
+    // Initialize room code once
+    useEffect(() => {
+        if (!playerData) return;
+        
+        if (!roomCode) {
+            const code = existingRoomCode || Math.floor(100000 + Math.random() * 900000).toString();
+            setRoomCode(code);
+        }
+    }, [playerData, existingRoomCode, roomCode]);
+
+    // Track if listener is set up
+    const listenerSetupRef = React.useRef(false);
+    const currentRoomCodeRef = React.useRef(null);
+
+    // Main room setup and listeners - only run when roomCode is set
     useEffect(() => {
         Animated.loop(
             Animated.sequence([
@@ -106,61 +121,103 @@ export default function HostScreen({ navigation, route }) {
             ])
         ).start();
 
-        if (!playerData) return;
-
-        // If returning to existing room, use that code; otherwise create new
-        const code = existingRoomCode || Math.floor(100000 + Math.random() * 900000).toString();
-        setRoomCode(code);
-
-        const roomRef = ref(database, `rooms/${code}`);
+        if (!playerData || !roomCode) return;
         
-        if (existingRoomCode) {
-            // RETURNING TO EXISTING ROOM - just update status
-            console.log("🔄 HOST: Returning to existing room:", code);
-            update(roomRef, {
-                status: 'lobby',
-                gameStarted: false,
-                gameInProgress: false
-            });
-        } else {
-            // CREATING NEW ROOM
-            console.log("🔄 HOST: Creating new room:", code);
-            set(roomRef, {
-                status: 'lobby',
-                createdAt: Date.now(),
-                host: playerData.name,
-                hostId: playerData.uid,
-                hostAvatar: playerData.avatarId
-            });
+        // Skip if listener already set up for this room
+        if (listenerSetupRef.current && currentRoomCodeRef.current === roomCode) {
+            console.log("🔄 HOST: Listener already set up for room:", roomCode);
+            return;
         }
 
-        // Simple: if host disconnects/closes app, delete the room
-        onDisconnect(roomRef).remove();
+        const roomRef = ref(database, `rooms/${roomCode}`);
+        const playersRef = ref(database, `rooms/${roomCode}/players`);
+        
+        const setupRoom = async () => {
+            if (existingRoomCode) {
+                // RETURNING TO EXISTING ROOM - just update status, don't recreate
+                console.log("🔄 HOST: Returning to existing room:", roomCode);
+                
+                // First cancel any existing onDisconnect handlers
+                try {
+                    await onDisconnect(roomRef).cancel();
+                } catch (e) {
+                    // Ignore if no handler exists
+                }
+                
+                await update(roomRef, {
+                    status: 'lobby',
+                    gameStarted: false,
+                    gameInProgress: false,
+                    hostDisconnected: false,
+                    hostLeft: false
+                });
+            } else {
+                // CREATING NEW ROOM
+                console.log("🔄 HOST: Creating new room:", roomCode);
+                await set(roomRef, {
+                    status: 'lobby',
+                    createdAt: Date.now(),
+                    host: playerData.name,
+                    hostId: playerData.uid,
+                    hostAvatar: playerData.avatarId
+                });
+            }
+            
+            // Set up disconnect handler AFTER room is ready
+            onDisconnect(roomRef).remove();
+        };
+        
+        setupRoom();
 
-        const playersRef = ref(database, `rooms/${code}/players`);
-        const unsubscribe = onValue(playersRef, (snapshot) => {
+        console.log("🔄 HOST: Setting up players listener for room:", roomCode);
+        listenerSetupRef.current = true;
+        currentRoomCodeRef.current = roomCode;
+        
+        // Use the unsubscribe function returned by onValue
+        const unsubscribePlayers = onValue(playersRef, (snapshot) => {
             const data = snapshot.val();
+            console.log("🔄 HOST: Players update received:", data);
             if (data) {
-                const playerList = Object.entries(data).map(([id, info]) => ({
-                    id,
-                    ...info
-                }));
+                // Filter out any null/undefined entries and create fresh array
+                const playerList = Object.entries(data)
+                    .filter(([id, info]) => info && info.name) // Only include valid players
+                    .map(([id, info]) => ({
+                        id,
+                        ...info
+                    }));
+                // Replace entire state with new array
                 setPlayers(playerList);
+                console.log("🔄 HOST: Players list updated:", playerList.length, "players");
             } else {
                 setPlayers([]);
+                console.log("🔄 HOST: No players in room");
             }
         });
 
-        // When host navigates away, delete the room
-        const beforeRemoveListener = navigation.addListener('beforeRemove', () => {
-            remove(roomRef);
-        });
+        // When host navigates away (NOT during play again), delete the room
+        // Only set this up for NEW rooms, not existing ones
+        let beforeRemoveListener = null;
+        if (!existingRoomCode) {
+            beforeRemoveListener = navigation.addListener('beforeRemove', (e) => {
+                // Don't delete room if navigating to game screens
+                const targetRoute = e.data?.action?.payload?.name;
+                if (targetRoute === 'RoleReveal' || targetRoute === 'Discussion' || targetRoute === 'WifiVoting' || targetRoute === 'Result') {
+                    return; // Don't delete room during game
+                }
+                remove(roomRef);
+            });
+        }
 
         return () => {
-            off(playersRef);
-            beforeRemoveListener();
+            console.log("🔄 HOST: Cleaning up listeners for room:", roomCode);
+            listenerSetupRef.current = false;
+            currentRoomCodeRef.current = null;
+            unsubscribePlayers(); // Use the unsubscribe function
+            if (beforeRemoveListener) {
+                beforeRemoveListener();
+            }
         };
-    }, [navigation, playerData, existingRoomCode]);
+    }, [navigation, playerData, roomCode, existingRoomCode]);
 
     const toggleCategory = (key) => {
         playHaptic('light');

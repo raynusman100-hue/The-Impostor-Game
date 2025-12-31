@@ -23,6 +23,8 @@ export default function ChatSystem({ roomCode, playerId, playerName, onUnreadCha
     // Audio Player State
     const [sound, setSound] = useState(null);
     const [playingMsgId, setPlayingMsgId] = useState(null);
+    const [isPaused, setIsPaused] = useState(false);
+    const [playbackPosition, setPlaybackPosition] = useState(0);
 
     const flatListRef = useRef(null);
     const lastMessageCountRef = useRef(0);
@@ -316,13 +318,29 @@ export default function ChatSystem({ roomCode, playerId, playerName, onUnreadCha
 
     const playAudioMessage = async (base64Data, msgId) => {
         try {
-            // Stop current if playing
+            // If clicking the same message that's currently playing/paused
+            if (playingMsgId === msgId && sound) {
+                if (isPaused) {
+                    // Resume from where we left off
+                    await sound.playFromPositionAsync(playbackPosition);
+                    setIsPaused(false);
+                } else {
+                    // Pause and save position
+                    const status = await sound.getStatusAsync();
+                    setPlaybackPosition(status.positionMillis || 0);
+                    await sound.pauseAsync();
+                    setIsPaused(true);
+                }
+                return;
+            }
+
+            // Stop current sound if playing a different message
             if (sound) {
                 await sound.unloadAsync();
                 setSound(null);
                 setPlayingMsgId(null);
-                // If clicking same message, just stop toggles it off
-                if (playingMsgId === msgId) return;
+                setIsPaused(false);
+                setPlaybackPosition(0);
             }
 
             // IMPORTANT: Set audio mode for playback through main speaker
@@ -350,10 +368,14 @@ export default function ChatSystem({ roomCode, playerId, playerName, onUnreadCha
 
             setSound(newSound);
             setPlayingMsgId(msgId);
+            setIsPaused(false);
+            setPlaybackPosition(0);
 
             newSound.setOnPlaybackStatusUpdate((status) => {
                 if (status.didJustFinish) {
                     setPlayingMsgId(null);
+                    setIsPaused(false);
+                    setPlaybackPosition(0);
                     newSound.unloadAsync();
                     setSound(null);
                 }
@@ -365,6 +387,35 @@ export default function ChatSystem({ roomCode, playerId, playerName, onUnreadCha
         }
     };
 
+    // --- DELETE MESSAGE ---
+    const deleteMessage = async (msgId) => {
+        try {
+            playHaptic('medium');
+            const msgRef = ref(database, `rooms/${roomCode}/chat/${msgId}`);
+            await set(msgRef, null);
+        } catch (error) {
+            console.error("Error deleting message:", error);
+            Alert.alert("Error", "Could not delete message.");
+        }
+    };
+
+    const confirmDeleteMessage = (msgId) => {
+        Alert.alert(
+            'Delete Message',
+            'Are you sure you want to delete this message?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Delete', style: 'destructive', onPress: () => deleteMessage(msgId) }
+            ]
+        );
+    };
+
+    // --- DISCARD RECORDING ---
+    const discardRecording = async () => {
+        playHaptic('warning');
+        await cleanupRecording();
+    };
+
     // --- RENDERS ---
 
     const renderMessage = ({ item }) => {
@@ -372,10 +423,15 @@ export default function ChatSystem({ roomCode, playerId, playerName, onUnreadCha
         const isPlaying = playingMsgId === item.id;
 
         return (
-            <View style={[
-                styles.messageContainer,
-                isMe ? styles.myMessage : styles.theirMessage
-            ]}>
+            <TouchableOpacity
+                style={[
+                    styles.messageContainer,
+                    isMe ? styles.myMessage : styles.theirMessage
+                ]}
+                onLongPress={() => isMe && confirmDeleteMessage(item.id)}
+                delayLongPress={500}
+                activeOpacity={0.8}
+            >
                 <Text style={styles.senderLabel} numberOfLines={1} ellipsizeMode="tail">
                     {item.senderName}
                 </Text>
@@ -389,7 +445,7 @@ export default function ChatSystem({ roomCode, playerId, playerName, onUnreadCha
                     >
                         <View style={styles.playIconBox}>
                             <Ionicons
-                                name={isPlaying ? "pause" : "play"}
+                                name={isPlaying ? (isPaused ? "play" : "pause") : "play"}
                                 size={20}
                                 color={theme.colors.text}
                             />
@@ -418,7 +474,7 @@ export default function ChatSystem({ roomCode, playerId, playerName, onUnreadCha
                         </View>
                     </TouchableOpacity>
                 )}
-            </View>
+            </TouchableOpacity>
         );
     };
 
@@ -474,9 +530,13 @@ export default function ChatSystem({ roomCode, playerId, playerName, onUnreadCha
 
             {isRecording && (
                 <View style={styles.recordingOverlay}>
+                    <TouchableOpacity onPress={discardRecording} style={styles.discardButton}>
+                        <Ionicons name="close" size={20} color="#fff" />
+                    </TouchableOpacity>
                     <Text style={styles.recordingText}>
-                        Recording {new Date(recordingDuration * 1000).toISOString().substr(14, 5)}... Tap to Send
+                        {new Date(recordingDuration * 1000).toISOString().substr(14, 5)}
                     </Text>
+                    <Text style={styles.recordingHint}>Tap mic to send • X to discard</Text>
                 </View>
             )}
         </View>
@@ -597,10 +657,31 @@ const getStyles = (theme) => StyleSheet.create({
         paddingHorizontal: 20,
         paddingVertical: 10,
         borderRadius: 20,
-        elevation: 5
+        elevation: 5,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    discardButton: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: 'rgba(0,0,0,0.3)',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     recordingText: {
         color: '#fff',
         fontFamily: theme.fonts.bold,
+        fontSize: 18,
+    },
+    recordingHint: {
+        color: 'rgba(255,255,255,0.7)',
+        fontSize: 10,
+        position: 'absolute',
+        bottom: -18,
+        alignSelf: 'center',
+        width: 200,
+        textAlign: 'center',
     }
 });

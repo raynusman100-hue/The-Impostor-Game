@@ -1,18 +1,11 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions, PanResponder, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, Animated, Dimensions, PanResponder, TouchableOpacity, Image, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../utils/ThemeContext';
-import Button from './Button';
 
 import { playHaptic } from '../utils/haptics';
 
-const { width, height } = Dimensions.get('window');
-// Scale card size responsively - use more screen space on larger devices
-const CARD_WIDTH = Math.min(width * 0.9, 450); // Up to 90% width, max 450px
-const CARD_HEIGHT = Math.min(height * 0.7, 600); // Up to 70% height, max 600px
-const SLIDER_WIDTH = CARD_WIDTH - 60;
 const KNOB_SIZE = 60;
-const SLIDE_RANGE = SLIDER_WIDTH - KNOB_SIZE;
 
 // Theme-Specific Cover Images - Each theme can have its own set of covers
 const THEME_COVER_IMAGES = {
@@ -54,7 +47,17 @@ const THEME_COVER_IMAGES = {
 
 export default function RoleCard({ player, category, hintsEnabled, onNext, language, buttonTitle = "NEXT PLAYER", disabled = false, isWifi = false }) {
     const { theme } = useTheme();
-    const styles = getStyles(theme);
+    
+    // Use dynamic dimensions hook to handle orientation changes and get accurate sizes
+    const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+    
+    // Calculate card dimensions dynamically
+    const CARD_WIDTH = Math.min(windowWidth * 0.9, 450);
+    const CARD_HEIGHT = Math.min(windowHeight * 0.7, 600);
+    const SLIDER_WIDTH = CARD_WIDTH - 60;
+    const SLIDE_RANGE = SLIDER_WIDTH - KNOB_SIZE;
+    
+    const styles = getStyles(theme, CARD_WIDTH, CARD_HEIGHT, SLIDER_WIDTH);
     const [hasPeeked, setHasPeeked] = useState(false);
     const [showOriginal, setShowOriginal] = useState(false);
 
@@ -70,10 +73,32 @@ export default function RoleCard({ player, category, hintsEnabled, onNext, langu
     });
 
     const pan = useRef(new Animated.ValueXY()).current;
-
-    // Reset hasPeeked and update cover when player or theme changes
+    const slideRangeRef = useRef(SLIDE_RANGE);
+    const hasPeekedRef = useRef(false);
+    const lastPlayerIdRef = useRef(player?.id);
+    
+    // Keep refs in sync
     useEffect(() => {
-        setHasPeeked(false);
+        slideRangeRef.current = SLIDE_RANGE;
+    }, [SLIDE_RANGE]);
+    
+    useEffect(() => {
+        hasPeekedRef.current = hasPeeked;
+    }, [hasPeeked]);
+
+    // Reset hasPeeked and update cover ONLY when player ID changes (different player)
+    // Not when other player properties update (like ready status)
+    useEffect(() => {
+        // Only reset if this is actually a different player
+        if (lastPlayerIdRef.current !== player?.id) {
+            setHasPeeked(false);
+            hasPeekedRef.current = false;
+            lastPlayerIdRef.current = player?.id;
+            
+            // Reset pan position for new player
+            pan.setValue({ x: 0, y: 0 });
+        }
+        
         const covers = THEME_COVER_IMAGES[theme.id] || THEME_COVER_IMAGES['default'];
 
         if (player.coverIndex !== undefined) {
@@ -89,10 +114,7 @@ export default function RoleCard({ player, category, hintsEnabled, onNext, langu
         } else {
             setCoverIndex(0);
         }
-
-        // Reset pan position as well
-        pan.setValue({ x: 0, y: 0 });
-    }, [player, theme.id]);
+    }, [player?.id, theme.id]);
 
     // Clamped pan.x for visual movement of the knob and cover
     const clampedPanX = pan.x.interpolate({
@@ -130,12 +152,12 @@ export default function RoleCard({ player, category, hintsEnabled, onNext, langu
                 [null, { dx: pan.x }],
                 { useNativeDriver: false }
             ),
-            onPanResponderRelease: (_, gestureState) => {
+            onPanResponderRelease: () => {
                 pan.flattenOffset();
 
-                // If dragged more than 60% (using raw pan.x value for threshold check)
-                if (pan.x._value > SLIDE_RANGE * 0.60) {
-                    if (!hasPeeked) {
+                // If dragged more than 60% (using ref for current value)
+                if (pan.x._value > slideRangeRef.current * 0.60) {
+                    if (!hasPeekedRef.current) {
                         playHaptic('heavy'); // Strong feedback on unlock
                         setHasPeeked(true);
                     }
@@ -301,7 +323,7 @@ export default function RoleCard({ player, category, hintsEnabled, onNext, langu
     );
 }
 
-const getStyles = (theme) => StyleSheet.create({
+const getStyles = (theme, CARD_WIDTH, CARD_HEIGHT, SLIDER_WIDTH) => StyleSheet.create({
     wrapper: {
         alignItems: 'center',
         padding: theme.spacing.m,

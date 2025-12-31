@@ -142,23 +142,34 @@ export default function WifiLobbyScreen({ route, navigation }) {
                     navigateToGame(data.status);
                 }
             } else {
-                // Room deleted
-                if (!hasNavigated) {
-                    hasNavigated = true;
-                    Alert.alert('Room Closed', 'The host has ended the game.');
-                    navigation.navigate('Home');
-                }
+                // Room deleted - but wait a moment to confirm it's really gone
+                // (prevents false positives during play again transitions)
+                setTimeout(async () => {
+                    if (hasNavigated) return;
+                    
+                    // Double-check the room is really gone
+                    const recheck = await get(roomRef);
+                    if (!recheck.exists() && !hasNavigated) {
+                        hasNavigated = true;
+                        Alert.alert('Room Closed', 'The host has ended the game.');
+                        navigation.navigate('Home');
+                    }
+                }, 500);
             }
         });
 
-        // Listener for Players
+        // Listener for Players - with immediate state update
         const playersUnsubscribe = onValue(playersRef, (snapshot) => {
             const data = snapshot.val();
             if (data) {
-                const playerList = Object.entries(data).map(([id, info]) => ({
-                    id,
-                    ...info
-                }));
+                // Filter out any null/undefined entries and create fresh array
+                const playerList = Object.entries(data)
+                    .filter(([id, info]) => info && info.name) // Only include valid players
+                    .map(([id, info]) => ({
+                        id,
+                        ...info
+                    }));
+                // Replace entire state with new array
                 setPlayers(playerList);
             } else {
                 setPlayers([]);

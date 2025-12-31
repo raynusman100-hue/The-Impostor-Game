@@ -301,6 +301,50 @@ export default function DiscussionScreen({ route, navigation }) {
                         // For end discussion: ALL players (including impostors) must vote to end
                         // But majority can start 20s countdown
                         setNeededToEnd(playersList.length); // All players needed to end immediately
+                        
+                        // UNPLAYABLE GAME CHECK: If impostors >= citizens, game is unplayable
+                        const currentImposterCount = gameState.imposterCount || 1;
+                        const citizenCount = playersList.length - currentImposterCount;
+                        
+                        if (citizenCount <= currentImposterCount && playersList.length > 0) {
+                            console.log(`⚠️ GAME UNPLAYABLE: ${currentImposterCount} impostors vs ${citizenCount} citizens`);
+                            
+                            // Check if current player is still in the game
+                            const isStillInGame = playersList.some(p => p.id === playerId);
+                            
+                            if (!isStillInGame) {
+                                // Player already left - just go home silently
+                                console.log("Player already left, navigating home silently");
+                                navigation.navigate('Home');
+                                return;
+                            }
+                            
+                            Alert.alert(
+                                'Game Unplayable',
+                                'Too many players have left. The game cannot continue with equal or more impostors than citizens.',
+                                [{
+                                    text: 'OK',
+                                    onPress: async () => {
+                                        // Host resets the room, others just go home
+                                        if (playerId === 'host-id') {
+                                            try {
+                                                const roomRef = ref(database, `rooms/${roomCode}`);
+                                                await update(roomRef, {
+                                                    status: 'lobby',
+                                                    'gameState': null,
+                                                    gameStarted: false,
+                                                    gameInProgress: false
+                                                });
+                                            } catch (err) {
+                                                console.error("Error resetting room:", err);
+                                            }
+                                        }
+                                        navigation.navigate('Home');
+                                    }
+                                }]
+                            );
+                            return;
+                        }
                     }
 
                     // Impostor Count Sync

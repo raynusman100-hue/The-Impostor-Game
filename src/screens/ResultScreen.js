@@ -132,6 +132,17 @@ export default function ResultScreen({ route, navigation }) {
                     existingRoomCode: roomCode
                 });
             } else {
+                // Check if player still exists in the room before navigating to lobby
+                const playerStillInRoom = data.players && data.players[playerId];
+                
+                if (!playerStillInRoom) {
+                    // Player already left - don't navigate them anywhere, just ignore
+                    // They're already on their way home or already there
+                    console.log("🔄 RESULT: Player no longer in room, ignoring lobby navigation");
+                    hasNavigatedLocal = true; // Prevent further navigation attempts
+                    return;
+                }
+                
                 console.log("🔄 RESULT: Navigating PLAYER to lobby, room:", roomCode);
                 const playerName = data.players?.[playerId]?.name || 
                                  players.find(p => p.id === playerId)?.name || 'Player';

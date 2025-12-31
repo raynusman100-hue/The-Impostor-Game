@@ -61,7 +61,8 @@ export const startWifiGame = async (roomCode, players, settings) => {
                 startTime: Date.now(),
                 duration: players.length * 60,
                 isPaused: false,
-                imposterCount: impostorCount // Store impostor count for voting screen
+                imposterCount: impostorCount, // Store impostor count for voting screen
+                language: language // Store language for translation globe
             }
         });
 

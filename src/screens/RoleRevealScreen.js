@@ -29,22 +29,21 @@ export default function RoleRevealScreen({ route, navigation }) {
     const [isRoomClosed, setIsRoomClosed] = useState(false);
     const [gameLanguage, setGameLanguage] = useState(params.language || 'en');
 
-    // Load language from AsyncStorage for WiFi mode
+    // Load language from Firebase gameState for WiFi mode (synced from host)
     useEffect(() => {
-        if (isWifi) {
-            const loadLanguage = async () => {
-                try {
-                    const savedLanguage = await AsyncStorage.getItem('player_language_pref');
-                    if (savedLanguage && SUPPORTED_LANGUAGES.some(l => l.code === savedLanguage)) {
-                        setGameLanguage(savedLanguage);
-                    }
-                } catch (error) {
-                    console.log('Failed to load language', error);
+        if (isWifi && params.roomCode) {
+            const languageRef = ref(database, `rooms/${params.roomCode}/gameState/language`);
+            const unsub = onValue(languageRef, (snapshot) => {
+                const lang = snapshot.val();
+                if (lang && SUPPORTED_LANGUAGES.some(l => l.code === lang)) {
+                    console.log("[Language] Loaded from Firebase:", lang);
+                    setGameLanguage(lang);
                 }
-            };
-            loadLanguage();
+            });
+            
+            return () => off(languageRef);
         }
-    }, [isWifi]);
+    }, [isWifi, params.roomCode]);
 
     // Disable Android back button in WiFi mode
     useEffect(() => {

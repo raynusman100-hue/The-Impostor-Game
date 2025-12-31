@@ -855,6 +855,50 @@ export default function WifiVotingScreen({ route, navigation }) {
                         if (JSON.stringify(prev) === JSON.stringify(playerList)) return prev;
                         return playerList;
                     });
+                    
+                    // UNPLAYABLE GAME CHECK: If impostors >= citizens, game is unplayable
+                    const currentImposterCount = data.imposterCount || 1;
+                    const citizenCount = playerList.length - currentImposterCount;
+                    
+                    if (citizenCount <= currentImposterCount && playerList.length > 0) {
+                        console.log(`⚠️ VOTING UNPLAYABLE: ${currentImposterCount} impostors vs ${citizenCount} citizens`);
+                        
+                        // Check if current player is still in the game
+                        const isStillInGame = playerList.some(p => p.id === userId);
+                        
+                        if (!isStillInGame) {
+                            // Player already left - just go home silently
+                            console.log("Player already left, navigating home silently");
+                            navigation.navigate('Home');
+                            return;
+                        }
+                        
+                        Alert.alert(
+                            'Game Unplayable',
+                            'Too many players have left. The game cannot continue with equal or more impostors than citizens.',
+                            [{
+                                text: 'OK',
+                                onPress: async () => {
+                                    // Host resets the room, others just go home
+                                    if (userId === 'host-id') {
+                                        try {
+                                            const roomRef = ref(database, `rooms/${roomCode}`);
+                                            await update(roomRef, {
+                                                status: 'lobby',
+                                                'gameState': null,
+                                                gameStarted: false,
+                                                gameInProgress: false
+                                            });
+                                        } catch (err) {
+                                            console.error("Error resetting room:", err);
+                                        }
+                                    }
+                                    navigation.navigate('Home');
+                                }
+                            }]
+                        );
+                        return;
+                    }
                 }
                 if (data.imposterCount) {
                     setImposterCount(prev => {
