@@ -68,8 +68,8 @@ workflows:
         script: |
           cd ios
           xcode-project build-ipa \
-            --workspace "impostergame.xcworkspace" \
-            --scheme "impostergame" \
+            --workspace "ImposterGame.xcworkspace" \
+            --scheme "ImposterGame" \
             --config Release
 
     artifacts:
