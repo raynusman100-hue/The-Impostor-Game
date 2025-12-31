@@ -1,0 +1,82 @@
+workflows:
+  ios-testflight:
+    name: iOS TestFlight Build
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+
+    environment:
+      node: 20
+      xcode: latest
+      cocoapods: default
+      groups:
+        - app_store_credentials # Add this group in Codemagic UI
+      vars:
+        BUNDLE_ID: "com.rayn100.impostergame"
+        APP_STORE_APP_ID: "YOUR_APP_STORE_APP_ID" # Get from App Store Connect
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm install
+
+      - name: Install EAS CLI
+        script: |
+          npm install -g eas-cli
+
+      - name: Setup Expo credentials
+        script: |
+          # Login to Expo (set EXPO_TOKEN in Codemagic environment variables)
+          if [ -n "$EXPO_TOKEN" ]; then
+            echo "Expo token found, proceeding..."
+          else
+            echo "Warning: EXPO_TOKEN not set. You may need to set this for EAS builds."
+          fi
+
+      - name: Prebuild iOS native project
+        script: |
+          npx expo prebuild --platform ios --clean
+
+      - name: Set up code signing
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
+          keychain add-certificates
+          xcode-project use-profiles
+
+      - name: Install CocoaPods dependencies
+        script: |
+          cd ios && pod install
+
+      - name: Increment build number
+        script: |
+          cd ios
+          LATEST_BUILD_NUMBER=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APP_ID" || echo "0")
+          NEW_BUILD_NUMBER=$((LATEST_BUILD_NUMBER + 1))
+          agvtool new-version -all $NEW_BUILD_NUMBER
+          echo "Build number set to: $NEW_BUILD_NUMBER"
+
+      - name: Build iOS app
+        script: |
+          cd ios
+          xcode-project build-ipa \
+            --workspace "impostergame.xcworkspace" \
+            --scheme "impostergame" \
+            --config Release
+
+    artifacts:
+      - ios/build/ios/ipa/*.ipa
+      - ios/build/ios/ipa/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        beta_groups:
+          - "Internal Testers" # Create this group in App Store Connect
