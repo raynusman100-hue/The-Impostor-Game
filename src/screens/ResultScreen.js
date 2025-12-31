@@ -313,7 +313,7 @@ export default function ResultScreen({ route, navigation }) {
     };
 
     return (
-        <LinearGradient style={styles.container} colors={isWifi ? ['#0a0a0a', '#121212', '#0a0a0a'] : theme.colors.backgroundGradient}>
+        <LinearGradient style={styles.container} colors={theme.colors.backgroundGradient || [theme.colors.background, theme.colors.background, theme.colors.background]}>
             <SafeAreaView style={styles.safeArea}>
                 {/* Kodak Film Header */}
                 {isWifi && (
@@ -490,7 +490,7 @@ const getStyles = (theme) => StyleSheet.create({
     filmHole: {
         width: 12,
         height: 8,
-        backgroundColor: '#D4A000',
+        backgroundColor: theme.colors.primary,
         borderRadius: 2,
         opacity: 0.8,
     },
@@ -506,7 +506,7 @@ const getStyles = (theme) => StyleSheet.create({
     cardFilmHole: {
         width: 8,
         height: 5,
-        backgroundColor: '#D4A000',
+        backgroundColor: theme.colors.primary,
         borderRadius: 1,
         opacity: 0.4,
     },
@@ -517,15 +517,13 @@ const getStyles = (theme) => StyleSheet.create({
     
     title: { fontSize: 48, fontFamily: theme.fonts.header, color: theme.colors.tertiary, marginBottom: theme.spacing.s, textAlign: 'center', letterSpacing: 4, ...theme.textShadows.depth },
     kodakTitle: {
-        color: '#FFD54F',
-        textShadowColor: '#D4A000',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 35,
+        color: theme.colors.text,
+        ...theme.textShadows.depth,
     },
     
     subtitle: { fontSize: theme.fontSize.large, color: theme.colors.textSecondary, marginBottom: theme.spacing.xl, fontFamily: theme.fonts.medium, letterSpacing: 2 },
     kodakSubtitle: {
-        color: 'rgba(212, 160, 0, 0.8)',
+        color: theme.colors.textMuted,
         letterSpacing: 4,
     },
     
@@ -534,50 +532,38 @@ const getStyles = (theme) => StyleSheet.create({
     },
     winnerBanner: { fontSize: 28, fontFamily: theme.fonts.header, marginBottom: 10, letterSpacing: 4, textTransform: 'uppercase' },
     kodakWinner: {
-        color: '#FFD54F',
-        textShadowColor: '#D4A000',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 25,
+        color: theme.colors.text,
+        ...theme.textShadows.depth,
     },
     
     revealBtn: { paddingVertical: theme.spacing.l, paddingHorizontal: theme.spacing.xl, width: '100%' },
     
     revealTitle: { fontSize: 28, fontFamily: theme.fonts.header, color: theme.colors.tertiary, marginBottom: theme.spacing.m, textAlign: 'center', letterSpacing: 4, lineHeight: 40, ...theme.textShadows.depth },
     kodakRevealTitle: {
-        color: '#FFD54F',
-        textShadowColor: '#D4A000',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 30,
+        color: theme.colors.text,
+        ...theme.textShadows.depth,
     },
     
     resultCard: { width: '100%', marginBottom: theme.spacing.m, borderRadius: theme.borderRadius.l, overflow: 'hidden', borderWidth: 1, borderColor: theme.colors.textSecondary, backgroundColor: theme.colors.surface },
     kodakCard: {
         borderWidth: 2,
-        borderColor: '#D4A000',
-        backgroundColor: 'rgba(212, 160, 0, 0.08)',
-        shadowColor: '#FFB800',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.4,
-        shadowRadius: 20,
-        elevation: 8,
+        borderColor: theme.colors.primary,
+        backgroundColor: theme.colors.surface,
+        ...theme.shadows.medium,
     },
     
     impostorCard: { borderColor: theme.colors.error, backgroundColor: 'rgba(205, 92, 92, 0.1)' },
     kodakImpostorCard: {
         borderWidth: 2,
-        borderColor: '#ff3b30',
+        borderColor: theme.colors.error,
         backgroundColor: 'rgba(255, 59, 48, 0.1)',
-        shadowColor: '#ff3b30',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.4,
-        shadowRadius: 20,
     },
     
     cardContent: { padding: theme.spacing.l, alignItems: 'center', justifyContent: 'center' },
     
     label: { fontSize: theme.fontSize.medium, color: theme.colors.textSecondary, marginBottom: theme.spacing.s, fontFamily: theme.fonts.medium, letterSpacing: 3, textTransform: 'uppercase' },
     kodakLabel: {
-        color: '#D4A000',
+        color: theme.colors.tertiary,
         letterSpacing: 5,
     },
     
@@ -589,18 +575,13 @@ const getStyles = (theme) => StyleSheet.create({
     
     word: { fontSize: 42, color: theme.colors.text, fontFamily: theme.fonts.header, letterSpacing: 2, textAlign: 'center' },
     kodakWord: {
-        color: '#FFD54F',
-        textShadowColor: '#D4A000',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 15,
+        color: theme.colors.text,
+        ...theme.textShadows.softDepth,
     },
     
     impostorName: { fontSize: 32, color: theme.colors.error, fontFamily: theme.fonts.header, marginVertical: theme.spacing.xs, letterSpacing: 2, textTransform: 'uppercase' },
     kodakImpostorName: {
         color: '#ff6b6b',
-        textShadowColor: '#ff3b30',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 15,
     },
     
     homeBtn: { marginTop: theme.spacing.m, width: '100%', paddingVertical: theme.spacing.m },
@@ -629,11 +610,11 @@ const getStyles = (theme) => StyleSheet.create({
     },
     kodakWaiting: {
         borderWidth: 2,
-        borderColor: '#D4A000',
-        backgroundColor: 'rgba(212, 160, 0, 0.08)',
+        borderColor: theme.colors.primary,
+        backgroundColor: theme.colors.surface,
     },
     waitingText: {
-        color: '#D4A000',
+        color: theme.colors.tertiary,
         fontFamily: theme.fonts.bold,
         fontSize: 14,
         letterSpacing: 3,

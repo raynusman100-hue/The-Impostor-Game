@@ -547,7 +547,7 @@ export default function DiscussionScreen({ route, navigation }) {
     const isLowTime = timeLeft < 30;
 
     return (
-        <LinearGradient style={styles.container} colors={['#0a0a0a', '#121212', '#0a0a0a']}>
+        <LinearGradient style={styles.container} colors={theme.colors.backgroundGradient || [theme.colors.background, theme.colors.background, theme.colors.background]}>
             {/* Film perforations - side strips */}
             <FilmPerforations side="left" theme={theme} />
             <FilmPerforations side="right" theme={theme} />
@@ -744,7 +744,7 @@ const getStyles = (theme) => StyleSheet.create({
     filmHole: {
         width: 12,
         height: 8,
-        backgroundColor: '#D4A000',
+        backgroundColor: theme.colors.primary,
         borderRadius: 2,
         opacity: 0.8,
     },
@@ -760,22 +760,22 @@ const getStyles = (theme) => StyleSheet.create({
     roomCodeContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(212, 160, 0, 0.15)',
+        backgroundColor: theme.colors.surface,
         paddingHorizontal: 20,
         paddingVertical: 10,
         borderRadius: 25,
         borderWidth: 2,
-        borderColor: '#D4A000',
+        borderColor: theme.colors.primary,
     },
     roomCodeLabel: {
-        color: '#D4A000',
+        color: theme.colors.tertiary,
         fontSize: 12,
         fontFamily: theme.fonts.bold,
         marginRight: 10,
         letterSpacing: 3,
     },
     roomCodeSmall: {
-        color: '#FFD54F',
+        color: theme.colors.text,
         fontSize: 20,
         fontFamily: theme.fonts.header,
         letterSpacing: 6,
@@ -784,11 +784,11 @@ const getStyles = (theme) => StyleSheet.create({
     tabContainer: {
         flexDirection: 'row',
         marginBottom: 10,
-        backgroundColor: 'rgba(26, 26, 26, 0.9)',
+        backgroundColor: theme.colors.surface,
         borderRadius: 25,
         padding: 4,
         borderWidth: 2,
-        borderColor: '#D4A000',
+        borderColor: theme.colors.primary,
         alignSelf: 'center',
         zIndex: 50
     },
@@ -798,7 +798,7 @@ const getStyles = (theme) => StyleSheet.create({
         borderRadius: 20,
     },
     activeTab: {
-        backgroundColor: '#D4A000',
+        backgroundColor: theme.colors.primary,
     },
     tabContent: {
         flexDirection: 'row',
@@ -806,25 +806,25 @@ const getStyles = (theme) => StyleSheet.create({
         position: 'relative',
     },
     tabText: {
-        color: 'rgba(255, 213, 79, 0.6)',
+        color: theme.colors.textMuted,
         fontFamily: theme.fonts.bold,
         fontSize: 14,
         letterSpacing: 2,
     },
     activeTabText: {
-        color: '#0a0a0a',
+        color: theme.colors.secondary,
         fontFamily: theme.fonts.bold,
     },
     notificationDot: {
         position: 'absolute',
         top: -6,
         right: -8,
-        backgroundColor: '#ff3b30',
+        backgroundColor: theme.colors.error,
         borderRadius: 6,
         width: 12,
         height: 12,
         borderWidth: 2,
-        borderColor: '#0a0a0a',
+        borderColor: theme.colors.background,
     },
 
     contentContainer: {
@@ -840,7 +840,7 @@ const getStyles = (theme) => StyleSheet.create({
     titleContainer: { alignItems: 'center', marginTop: 5 },
     kodakTitle: {
         fontSize: 42,
-        color: '#FFD54F',
+        color: theme.colors.text,
         fontFamily: theme.fonts.header,
         letterSpacing: 3,
     },
@@ -854,13 +854,13 @@ const getStyles = (theme) => StyleSheet.create({
     },
     kodakSubtitle: {
         fontSize: 14,
-        color: 'rgba(212, 160, 0, 0.8)',
+        color: theme.colors.textMuted,
         letterSpacing: 5,
         marginTop: 4,
         fontFamily: theme.fonts.medium,
     },
     tiedText: {
-        color: '#ff3b30',
+        color: theme.colors.error,
         fontFamily: theme.fonts.bold,
     },
 
@@ -886,10 +886,10 @@ const getStyles = (theme) => StyleSheet.create({
         height: 260,
         borderRadius: 130,
         borderWidth: 3,
-        borderColor: '#D4A000',
+        borderColor: theme.colors.primary,
         backgroundColor: 'transparent',
     },
-    timerCircleAlert: { borderColor: '#ff3b30' },
+    timerCircleAlert: { borderColor: theme.colors.error },
     hourglassPosition: {
         position: 'absolute',
         top: 55,
@@ -905,14 +905,14 @@ const getStyles = (theme) => StyleSheet.create({
     timer: { fontSize: 64, color: theme.colors.text, fontFamily: theme.fonts.header, letterSpacing: 4 },
     kodakTimer: {
         fontSize: 64,
-        color: '#FFD54F',
+        color: theme.colors.text,
         fontFamily: theme.fonts.header,
         letterSpacing: 4,
     },
     timerLabel: { fontSize: theme.fontSize.small, color: theme.colors.textMuted, fontFamily: theme.fonts.medium, letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 },
     kodakTimerLabel: {
         fontSize: 12,
-        color: '#D4A000',
+        color: theme.colors.tertiary,
         letterSpacing: 4,
         fontFamily: theme.fonts.medium,
         marginTop: 4,
@@ -930,27 +930,22 @@ const getStyles = (theme) => StyleSheet.create({
     kodakOverlay: {
         position: 'absolute',
         top: '30%',
-        backgroundColor: 'rgba(0,0,0,0.95)',
+        backgroundColor: theme.colors.surface,
         padding: 30,
         borderRadius: 20,
         alignItems: 'center',
         zIndex: 100,
         width: '90%',
         borderWidth: 3,
-        borderColor: '#D4A000',
-        shadowColor: '#FFB800',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.7,
-        shadowRadius: 30,
+        borderColor: theme.colors.primary,
+        ...theme.shadows.medium,
     },
-    countdownTitle: { color: 'rgba(255, 213, 79, 0.8)', fontSize: 16, fontFamily: theme.fonts.bold, letterSpacing: 4 },
+    countdownTitle: { color: theme.colors.textSecondary, fontSize: 16, fontFamily: theme.fonts.bold, letterSpacing: 4 },
     kodakCountdown: {
         fontSize: 80,
-        color: '#FFD54F',
+        color: theme.colors.text,
         fontFamily: theme.fonts.header,
-        textShadowColor: '#D4A000',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 25,
+        ...theme.textShadows.depth,
     },
-    countdownNote: { color: 'rgba(212, 160, 0, 0.6)', fontSize: 12, fontFamily: theme.fonts.medium, textAlign: 'center', letterSpacing: 2 }
+    countdownNote: { color: theme.colors.textMuted, fontSize: 12, fontFamily: theme.fonts.medium, textAlign: 'center', letterSpacing: 2 }
 });

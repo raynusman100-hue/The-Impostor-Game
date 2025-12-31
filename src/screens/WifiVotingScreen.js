@@ -926,7 +926,7 @@ export default function WifiVotingScreen({ route, navigation }) {
     };
 
     return (
-        <LinearGradient style={styles.container} colors={['#0a0a0a', '#121212', '#0a0a0a']}>
+        <LinearGradient style={styles.container} colors={theme.colors.backgroundGradient || [theme.colors.background, theme.colors.background, theme.colors.background]}>
             {/* Kodak Film Header */}
             <View style={styles.filmHeader}>
                 <View style={styles.filmStrip}>
@@ -1109,23 +1109,21 @@ const getStyles = (theme) => StyleSheet.create({
     filmHole: {
         width: 12,
         height: 8,
-        backgroundColor: '#D4A000',
+        backgroundColor: theme.colors.primary,
         borderRadius: 2,
         opacity: 0.8,
     },
     header: { marginTop: 10, alignItems: 'center', marginBottom: 10, width: '100%' },
     title: { 
         fontSize: 40, 
-        color: '#FFD54F', 
+        color: theme.colors.text, 
         fontFamily: theme.fonts.header, 
         letterSpacing: 4,
-        textShadowColor: '#D4A000',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 25,
+        ...theme.textShadows.depth,
     },
     subtitle: { 
         fontSize: 14, 
-        color: '#D4A000', 
+        color: theme.colors.tertiary, 
         fontFamily: theme.fonts.medium, 
         letterSpacing: 3, 
         marginBottom: 5, 
@@ -1137,29 +1135,25 @@ const getStyles = (theme) => StyleSheet.create({
         padding: 18, 
         borderRadius: 10, 
         borderWidth: 2, 
-        borderColor: 'rgba(212, 160, 0, 0.3)', 
+        borderColor: theme.colors.textMuted, 
         flexDirection: 'row', 
         justifyContent: 'space-between', 
         alignItems: 'center', 
         width: '100%',
-        backgroundColor: 'rgba(26, 26, 26, 0.9)',
+        backgroundColor: theme.colors.surface,
     },
     selectedCard: { 
-        borderColor: '#FFD54F', 
-        backgroundColor: 'rgba(212, 160, 0, 0.15)',
-        shadowColor: '#FFB800',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.5,
-        shadowRadius: 12,
-        elevation: 8,
+        borderColor: theme.colors.primary, 
+        backgroundColor: theme.colors.surface,
+        ...theme.shadows.medium,
     },
     selfCard: { opacity: 0.5 },
-    playerName: { fontSize: 18, fontFamily: theme.fonts.header, letterSpacing: 2, color: '#FFD54F' },
-    voteMarker: { color: '#FFD54F', fontFamily: theme.fonts.bold, fontSize: 13, letterSpacing: 2 },
+    playerName: { fontSize: 18, fontFamily: theme.fonts.header, letterSpacing: 2, color: theme.colors.text },
+    voteMarker: { color: theme.colors.text, fontFamily: theme.fonts.bold, fontSize: 13, letterSpacing: 2 },
     footer: { padding: 20, gap: 10, marginBottom: 20, width: '100%' },
     statusText: { 
         textAlign: 'center', 
-        color: '#D4A000', 
+        color: theme.colors.tertiary, 
         fontFamily: theme.fonts.medium, 
         fontSize: 14, 
         letterSpacing: 3 
@@ -1169,15 +1163,15 @@ const getStyles = (theme) => StyleSheet.create({
         position: 'absolute',
         top: -30,
         right: 20,
-        backgroundColor: 'rgba(212, 160, 0, 0.2)',
+        backgroundColor: theme.colors.surface,
         paddingHorizontal: 16,
         paddingVertical: 6,
         borderRadius: 20,
         borderWidth: 2,
-        borderColor: '#D4A000'
+        borderColor: theme.colors.primary
     },
     timerText: {
-        color: '#FFD54F',
+        color: theme.colors.text,
         fontFamily: theme.fonts.bold,
         fontSize: 18,
         letterSpacing: 2
@@ -1202,25 +1196,25 @@ const getStyles = (theme) => StyleSheet.create({
     votingStatusContainer: {
         width: '100%',
         marginBottom: 20,
-        backgroundColor: 'rgba(212, 160, 0, 0.1)',
+        backgroundColor: theme.colors.surface,
         borderRadius: 12,
         padding: 15,
         borderWidth: 2,
-        borderColor: 'rgba(212, 160, 0, 0.3)'
+        borderColor: theme.colors.textMuted
     },
-    // NEW PLAYER STATUS STYLES - KODAK CINEMATIC
+    // NEW PLAYER STATUS STYLES
     playerStatusContainer: {
         width: '100%',
         alignItems: 'center',
         marginBottom: 25,
-        backgroundColor: 'rgba(212, 160, 0, 0.08)',
+        backgroundColor: theme.colors.surface,
         borderRadius: 12,
         padding: 15,
         borderWidth: 2,
-        borderColor: 'rgba(212, 160, 0, 0.25)',
+        borderColor: theme.colors.textMuted,
     },
     playerStatusTitle: {
-        color: '#D4A000',
+        color: theme.colors.tertiary,
         fontFamily: theme.fonts.header,
         fontSize: 14,
         marginBottom: 12,
@@ -1246,20 +1240,17 @@ const getStyles = (theme) => StyleSheet.create({
         borderWidth: 3,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'rgba(212, 160, 0, 0.1)'
+        backgroundColor: theme.colors.surface
     },
     avatarActive: {
-        borderColor: 'rgba(212, 160, 0, 0.4)'
+        borderColor: theme.colors.textMuted
     },
     avatarVoted: {
-        borderColor: '#FFD54F',
-        shadowColor: '#FFB800',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.6,
-        shadowRadius: 10,
+        borderColor: theme.colors.primary,
+        ...theme.shadows.soft,
     },
     avatarText: {
-        color: '#FFD54F',
+        color: theme.colors.text,
         fontFamily: theme.fonts.bold,
         fontSize: 22
     },
@@ -1273,20 +1264,20 @@ const getStyles = (theme) => StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 2,
-        borderColor: '#0a0a0a'
+        borderColor: theme.colors.background
     },
     statusBadgeVoted: {
-        backgroundColor: '#FFD54F'
+        backgroundColor: theme.colors.primary
     },
     statusBadgePending: {
-        backgroundColor: 'rgba(212, 160, 0, 0.5)',
+        backgroundColor: theme.colors.textMuted,
         width: 18,
         height: 18,
         bottom: 0,
         right: -2
     },
     checkmarkIcon: {
-        color: '#0a0a0a',
+        color: theme.colors.secondary,
         fontSize: 12,
         fontWeight: 'bold'
     },
@@ -1294,26 +1285,24 @@ const getStyles = (theme) => StyleSheet.create({
         width: 6,
         height: 6,
         borderRadius: 3,
-        backgroundColor: '#0a0a0a'
+        backgroundColor: theme.colors.secondary
     },
     readyText: {
-        color: '#FFD54F',
+        color: theme.colors.text,
         fontFamily: theme.fonts.header,
         fontSize: 20,
         letterSpacing: 3,
-        textShadowColor: '#D4A000',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 10,
+        ...theme.textShadows.softDepth,
     },
-    // TAB STYLES - KODAK CINEMATIC
+    // TAB STYLES
     tabContainer: {
         flexDirection: 'row',
         marginTop: 10,
-        backgroundColor: 'rgba(26, 26, 26, 0.9)',
+        backgroundColor: theme.colors.surface,
         borderRadius: 25,
         padding: 4,
         borderWidth: 2,
-        borderColor: '#D4A000',
+        borderColor: theme.colors.primary,
         alignSelf: 'center',
     },
     tab: {
@@ -1322,32 +1311,32 @@ const getStyles = (theme) => StyleSheet.create({
         borderRadius: 20,
     },
     activeTab: {
-        backgroundColor: '#D4A000',
+        backgroundColor: theme.colors.primary,
     },
     tabContent: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     tabText: {
-        color: 'rgba(212, 160, 0, 0.6)',
+        color: theme.colors.textMuted,
         fontFamily: theme.fonts.bold,
         fontSize: 13,
         letterSpacing: 2,
     },
     activeTabText: {
-        color: '#0a0a0a',
+        color: theme.colors.secondary,
         fontFamily: theme.fonts.bold,
     },
     notificationBadge: {
         position: 'absolute',
         top: -12,
         right: -25,
-        backgroundColor: '#ff3b30',
+        backgroundColor: theme.colors.error,
         paddingHorizontal: 6,
         paddingVertical: 2,
         borderRadius: 10,
         borderWidth: 2,
-        borderColor: '#0a0a0a'
+        borderColor: theme.colors.background
     },
     notificationText: {
         color: '#fff',

@@ -6,7 +6,7 @@
     "owner": "rayn100",
     "scheme": "imposter-game",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/the imposter logo 3.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -20,7 +20,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/the imposter logo 3.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true

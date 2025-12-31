@@ -246,7 +246,7 @@ export default function HostScreen({ navigation, route }) {
     if (!playerData) return null;
 
     return (
-        <LinearGradient colors={['#0a0a0a', '#121212', '#0a0a0a']} style={styles.container}>
+        <LinearGradient colors={theme.colors.backgroundGradient || [theme.colors.background, theme.colors.background, theme.colors.background]} style={styles.container}>
             {/* Film perforations - side strips */}
             <FilmPerforations side="left" theme={theme} />
             <FilmPerforations side="right" theme={theme} />
@@ -304,9 +304,9 @@ export default function HostScreen({ navigation, route }) {
                     {/* QR Code */}
                     <View style={styles.qrContainer}>
                         {roomCode ? (
-                            <QRCode value={roomCode} size={120} color="#D4A000" backgroundColor="transparent" />
+                            <QRCode value={roomCode} size={120} color={theme.colors.tertiary} backgroundColor="transparent" />
                         ) : (
-                            <ActivityIndicator color="#D4A000" />
+                            <ActivityIndicator color={theme.colors.tertiary} />
                         )}
                     </View>
 
@@ -436,13 +436,13 @@ const getStyles = (theme) => StyleSheet.create({
     },
     title: { 
         fontSize: 12, 
-        color: '#D4A000', 
+        color: theme.colors.tertiary, 
         fontFamily: theme.fonts.bold, 
         letterSpacing: 4,
     },
     codeText: { 
         fontSize: 48, 
-        color: '#FFD54F', 
+        color: theme.colors.text, 
         fontFamily: theme.fonts.header, 
         letterSpacing: 8,
     },
@@ -450,11 +450,11 @@ const getStyles = (theme) => StyleSheet.create({
     tabContainer: {
         flexDirection: 'row',
         marginBottom: 12,
-        backgroundColor: 'rgba(26, 26, 26, 0.9)',
+        backgroundColor: theme.colors.surface,
         borderRadius: 25,
         padding: 4,
         borderWidth: 2,
-        borderColor: '#D4A000',
+        borderColor: theme.colors.primary,
         alignSelf: 'center',
     },
     tab: {
@@ -463,16 +463,16 @@ const getStyles = (theme) => StyleSheet.create({
         borderRadius: 20,
     },
     activeTab: {
-        backgroundColor: '#D4A000',
+        backgroundColor: theme.colors.primary,
     },
     tabText: {
-        color: 'rgba(255, 213, 79, 0.6)',
+        color: theme.colors.textMuted,
         fontFamily: theme.fonts.bold,
         fontSize: 13,
         letterSpacing: 2,
     },
     activeTabText: {
-        color: '#0a0a0a',
+        color: theme.colors.secondary,
     },
     tabContent: {
         flexDirection: 'row',
@@ -482,21 +482,21 @@ const getStyles = (theme) => StyleSheet.create({
         position: 'absolute',
         top: -6,
         right: -8,
-        backgroundColor: '#ff3b30',
+        backgroundColor: theme.colors.error,
         borderRadius: 6,
         width: 12,
         height: 12,
         borderWidth: 2,
-        borderColor: '#0a0a0a',
+        borderColor: theme.colors.background,
     },
     
     qrContainer: { 
         padding: 16, 
-        backgroundColor: 'rgba(212, 160, 0, 0.08)', 
+        backgroundColor: theme.colors.surface, 
         borderRadius: 16, 
         marginBottom: 12,
         borderWidth: 2,
-        borderColor: '#D4A000',
+        borderColor: theme.colors.primary,
         alignSelf: 'center',
     },
     
@@ -507,8 +507,8 @@ const getStyles = (theme) => StyleSheet.create({
         padding: 14,
         borderRadius: 12,
         borderWidth: 2,
-        borderColor: '#D4A000',
-        backgroundColor: 'rgba(212, 160, 0, 0.08)',
+        borderColor: theme.colors.primary,
+        backgroundColor: theme.colors.surface,
         marginBottom: 12,
         gap: 14,
     },
@@ -518,19 +518,19 @@ const getStyles = (theme) => StyleSheet.create({
     hostName: {
         fontSize: 20,
         fontFamily: theme.fonts.bold,
-        color: '#FFD54F',
+        color: theme.colors.text,
         letterSpacing: 1,
     },
     hostBadge: { 
         marginTop: 4,
-        backgroundColor: '#D4A000',
+        backgroundColor: theme.colors.primary,
         paddingHorizontal: 10,
         paddingVertical: 3,
         borderRadius: 8,
         alignSelf: 'flex-start',
     },
     hostBadgeText: {
-        color: '#0a0a0a',
+        color: theme.colors.secondary,
         fontSize: 10,
         fontFamily: theme.fonts.bold,
         letterSpacing: 2,
@@ -541,8 +541,8 @@ const getStyles = (theme) => StyleSheet.create({
         padding: 14,
         borderRadius: 12,
         borderWidth: 2,
-        borderColor: '#D4A000',
-        backgroundColor: 'rgba(212, 160, 0, 0.08)',
+        borderColor: theme.colors.primary,
+        backgroundColor: theme.colors.surface,
         marginBottom: 12,
     },
     settingRow: { 
@@ -552,7 +552,7 @@ const getStyles = (theme) => StyleSheet.create({
         marginBottom: 12,
     },
     settingLabel: { 
-        color: '#D4A000', 
+        color: theme.colors.tertiary, 
         fontSize: 12, 
         fontFamily: theme.fonts.bold, 
         letterSpacing: 2,
@@ -566,20 +566,20 @@ const getStyles = (theme) => StyleSheet.create({
         width: 36, 
         height: 36, 
         borderRadius: 18, 
-        backgroundColor: 'rgba(212, 160, 0, 0.15)', 
+        backgroundColor: theme.colors.surface, 
         alignItems: 'center', 
         justifyContent: 'center', 
         borderWidth: 2, 
-        borderColor: '#D4A000',
+        borderColor: theme.colors.primary,
     },
     countBtnText: { 
-        color: '#FFD54F', 
+        color: theme.colors.text, 
         fontSize: 20, 
         fontFamily: theme.fonts.bold,
         lineHeight: 22,
     },
     countValue: {
-        color: '#FFD54F',
+        color: theme.colors.text,
         fontSize: 24,
         fontFamily: theme.fonts.header,
         minWidth: 30,
@@ -591,21 +591,21 @@ const getStyles = (theme) => StyleSheet.create({
     },
     settingBtn: {
         flex: 1,
-        backgroundColor: 'rgba(212, 160, 0, 0.1)',
+        backgroundColor: theme.colors.surface,
         borderRadius: 10,
         padding: 10,
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: 'rgba(212, 160, 0, 0.4)',
+        borderColor: theme.colors.textMuted,
     },
     settingBtnLabel: {
-        color: 'rgba(212, 160, 0, 0.7)',
+        color: theme.colors.textMuted,
         fontSize: 9,
         fontFamily: theme.fonts.medium,
         letterSpacing: 2,
     },
     settingBtnValue: {
-        color: '#FFD54F',
+        color: theme.colors.text,
         fontSize: 16,
         fontFamily: theme.fonts.bold,
         letterSpacing: 1,
@@ -622,21 +622,21 @@ const getStyles = (theme) => StyleSheet.create({
         paddingVertical: 8, 
         borderRadius: 16, 
         borderWidth: 1, 
-        borderColor: 'rgba(212, 160, 0, 0.5)',
-        backgroundColor: 'rgba(212, 160, 0, 0.1)',
+        borderColor: theme.colors.textMuted,
+        backgroundColor: theme.colors.surface,
     },
     catItemSelected: { 
-        backgroundColor: '#D4A000', 
-        borderColor: '#D4A000',
+        backgroundColor: theme.colors.primary, 
+        borderColor: theme.colors.primary,
     },
     catText: { 
-        color: 'rgba(255, 213, 79, 0.7)', 
+        color: theme.colors.textSecondary, 
         fontSize: 11, 
         fontFamily: theme.fonts.bold, 
         letterSpacing: 1,
     },
     catTextSelected: { 
-        color: '#0a0a0a',
+        color: theme.colors.secondary,
     },
     
     // Players Card
@@ -645,12 +645,12 @@ const getStyles = (theme) => StyleSheet.create({
         borderRadius: 12, 
         marginBottom: 16, 
         borderWidth: 2, 
-        borderColor: '#D4A000',
-        backgroundColor: 'rgba(212, 160, 0, 0.08)',
+        borderColor: theme.colors.primary,
+        backgroundColor: theme.colors.surface,
     },
     playerCount: { 
         fontSize: 11, 
-        color: '#D4A000', 
+        color: theme.colors.tertiary, 
         fontFamily: theme.fonts.bold, 
         marginBottom: 10, 
         letterSpacing: 2,
@@ -665,13 +665,13 @@ const getStyles = (theme) => StyleSheet.create({
     },
     playerName: { 
         fontSize: 16, 
-        color: '#FFD54F', 
+        color: theme.colors.text, 
         fontFamily: theme.fonts.medium, 
         letterSpacing: 1,
     },
     youTag: {
         fontSize: 12,
-        color: 'rgba(212, 160, 0, 0.6)',
+        color: theme.colors.textMuted,
         fontFamily: theme.fonts.medium,
     },
     

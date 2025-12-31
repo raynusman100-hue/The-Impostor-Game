@@ -16,20 +16,38 @@ const SLIDE_RANGE = SLIDER_WIDTH - KNOB_SIZE;
 
 // Theme-Specific Cover Images - Each theme can have its own set of covers
 const THEME_COVER_IMAGES = {
-    // Kodak Daylight covers - will be populated with new images
+    // Kodak Daylight covers - new character images
     'default': [
-        // TODO: Add new Kodak Daylight cover images here
+        require('../../assets/ChatGPT Image Dec 31, 2025, 11_08_31 PM.png'),
+        require('../../assets/ChatGPT Image Dec 31, 2025, 11_08_42 PM.png'),
+        require('../../assets/ChatGPT Image Dec 31, 2025, 11_08_45 PM.png'),
+        require('../../assets/ChatGPT Image Dec 31, 2025, 11_16_45 PM.png'),
+        require('../../assets/ChatGPT Image Dec 31, 2025, 11_16_50 PM.png'),
+        require('../../assets/ChatGPT Image Dec 31, 2025, 11_16_52 PM.png'),
+    ],
+    'kodak-daylight': [
+        require('../../assets/ChatGPT Image Dec 31, 2025, 11_08_31 PM.png'),
+        require('../../assets/ChatGPT Image Dec 31, 2025, 11_08_42 PM.png'),
+        require('../../assets/ChatGPT Image Dec 31, 2025, 11_08_45 PM.png'),
+        require('../../assets/ChatGPT Image Dec 31, 2025, 11_16_45 PM.png'),
+        require('../../assets/ChatGPT Image Dec 31, 2025, 11_16_50 PM.png'),
+        require('../../assets/ChatGPT Image Dec 31, 2025, 11_16_52 PM.png'),
+    ],
+    'kodak-cinema': [
+        require('../../assets/Black1.png'),
+        require('../../assets/Black2.png'),
+        require('../../assets/Black3.png'),
+        require('../../assets/Black4.png'),
+        require('../../assets/Black5.png'),
+        require('../../assets/Black6.png'),
     ],
     'retro-pop': [
-        require('../../assets/cover_midnight_1.png'),
-        require('../../assets/cover_midnight_2.png'),
-        require('../../assets/cover_midnight_3.png'),
-        require('../../assets/cover_midnight_4.png'),
-        require('../../assets/cover_midnight_5.png'),
-        require('../../assets/assetscover_dark_vampire.png'),
-        require('../../assets/assetscover_dark_artist.png'),
-        require('../../assets/assetscover_dark_soldier..png'),
-        require('../../assets/assetscover_dark_meditation.png'),
+        require('../../assets/Black1.png'),
+        require('../../assets/Black2.png'),
+        require('../../assets/Black3.png'),
+        require('../../assets/Black4.png'),
+        require('../../assets/Black5.png'),
+        require('../../assets/Black6.png'),
     ]
 };
 
@@ -200,20 +218,15 @@ export default function RoleCard({ player, category, hintsEnabled, onNext, langu
                     {/* Cover Image */}
                     <Image
                         source={currentThemeCovers[coverIndex]}
-                        style={theme.id === 'retro-pop' ? {
-                            width: '100%',
-                            height: '100%',
+                        style={{
+                            // Same styling for all themes - center character properly
+                            width: CARD_WIDTH,
+                            height: CARD_HEIGHT,
                             position: 'absolute',
                             top: 0,
                             left: 0,
-                        } : {
-                            width: CARD_WIDTH * 1.15,
-                            height: CARD_HEIGHT * 1.15,
-                            position: 'absolute',
-                            top: -45,
-                            left: -(CARD_WIDTH * 0.075),
                         }}
-                        resizeMode={theme.id === 'retro-pop' ? "contain" : "cover"}
+                        resizeMode="cover"
                     />
 
                     <View style={styles.coverHeader}>

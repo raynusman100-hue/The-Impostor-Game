@@ -198,7 +198,7 @@ export default function WifiLobbyScreen({ route, navigation }) {
 
     return (
         <LinearGradient
-            colors={['#0a0a0a', '#121212', '#0a0a0a']}
+            colors={theme.colors.backgroundGradient || [theme.colors.background, theme.colors.background, theme.colors.background]}
             style={styles.container}
         >
             {/* Film perforations - side strips */}
@@ -260,7 +260,7 @@ export default function WifiLobbyScreen({ route, navigation }) {
                 ) : (
                     <>
                         <View style={styles.loaderContainer}>
-                            <ActivityIndicator size="large" color="#D4A000" style={styles.loader} />
+                            <ActivityIndicator size="large" color={theme.colors.tertiary} style={styles.loader} />
                             <Text style={styles.statusText}>WAITING FOR HOST TO START...</Text>
                         </View>
 
@@ -347,7 +347,7 @@ const getStyles = (theme) => StyleSheet.create({
     filmHole: {
         width: 12,
         height: 8,
-        backgroundColor: '#D4A000',
+        backgroundColor: theme.colors.primary,
         borderRadius: 2,
         opacity: 0.8,
     },
@@ -361,28 +361,26 @@ const getStyles = (theme) => StyleSheet.create({
     },
     roomLabel: {
         fontSize: 14,
-        color: '#D4A000',
+        color: theme.colors.tertiary,
         fontFamily: theme.fonts.bold,
         letterSpacing: 6,
     },
     roomCode: {
         fontSize: 52,
-        color: '#FFD54F',
+        color: theme.colors.text,
         fontFamily: theme.fonts.header,
         letterSpacing: 10,
-        textShadowColor: '#D4A000',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 30,
+        ...theme.textShadows.depth,
     },
     
     tabContainer: {
         flexDirection: 'row',
         marginBottom: 15,
-        backgroundColor: 'rgba(26, 26, 26, 0.9)',
+        backgroundColor: theme.colors.surface,
         borderRadius: 25,
         padding: 4,
         borderWidth: 2,
-        borderColor: '#D4A000',
+        borderColor: theme.colors.primary,
     },
     tab: {
         paddingVertical: 10,
@@ -390,16 +388,16 @@ const getStyles = (theme) => StyleSheet.create({
         borderRadius: 20,
     },
     activeTab: {
-        backgroundColor: '#D4A000',
+        backgroundColor: theme.colors.primary,
     },
     tabText: {
-        color: 'rgba(255, 213, 79, 0.6)',
+        color: theme.colors.textMuted,
         fontFamily: theme.fonts.bold,
         fontSize: 14,
         letterSpacing: 2,
     },
     activeTabText: {
-        color: '#0a0a0a',
+        color: theme.colors.secondary,
         fontFamily: theme.fonts.bold,
     },
     tabContent: {
@@ -411,12 +409,12 @@ const getStyles = (theme) => StyleSheet.create({
         position: 'absolute',
         top: -6,
         right: -8,
-        backgroundColor: '#ff3b30',
+        backgroundColor: theme.colors.error,
         borderRadius: 6,
         width: 12,
         height: 12,
         borderWidth: 2,
-        borderColor: '#0a0a0a',
+        borderColor: theme.colors.background,
     },
     
     content: {
@@ -434,13 +432,11 @@ const getStyles = (theme) => StyleSheet.create({
     },
     statusText: {
         fontSize: 18,
-        color: '#FFD54F',
+        color: theme.colors.text,
         fontFamily: theme.fonts.bold,
         textAlign: 'center',
         letterSpacing: 3,
-        textShadowColor: '#D4A000',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 15,
+        ...theme.textShadows.softDepth,
     },
     
     playerBox: {
@@ -448,19 +444,19 @@ const getStyles = (theme) => StyleSheet.create({
         padding: 20,
         borderRadius: 16,
         borderWidth: 2,
-        borderColor: '#D4A000',
-        backgroundColor: 'rgba(212, 160, 0, 0.08)',
+        borderColor: theme.colors.primary,
+        backgroundColor: theme.colors.surface,
     },
     playerCount: {
         fontSize: 14,
-        color: '#D4A000',
+        color: theme.colors.tertiary,
         fontFamily: theme.fonts.bold,
         marginBottom: 15,
         letterSpacing: 3,
     },
     playerName: {
         fontSize: 18,
-        color: '#FFD54F',
+        color: theme.colors.text,
         fontFamily: theme.fonts.medium,
         marginBottom: 4,
         flex: 1,

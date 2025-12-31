@@ -338,7 +338,7 @@ export default function RoleRevealScreen({ route, navigation }) {
     }
 
     return (
-        <LinearGradient style={styles.container} colors={isWifi ? ['#0a0a0a', '#121212', '#0a0a0a'] : theme.colors.backgroundGradient}>
+        <LinearGradient style={styles.container} colors={theme.colors.backgroundGradient || [theme.colors.background, theme.colors.background, theme.colors.background]}>
             {/* Kodak Film Header for WiFi */}
             {isWifi && (
                 <View style={styles.filmHeader}>
@@ -386,7 +386,7 @@ export default function RoleRevealScreen({ route, navigation }) {
                                     {p.ready ? (
                                         <Text style={styles.checkMark}>✓</Text>
                                     ) : (
-                                        <ActivityIndicator size={10} color="#0a0a0a" />
+                                        <ActivityIndicator size={10} color={theme.colors.secondary} />
                                     )}
                                 </View>
                             </View>
@@ -464,7 +464,7 @@ const getStyles = (theme) => StyleSheet.create({
     filmHole: {
         width: 12,
         height: 8,
-        backgroundColor: '#D4A000',
+        backgroundColor: theme.colors.primary,
         borderRadius: 2,
         opacity: 0.8,
     },
@@ -479,10 +479,8 @@ const getStyles = (theme) => StyleSheet.create({
         textTransform: 'uppercase',
     },
     kodakHeader: {
-        color: '#FFD54F',
-        textShadowColor: '#D4A000',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 20,
+        color: theme.colors.text,
+        ...theme.textShadows.depth,
         letterSpacing: 4,
     },
     loading: {
@@ -539,7 +537,7 @@ const getStyles = (theme) => StyleSheet.create({
         marginBottom: 8,
     },
     kodakStatusHeader: {
-        color: '#D4A000',
+        color: theme.colors.tertiary,
         letterSpacing: 3,
     },
     statusListContent: {
@@ -552,19 +550,19 @@ const getStyles = (theme) => StyleSheet.create({
         height: 40,
         borderRadius: 20,
         borderWidth: 2,
-        borderColor: 'rgba(255,255,255,0.2)',
+        borderColor: theme.colors.textMuted,
         justifyContent: 'center',
         alignItems: 'center',
         position: 'relative'
     },
     kodakStatusItem: {
-        borderColor: 'rgba(212, 160, 0, 0.4)',
+        borderColor: theme.colors.textMuted,
     },
     statusItemReady: {
         borderColor: theme.colors.success
     },
     kodakStatusItemReady: {
-        borderColor: '#D4A000',
+        borderColor: theme.colors.primary,
     },
     statusBadge: {
         position: 'absolute',
@@ -580,8 +578,8 @@ const getStyles = (theme) => StyleSheet.create({
         borderColor: theme.colors.background
     },
     kodakStatusBadge: {
-        backgroundColor: '#D4A000',
-        borderColor: '#0a0a0a',
+        backgroundColor: theme.colors.primary,
+        borderColor: theme.colors.background,
     },
     checkMark: {
         color: theme.colors.background,
@@ -594,7 +592,7 @@ const getStyles = (theme) => StyleSheet.create({
         fontFamily: theme.fonts.bold
     },
     kodakStatusCount: {
-        color: '#FFD54F',
+        color: theme.colors.text,
         letterSpacing: 2,
     }
 });
