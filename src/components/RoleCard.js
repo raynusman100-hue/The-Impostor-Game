@@ -1,5 +1,5 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions, PanResponder, TouchableOpacity, Image, useWindowDimensions } from 'react-native';
+import { useRef, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Animated, PanResponder, TouchableOpacity, Image, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../utils/ThemeContext';
 
@@ -45,7 +45,7 @@ const THEME_COVER_IMAGES = {
 };
 
 
-export default function RoleCard({ player, category, hintsEnabled, onNext, language, buttonTitle = "NEXT PLAYER", disabled = false, isWifi = false }) {
+export default function RoleCard({ player, category, hintsEnabled, onNext, language, buttonTitle = "NEXT PLAYER", disabled = false, isWifi = false, playerIndex = 0 }) {
     const { theme } = useTheme();
     
     // Use dynamic dimensions hook to handle orientation changes and get accurate sizes
@@ -64,18 +64,17 @@ export default function RoleCard({ player, category, hintsEnabled, onNext, langu
     // Get the appropriate cover images for the current theme
     const currentThemeCovers = THEME_COVER_IMAGES[theme.id] || THEME_COVER_IMAGES['default'];
 
-    // Use player.coverIndex if provided for sequential/non-repeating covers
+    // Use playerIndex for sequential non-repeating covers (cycles through all covers in order)
     const [coverIndex, setCoverIndex] = useState(() => {
-        if (player.coverIndex !== undefined) {
-            return player.coverIndex % currentThemeCovers.length;
-        }
-        return Math.floor(Math.random() * currentThemeCovers.length);
+        // Use playerIndex to get sequential covers (0, 1, 2, 3, 4, 5, 0, 1, ...)
+        return playerIndex % currentThemeCovers.length;
     });
 
     const pan = useRef(new Animated.ValueXY()).current;
     const slideRangeRef = useRef(SLIDE_RANGE);
     const hasPeekedRef = useRef(false);
-    const lastPlayerIdRef = useRef(player?.id);
+    const lastPlayerIndexRef = useRef(playerIndex);
+    const [buttonClicked, setButtonClicked] = useState(false);
     
     // Keep refs in sync
     useEffect(() => {
@@ -86,35 +85,23 @@ export default function RoleCard({ player, category, hintsEnabled, onNext, langu
         hasPeekedRef.current = hasPeeked;
     }, [hasPeeked]);
 
-    // Reset hasPeeked and update cover ONLY when player ID changes (different player)
-    // Not when other player properties update (like ready status)
+    // Reset ALL state when playerIndex changes (new player in pass n play)
     useEffect(() => {
-        // Only reset if this is actually a different player
-        if (lastPlayerIdRef.current !== player?.id) {
+        if (lastPlayerIndexRef.current !== playerIndex) {
+            // Reset all interaction state for new player
             setHasPeeked(false);
+            setButtonClicked(false);
             hasPeekedRef.current = false;
-            lastPlayerIdRef.current = player?.id;
+            lastPlayerIndexRef.current = playerIndex;
             
             // Reset pan position for new player
             pan.setValue({ x: 0, y: 0 });
+            
+            // Update cover to match playerIndex (sequential non-repeating)
+            const covers = THEME_COVER_IMAGES[theme.id] || THEME_COVER_IMAGES['default'];
+            setCoverIndex(playerIndex % covers.length);
         }
-        
-        const covers = THEME_COVER_IMAGES[theme.id] || THEME_COVER_IMAGES['default'];
-
-        if (player.coverIndex !== undefined) {
-            // Priority: Use the assigned sequence index
-            setCoverIndex(player.coverIndex % covers.length);
-        } else if (covers.length > 1) {
-            // Fallback: Randomize but ensure it's different (shuffle effect)
-            let newIndex;
-            do {
-                newIndex = Math.floor(Math.random() * covers.length);
-            } while (newIndex === coverIndex);
-            setCoverIndex(newIndex);
-        } else {
-            setCoverIndex(0);
-        }
-    }, [player?.id, theme.id]);
+    }, [playerIndex, theme.id]);
 
     // Clamped pan.x for visual movement of the knob and cover
     const clampedPanX = pan.x.interpolate({
@@ -131,9 +118,10 @@ export default function RoleCard({ player, category, hintsEnabled, onNext, langu
         extrapolate: 'clamp',
     });
 
-    // Button disappears only when cover is at least 25% open
+    // Button is fully visible when slider is at rest (0), fades out when sliding
+    // This ensures button is clickable only when cover is closed
     const nextButtonOpacity = clampedPanX.interpolate({
-        inputRange: [0, SLIDE_RANGE * 0.25],
+        inputRange: [0, SLIDE_RANGE * 0.15],
         outputRange: [1, 0],
         extrapolate: 'clamp',
     });
@@ -262,10 +250,12 @@ export default function RoleCard({ player, category, hintsEnabled, onNext, langu
                     </View>
 
                     {/* Next Player Button - Positioned below avatar area */}
-                    {hasPeeked && (
+                    {hasPeeked && !buttonClicked && (
                         <Animated.View style={[styles.nextButtonContainer, { opacity: nextButtonOpacity }]}>
                             <TouchableOpacity
                                 onPress={() => {
+                                    if (buttonClicked) return; // Extra guard against spam
+                                    setButtonClicked(true);
                                     playHaptic('medium');
                                     onNext();
                                 }}
@@ -274,7 +264,7 @@ export default function RoleCard({ player, category, hintsEnabled, onNext, langu
                                     styles.nextBtnOuter,
                                     isWifi && styles.kodakNextBtnOuter
                                 ]}
-                                disabled={disabled}
+                                disabled={disabled || buttonClicked}
                             >
                                 <Text
                                     style={[

@@ -359,6 +359,7 @@ export default function RoleRevealScreen({ route, navigation }) {
             </Text>
 
             <RoleCard
+                key={`player-${currentIndex}`}
                 player={currentPlayer}
                 category={params.category || params.crewCategory}
                 hintsEnabled={params.hintsEnabled}
@@ -367,6 +368,7 @@ export default function RoleRevealScreen({ route, navigation }) {
                 buttonTitle={buttonTitle}
                 disabled={readyStatus}
                 isWifi={isWifi}
+                playerIndex={currentIndex}
             />
 
             {/* Ready Status List for WiFi Mode */}
