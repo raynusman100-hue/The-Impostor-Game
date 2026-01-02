@@ -8,6 +8,8 @@ import { database } from '../utils/firebase';
 import { ref, onValue, off, set, get, update, onDisconnect } from 'firebase/database';
 import { retryFirebaseOperation, safeFirebaseUpdate, verifyRoomAccess } from '../utils/connectionUtils';
 import ChatSystem from '../components/ChatSystem';
+import { CustomAvatar } from '../utils/AvatarGenerator';
+import { CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
 
 export default function WifiVotingScreen({ route, navigation }) {
     const { theme } = useTheme();
@@ -1057,10 +1059,16 @@ export default function WifiVotingScreen({ route, navigation }) {
                                                 styles.playerAvatarCircle,
                                                 hasVoted ? styles.avatarVoted : styles.avatarActive
                                             ]}>
-                                                {/* Use first letter of name for avatar if no image */}
-                                                <Text style={styles.avatarText}>
-                                                    {player.name.charAt(0).toUpperCase()}
-                                                </Text>
+                                                {/* Show custom avatar or pre-made avatar or fallback to initial */}
+                                                {player.customAvatarConfig ? (
+                                                    <CustomBuiltAvatar config={player.customAvatarConfig} size={36} />
+                                                ) : player.avatarId ? (
+                                                    <CustomAvatar id={player.avatarId} size={36} />
+                                                ) : (
+                                                    <Text style={styles.avatarText}>
+                                                        {player.name.charAt(0).toUpperCase()}
+                                                    </Text>
+                                                )}
                                             </View>
 
                                             {/* Status Badge */}

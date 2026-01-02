@@ -8,6 +8,7 @@ import { auth, database } from '../utils/firebase';
 import { useTheme } from '../utils/ThemeContext';
 import { playHaptic } from '../utils/haptics';
 import { CustomAvatar, TOTAL_AVATARS } from '../utils/AvatarGenerator';
+import { CustomBuiltAvatar, AvatarBuilder } from '../components/CustomAvatarBuilder';
 
 // Omnitrix-style Avatar Wheel - Drag to rotate like a dial!
 const AvatarWheel = ({ selectedId, onSelect, theme }) => {
@@ -583,6 +584,9 @@ export default function ProfileScreen({ navigation }) {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [username, setUsername] = useState('');
     const [selectedAvatarId, setSelectedAvatarId] = useState(1);
+    const [useCustomAvatar, setUseCustomAvatar] = useState(false);
+    const [customAvatarConfig, setCustomAvatarConfig] = useState(null);
+    const [showAvatarBuilder, setShowAvatarBuilder] = useState(false);
     const [mode, setMode] = useState('login');
     const [generatedCode, setGeneratedCode] = useState('');
     const [existingProfile, setExistingProfile] = useState(null);
@@ -595,7 +599,10 @@ export default function ProfileScreen({ navigation }) {
 
     const hasUnsavedChanges = () => {
         if (!existingProfile) return true;
-        return username !== existingProfile.username || selectedAvatarId !== existingProfile.avatarId;
+        return username !== existingProfile.username || 
+               selectedAvatarId !== existingProfile.avatarId ||
+               useCustomAvatar !== (existingProfile.useCustomAvatar || false) ||
+               JSON.stringify(customAvatarConfig) !== JSON.stringify(existingProfile.customAvatarConfig);
     };
 
     const handleBackPress = () => {
@@ -649,6 +656,8 @@ export default function ProfileScreen({ navigation }) {
                 const profile = JSON.parse(savedProfile);
                 setExistingProfile(profile);
                 setSelectedAvatarId(profile.avatarId || 1);
+                setUseCustomAvatar(profile.useCustomAvatar || false);
+                setCustomAvatarConfig(profile.customAvatarConfig || null);
                 if (profile.username) setUsername(profile.username);
             } else {
                 generateNewCode();
@@ -820,6 +829,8 @@ export default function ProfileScreen({ navigation }) {
             const userProfile = {
                 username: name,
                 avatarId: selectedAvatarId,
+                useCustomAvatar: useCustomAvatar,
+                customAvatarConfig: customAvatarConfig,
                 userCode: existingProfile ? existingProfile.userCode : generatedCode,
                 updatedAt: new Date().toISOString()
             };
@@ -1071,60 +1082,140 @@ export default function ProfileScreen({ navigation }) {
         </View>
     );
 
-    const renderProfileSetup = (isEditing = false) => (
-        <View style={styles.filmFrame}>
-            <Text style={styles.frameTitle}>
-                {isEditing ? '★ YOUR PROFILE ★' : '★ SETUP PROFILE ★'}
-            </Text>
+    const renderProfileSetup = (isEditing = false) => {
+        // If showing avatar builder modal
+        if (showAvatarBuilder) {
+            return (
+                <View style={[styles.filmFrame, { flex: 1 }]}>
+                    <Text style={styles.frameTitle}>★ CREATE AVATAR ★</Text>
+                    <AvatarBuilder
+                        initialConfig={customAvatarConfig}
+                        onSave={(config) => {
+                            setCustomAvatarConfig(config);
+                            setUseCustomAvatar(true);
+                            setShowAvatarBuilder(false);
+                        }}
+                        onCancel={() => setShowAvatarBuilder(false)}
+                        theme={theme}
+                    />
+                </View>
+            );
+        }
 
-            {/* Avatar Selection - Rotatable Wheel */}
-            <Text style={styles.sectionLabel}>SPIN TO SELECT CHARACTER</Text>
-            
-            <View style={styles.omnitrixContainer}>
-                <AvatarWheel 
-                    selectedId={selectedAvatarId}
-                    onSelect={setSelectedAvatarId}
-                    theme={theme}
-                />
-            </View>
+        return (
+            <View style={styles.filmFrame}>
+                <Text style={styles.frameTitle}>
+                    {isEditing ? '★ YOUR PROFILE ★' : '★ SETUP PROFILE ★'}
+                </Text>
 
-            {/* Username Input */}
-            <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>SCREEN NAME</Text>
-                <TextInput
-                    style={[styles.input, styles.inputCentered]}
-                    value={username}
-                    onChangeText={setUsername}
-                    placeholder="YOUR NAME"
-                    placeholderTextColor={theme.colors.textMuted}
-                    maxLength={12}
-                    autoCapitalize="none"
-                />
-            </View>
+                {/* Avatar Type Toggle */}
+                <View style={styles.avatarToggle}>
+                    <TouchableOpacity
+                        onPress={() => { playHaptic('light'); setUseCustomAvatar(false); }}
+                        style={[
+                            styles.toggleBtn,
+                            !useCustomAvatar && { backgroundColor: theme.colors.primary }
+                        ]}
+                    >
+                        <Text style={[styles.toggleText, { color: !useCustomAvatar ? theme.colors.secondary : theme.colors.textMuted }]}>
+                            PRE-MADE
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => { 
+                            playHaptic('light'); 
+                            if (!customAvatarConfig) {
+                                // No custom avatar yet, open builder
+                                setShowAvatarBuilder(true);
+                            } else {
+                                // Already have custom avatar, just switch to it
+                                setUseCustomAvatar(true);
+                            }
+                        }}
+                        style={[
+                            styles.toggleBtn,
+                            useCustomAvatar && { backgroundColor: theme.colors.primary }
+                        ]}
+                    >
+                        <Text style={[styles.toggleText, { color: useCustomAvatar ? theme.colors.secondary : theme.colors.textMuted }]}>
+                            CUSTOM
+                        </Text>
+                    </TouchableOpacity>
+                </View>
 
-            <CinemaButton title="SAVE PROFILE" onPress={handleSaveProfile} theme={theme} style={{ marginTop: 8 }} />
-
-            {isEditing && (
-                <>
-                    <CinemaButton title="LOG OUT" onPress={handleLogout} variant="secondary" theme={theme} style={{ marginTop: 12 }} />
-                    <CinemaButton title="DELETE ACCOUNT" onPress={handleDeleteAccount} variant="error" theme={theme} style={{ marginTop: 8 }} />
-                    
-                    {/* Legal Links - Google Play Compliance */}
-                    <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 16 }}>
-                        <TouchableOpacity onPress={openPrivacyPolicy}>
-                            <Text style={{ color: theme.colors.textMuted, fontSize: 11, fontFamily: 'Teko-Medium', textDecorationLine: 'underline' }}>Privacy Policy</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={openTermsOfService}>
-                            <Text style={{ color: theme.colors.textMuted, fontSize: 11, fontFamily: 'Teko-Medium', textDecorationLine: 'underline' }}>Terms of Service</Text>
+                {/* Avatar Selection */}
+                {!useCustomAvatar ? (
+                    <>
+                        <Text style={styles.sectionLabel}>SPIN TO SELECT CHARACTER</Text>
+                        <View style={styles.omnitrixContainer}>
+                            <AvatarWheel 
+                                selectedId={selectedAvatarId}
+                                onSelect={setSelectedAvatarId}
+                                theme={theme}
+                            />
+                        </View>
+                    </>
+                ) : (
+                    <View style={styles.customAvatarSection}>
+                        <Text style={styles.sectionLabel}>YOUR CUSTOM AVATAR</Text>
+                        <View style={styles.customAvatarPreview}>
+                            {customAvatarConfig ? (
+                                <CustomBuiltAvatar config={customAvatarConfig} size={100} />
+                            ) : (
+                                <View style={[styles.emptyAvatar, { borderColor: theme.colors.primary }]}>
+                                    <Text style={{ color: theme.colors.textMuted, fontSize: 30 }}>?</Text>
+                                </View>
+                            )}
+                        </View>
+                        <TouchableOpacity
+                            onPress={() => { playHaptic('medium'); setShowAvatarBuilder(true); }}
+                            style={[styles.editAvatarBtn, { borderColor: theme.colors.primary }]}
+                        >
+                            <Text style={[styles.editAvatarText, { color: theme.colors.primary }]}>
+                                {customAvatarConfig ? '✏️ EDIT AVATAR' : '+ CREATE AVATAR'}
+                            </Text>
                         </TouchableOpacity>
                     </View>
-                </>
-            )}
-        </View>
-    );
+                )}
 
-    // Use View for profile modes (no scroll needed), ScrollView for auth forms
-    const needsScroll = mode === 'login' || mode === 'signup' || mode === 'forgot_password';
+                {/* Username Input */}
+                <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>SCREEN NAME</Text>
+                    <TextInput
+                        style={[styles.input, styles.inputCentered]}
+                        value={username}
+                        onChangeText={setUsername}
+                        placeholder="YOUR NAME"
+                        placeholderTextColor={theme.colors.textMuted}
+                        maxLength={12}
+                        autoCapitalize="none"
+                    />
+                </View>
+
+                <CinemaButton title="SAVE PROFILE" onPress={handleSaveProfile} theme={theme} style={{ marginTop: 8 }} />
+
+                {isEditing && (
+                    <>
+                        <CinemaButton title="LOG OUT" onPress={handleLogout} variant="secondary" theme={theme} style={{ marginTop: 12 }} />
+                        <CinemaButton title="DELETE ACCOUNT" onPress={handleDeleteAccount} variant="error" theme={theme} style={{ marginTop: 8 }} />
+                        
+                        {/* Legal Links - Google Play Compliance */}
+                        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 16 }}>
+                            <TouchableOpacity onPress={openPrivacyPolicy}>
+                                <Text style={{ color: theme.colors.textMuted, fontSize: 11, fontFamily: 'Teko-Medium', textDecorationLine: 'underline' }}>Privacy Policy</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={openTermsOfService}>
+                                <Text style={{ color: theme.colors.textMuted, fontSize: 11, fontFamily: 'Teko-Medium', textDecorationLine: 'underline' }}>Terms of Service</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </>
+                )}
+            </View>
+        );
+    };
+
+    // Use View for profile modes (no scroll needed), ScrollView for auth forms or avatar builder
+    const needsScroll = mode === 'login' || mode === 'signup' || mode === 'forgot_password' || showAvatarBuilder;
 
     const content = (
         <>
@@ -1370,6 +1461,54 @@ const getStyles = (theme) => StyleSheet.create({
         letterSpacing: 2,
         textAlign: 'center',
         marginBottom: 6,
+    },
+    avatarToggle: {
+        flexDirection: 'row',
+        backgroundColor: theme.colors.background,
+        borderRadius: 25,
+        padding: 4,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: theme.colors.primary + '30',
+    },
+    toggleBtn: {
+        flex: 1,
+        paddingVertical: 10,
+        borderRadius: 22,
+        alignItems: 'center',
+    },
+    toggleText: {
+        fontSize: 11,
+        fontFamily: 'CabinetGrotesk-Black',
+        letterSpacing: 1,
+    },
+    customAvatarSection: {
+        alignItems: 'center',
+        marginBottom: 14,
+    },
+    customAvatarPreview: {
+        marginVertical: 12,
+    },
+    emptyAvatar: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        borderWidth: 3,
+        borderStyle: 'dashed',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: theme.colors.background,
+    },
+    editAvatarBtn: {
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 20,
+        borderWidth: 2,
+    },
+    editAvatarText: {
+        fontSize: 12,
+        fontFamily: 'CabinetGrotesk-Bold',
+        letterSpacing: 1,
     },
     omnitrixContainer: {
         alignItems: 'center',

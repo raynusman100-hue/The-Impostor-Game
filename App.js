@@ -4,6 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import HomeScreen from './src/screens/HomeScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
 import SetupScreen from './src/screens/SetupScreen';
 import RoleRevealScreen from './src/screens/RoleRevealScreen';
 import DiscussionScreen from './src/screens/DiscussionScreen';
@@ -20,6 +21,8 @@ import ThemeSelectorScreen from './src/screens/ThemeSelectorScreen';
 import PrivacyPolicyScreen from './src/screens/PrivacyPolicyScreen';
 import TermsOfServiceScreen from './src/screens/TermsOfServiceScreen';
 import { ThemeProvider, useTheme } from './src/utils/ThemeContext';
+import { SettingsProvider } from './src/utils/SettingsContext';
+import { loadSounds } from './src/utils/sounds';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -66,6 +69,7 @@ function AppNavigator() {
         }}
       >
         <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
         <Stack.Screen name="HowToPlay" component={HowToPlayScreen} options={{ headerShown: true }} />
         <Stack.Screen name="WifiModeSelector" component={WifiModeSelectorScreen} options={{ headerShown: true }} />
         <Stack.Screen name="Host" component={HostScreen} options={{ headerShown: true }} />
@@ -149,6 +153,9 @@ export default function App() {
           setHasAcceptedTerms(false);
         }
         
+        // Load sounds
+        loadSounds();
+        
         // Hide native splash immediately - we'll show our animated overlay
         try {
           await SplashScreen.hideAsync();
@@ -180,23 +187,25 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#0a0a0a' }}>
       <ThemeProvider>
-        {/* Show consent screen if not accepted, otherwise show main app */}
-        {hasAcceptedTerms === false ? (
-          <ConsentScreen onAccept={handleAcceptTerms} />
-        ) : hasAcceptedTerms === true ? (
-          <AppNavigator />
-        ) : null}
-        
-        {/* Smooth fade overlay - fades out to reveal content */}
-        {appIsReady && !splashAnimationComplete && hasAcceptedTerms !== null && (
-          <SmoothFadeOverlay 
-            onAnimationComplete={() => setSplashAnimationComplete(true)} 
-          />
-        )}
-        {/* Static overlay while fonts are loading */}
-        {!appIsReady && (
-          <View style={splashStyles.overlay} />
-        )}
+        <SettingsProvider>
+          {/* Show consent screen if not accepted, otherwise show main app */}
+          {hasAcceptedTerms === false ? (
+            <ConsentScreen onAccept={handleAcceptTerms} />
+          ) : hasAcceptedTerms === true ? (
+            <AppNavigator />
+          ) : null}
+          
+          {/* Smooth fade overlay - fades out to reveal content */}
+          {appIsReady && !splashAnimationComplete && hasAcceptedTerms !== null && (
+            <SmoothFadeOverlay 
+              onAnimationComplete={() => setSplashAnimationComplete(true)} 
+            />
+          )}
+          {/* Static overlay while fonts are loading */}
+          {!appIsReady && (
+            <View style={splashStyles.overlay} />
+          )}
+        </SettingsProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
   );

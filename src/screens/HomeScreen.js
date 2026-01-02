@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../utils/ThemeContext';
 import { playHaptic } from '../utils/haptics';
 import { CustomAvatar } from '../utils/AvatarGenerator';
+import { CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -187,13 +188,43 @@ export default function HomeScreen({ navigation }) {
             <FilmPerforations side="left" theme={theme} />
             <FilmPerforations side="right" theme={theme} />
 
-            {/* Profile button */}
+            {/* Settings button - top left */}
+            <TouchableOpacity
+                onPress={() => { playHaptic('light'); navigation.navigate('Settings'); }}
+                style={styles.settingsButton}
+            >
+                <View style={styles.gearIcon}>
+                    {/* Gear teeth */}
+                    {[0, 45, 90, 135].map((rotation) => (
+                        <View
+                            key={rotation}
+                            style={[
+                                styles.gearTooth,
+                                { 
+                                    backgroundColor: theme.colors.primary,
+                                    transform: [{ rotate: `${rotation}deg` }]
+                                }
+                            ]}
+                        />
+                    ))}
+                    {/* Center circle */}
+                    <View style={[styles.gearCenter, { backgroundColor: theme.colors.surface, borderColor: theme.colors.primary }]}>
+                        <View style={[styles.gearDot, { backgroundColor: theme.colors.primary }]} />
+                    </View>
+                </View>
+            </TouchableOpacity>
+
+            {/* Profile button - top right */}
             <TouchableOpacity
                 onPress={() => { playHaptic('light'); navigation.navigate('Profile'); }}
                 style={styles.profileButton}
             >
                 {userProfile ? (
-                    <CustomAvatar id={userProfile.avatarId} size={34} />
+                    userProfile.useCustomAvatar && userProfile.customAvatarConfig ? (
+                        <CustomBuiltAvatar config={userProfile.customAvatarConfig} size={34} />
+                    ) : (
+                        <CustomAvatar id={userProfile.avatarId} size={34} />
+                    )
                 ) : (
                     <View style={styles.profilePlaceholder}>
                         <View style={[styles.placeholderHead, { backgroundColor: theme.colors.textMuted }]} />
@@ -343,6 +374,45 @@ const characterStyles = StyleSheet.create({
 const getStyles = (theme) => StyleSheet.create({
     container: {
         flex: 1,
+    },
+    settingsButton: {
+        position: 'absolute',
+        top: Platform.OS === 'ios' ? 50 : 36,
+        left: 22,
+        zIndex: 10,
+        width: 42,
+        height: 42,
+        borderRadius: 21,
+        backgroundColor: theme.colors.surface,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: theme.colors.primary + '50',
+    },
+    gearIcon: {
+        width: 22,
+        height: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    gearTooth: {
+        position: 'absolute',
+        width: 4,
+        height: 22,
+        borderRadius: 2,
+    },
+    gearCenter: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        borderWidth: 2,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    gearDot: {
+        width: 4,
+        height: 4,
+        borderRadius: 2,
     },
     profileButton: {
         position: 'absolute',
