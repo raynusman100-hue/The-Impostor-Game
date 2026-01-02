@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -24,8 +24,10 @@ import { ThemeProvider, useTheme } from './src/utils/ThemeContext';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { useFonts } from 'expo-font';
-import { View, Platform } from 'react-native';
+import { View, Platform, Animated, StyleSheet, Image } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import ConsentScreen from './src/screens/ConsentScreen';
 
 // Prevent auto-hide, but catch errors (important for Expo Go)
 SplashScreen.preventAutoHideAsync().catch(() => {
@@ -85,8 +87,67 @@ function AppNavigator() {
   );
 }
 
+// Custom animated splash overlay for smooth transition
+function AnimatedSplashOverlay({ onAnimationComplete }) {
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    // Smooth fade out with slight scale for cinematic feel
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1.1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onAnimationComplete();
+    });
+  }, []);
+
+  return (
+    <Animated.View
+      style={[
+        splashStyles.overlay,
+        {
+          opacity: fadeAnim,
+          transform: [{ scale: scaleAnim }],
+        },
+      ]}
+      pointerEvents="none"
+    >
+      <Image
+        source={require('./assets/splash-icon.png')}
+        style={splashStyles.splashImage}
+        resizeMode="contain"
+      />
+    </Animated.View>
+  );
+}
+
+const splashStyles = StyleSheet.create({
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#0a0a0a',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  splashImage: {
+    width: 200,
+    height: 200,
+  },
+});
+
 export default function App() {
   const [appIsReady, setAppIsReady] = useState(false);
+  const [splashAnimationComplete, setSplashAnimationComplete] = useState(false);
+  const [hasAcceptedTerms, setHasAcceptedTerms] = useState(null); // null = loading, true/false = checked
   
   const [fontsLoaded] = useFonts({
     'Teko-Medium': require('./assets/Teko_Complete/Fonts/OTF/Teko-Medium.otf'),
@@ -103,29 +164,68 @@ export default function App() {
   useEffect(() => {
     async function prepare() {
       if (fontsLoaded) {
-        // Small delay to ensure rendering is complete
-        await new Promise(resolve => setTimeout(resolve, 100));
-        setAppIsReady(true);
-        // Hide splash screen immediately when ready
+        // Check if user has accepted terms before
+        try {
+          const accepted = await AsyncStorage.getItem('terms_accepted');
+          setHasAcceptedTerms(accepted === 'true');
+        } catch (e) {
+          setHasAcceptedTerms(false);
+        }
+        
+        // Hide native splash immediately - we'll show our animated overlay
         try {
           await SplashScreen.hideAsync();
         } catch (e) {
           // Ignore errors - splash may already be hidden
         }
+        // Small delay to ensure first frame is rendered
+        await new Promise(resolve => setTimeout(resolve, 50));
+        setAppIsReady(true);
       }
     }
     prepare();
   }, [fontsLoaded]);
 
-  if (!appIsReady) {
-    // Return a view with matching background color while loading
+  const handleAcceptTerms = async () => {
+    try {
+      await AsyncStorage.setItem('terms_accepted', 'true');
+      setHasAcceptedTerms(true);
+    } catch (e) {
+      console.log('Failed to save terms acceptance');
+    }
+  };
+
+  if (!fontsLoaded) {
+    // Return a view with matching background color while fonts load
     return <View style={{ flex: 1, backgroundColor: '#0a0a0a' }} />;
   }
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#0a0a0a' }}>
       <ThemeProvider>
-        <AppNavigator />
+        {/* Show consent screen if not accepted, otherwise show main app */}
+        {hasAcceptedTerms === false ? (
+          <ConsentScreen onAccept={handleAcceptTerms} />
+        ) : hasAcceptedTerms === true ? (
+          <AppNavigator />
+        ) : null}
+        
+        {/* Animated splash overlay - fades out smoothly after app is ready */}
+        {appIsReady && !splashAnimationComplete && hasAcceptedTerms !== null && (
+          <AnimatedSplashOverlay 
+            onAnimationComplete={() => setSplashAnimationComplete(true)} 
+          />
+        )}
+        {/* Static overlay while fonts are loading but app not ready */}
+        {!appIsReady && (
+          <View style={splashStyles.overlay}>
+            <Image
+              source={require('./assets/splash-icon.png')}
+              style={splashStyles.splashImage}
+              resizeMode="contain"
+            />
+          </View>
+        )}
       </ThemeProvider>
     </GestureHandlerRootView>
   );

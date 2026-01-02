@@ -135,28 +135,33 @@ export default function HomeScreen({ navigation }) {
     );
 
     useEffect(() => {
-        // Entry animation
-        Animated.parallel([
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 800,
-                useNativeDriver: true,
-            }),
-            Animated.spring(slideAnim, {
-                toValue: 0,
-                friction: 8,
-                tension: 40,
-                useNativeDriver: true,
-            }),
-        ]).start();
+        // Delay entry animation slightly to sync with splash fade-out
+        const animationTimeout = setTimeout(() => {
+            // Entry animation - smooth fade and slide
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 500,
+                    useNativeDriver: true,
+                }),
+                Animated.spring(slideAnim, {
+                    toValue: 0,
+                    friction: 10,
+                    tension: 50,
+                    useNativeDriver: true,
+                }),
+            ]).start();
+        }, 100);
 
-        // Subtle title flicker effect (like old cinema)
-        const flicker = Animated.sequence([
-            Animated.timing(titleFlickerAnim, { toValue: 0.92, duration: 80, useNativeDriver: true }),
-            Animated.timing(titleFlickerAnim, { toValue: 1, duration: 80, useNativeDriver: true }),
-            Animated.delay(4000),
-        ]);
-        Animated.loop(flicker).start();
+        // Subtle title flicker effect (like old cinema) - start after initial animation
+        const flickerTimeout = setTimeout(() => {
+            const flicker = Animated.sequence([
+                Animated.timing(titleFlickerAnim, { toValue: 0.92, duration: 80, useNativeDriver: true }),
+                Animated.timing(titleFlickerAnim, { toValue: 1, duration: 80, useNativeDriver: true }),
+                Animated.delay(4000),
+            ]);
+            Animated.loop(flicker).start();
+        }, 600);
         
         // Film grain animation
         const grain = Animated.loop(
@@ -166,6 +171,11 @@ export default function HomeScreen({ navigation }) {
             ])
         );
         grain.start();
+
+        return () => {
+            clearTimeout(animationTimeout);
+            clearTimeout(flickerTimeout);
+        };
     }, []);
 
     return (

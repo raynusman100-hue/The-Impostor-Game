@@ -121,7 +121,7 @@ export default function TermsOfServiceScreen({ navigation }) {
                     <Text style={styles.paragraph}>
                         For questions about these Terms, contact us at:
                     </Text>
-                    <Text style={styles.contactEmail}>imposter.game.app@gmail.com</Text>
+                    <Text style={styles.contactEmail}>theimpostergameonline@gmail.com</Text>
                 </View>
 
                 <View style={styles.footer}>

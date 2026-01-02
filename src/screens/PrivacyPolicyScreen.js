@@ -106,7 +106,7 @@ export default function PrivacyPolicyScreen({ navigation }) {
                     </Text>
                     <View style={styles.bulletList}>
                         <Text style={styles.bullet}>• In the app: Go to Profile → Delete Account</Text>
-                        <Text style={styles.bullet}>• Via email: Contact imposter.game.app@gmail.com</Text>
+                        <Text style={styles.bullet}>• Via email: Contact theimpostergameonline@gmail.com</Text>
                     </View>
                     <Text style={styles.paragraph}>
                         When you delete your account, we permanently remove your email, username, avatar selection, and any associated data from our servers.
@@ -160,7 +160,7 @@ export default function PrivacyPolicyScreen({ navigation }) {
                     <Text style={styles.paragraph}>
                         If you have questions about this Privacy Policy or your data, contact us at:
                     </Text>
-                    <Text style={styles.contactEmail}>imposter.game.app@gmail.com</Text>
+                    <Text style={styles.contactEmail}>theimpostergameonline@gmail.com</Text>
                 </View>
 
                 <View style={styles.footer}>
