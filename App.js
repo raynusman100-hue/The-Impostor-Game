@@ -22,7 +22,6 @@ import PrivacyPolicyScreen from './src/screens/PrivacyPolicyScreen';
 import TermsOfServiceScreen from './src/screens/TermsOfServiceScreen';
 import { ThemeProvider, useTheme } from './src/utils/ThemeContext';
 import { SettingsProvider } from './src/utils/SettingsContext';
-import { loadSounds } from './src/utils/sounds';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -152,9 +151,6 @@ export default function App() {
         } catch (e) {
           setHasAcceptedTerms(false);
         }
-        
-        // Load sounds
-        loadSounds();
         
         // Hide native splash immediately - we'll show our animated overlay
         try {

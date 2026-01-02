@@ -1,20 +1,12 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { updateHapticsEnabled } from './haptics';
-import { updateSoundEnabled } from './sounds';
 
 const SETTINGS_STORAGE_KEY = '@imposter_game_settings';
 
 const defaultSettings = {
-    // Feedback
-    soundEnabled: true,
+    // Preferences
     hapticsEnabled: true,
-    
-    // Game
-    timerDuration: 60,
-    showRoleHints: true,
-    
-    // Display
     reducedMotion: false,
 };
 
@@ -31,12 +23,8 @@ export const SettingsProvider = ({ children }) => {
                 if (saved) {
                     const parsed = JSON.parse(saved);
                     setSettings({ ...defaultSettings, ...parsed });
-                    // Sync haptics and sound
                     if (parsed.hapticsEnabled !== undefined) {
                         updateHapticsEnabled(parsed.hapticsEnabled);
-                    }
-                    if (parsed.soundEnabled !== undefined) {
-                        updateSoundEnabled(parsed.soundEnabled);
                     }
                 }
             } catch (e) {
@@ -55,9 +43,6 @@ export const SettingsProvider = ({ children }) => {
         if ('hapticsEnabled' in newSettings) {
             updateHapticsEnabled(newSettings.hapticsEnabled);
         }
-        if ('soundEnabled' in newSettings) {
-            updateSoundEnabled(newSettings.soundEnabled);
-        }
         
         try {
             await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(updated));
@@ -73,7 +58,6 @@ export const SettingsProvider = ({ children }) => {
     const resetSettings = async () => {
         setSettings(defaultSettings);
         updateHapticsEnabled(true);
-        updateSoundEnabled(true);
         try {
             await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(defaultSettings));
         } catch (e) {

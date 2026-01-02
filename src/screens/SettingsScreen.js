@@ -8,10 +8,15 @@ import {
     Switch, 
     Platform,
     Alert,
-    Modal
+    Linking,
+    Modal,
+    TextInput
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { auth, database } from '../utils/firebase';
+import { deleteUser, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
+import { ref, remove } from 'firebase/database';
 import { useTheme } from '../utils/ThemeContext';
 import { useSettings } from '../utils/SettingsContext';
 import { playHaptic } from '../utils/haptics';
@@ -146,117 +151,12 @@ const sectionStyles = StyleSheet.create({
     },
 });
 
-// Timer Duration Selector Modal
-const TimerSelector = ({ visible, currentValue, onSelect, onClose, theme }) => {
-    if (!visible) return null;
-    
-    const options = [30, 45, 60, 90, 120, 180];
-    
-    return (
-        <Modal transparent visible={visible} animationType="fade">
-            <View style={modalStyles.overlay}>
-                <View style={[modalStyles.container, { backgroundColor: theme.colors.surface }]}>
-                    <Text style={[modalStyles.title, { color: theme.colors.text }]}>DISCUSSION TIMER</Text>
-                    <View style={modalStyles.options}>
-                        {options.map((seconds) => (
-                            <TouchableOpacity
-                                key={seconds}
-                                style={[
-                                    modalStyles.option,
-                                    { 
-                                        backgroundColor: currentValue === seconds ? theme.colors.primary : theme.colors.background,
-                                        borderColor: theme.colors.primary,
-                                    }
-                                ]}
-                                onPress={() => {
-                                    playHaptic('medium');
-                                    onSelect(seconds);
-                                    onClose();
-                                }}
-                            >
-                                <Text style={[
-                                    modalStyles.optionText,
-                                    { color: currentValue === seconds ? theme.colors.secondary : theme.colors.text }
-                                ]}>
-                                    {seconds < 60 ? `${seconds}s` : `${seconds / 60}m`}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                    <TouchableOpacity
-                        style={[modalStyles.closeButton, { borderColor: theme.colors.primary }]}
-                        onPress={() => { playHaptic('light'); onClose(); }}
-                    >
-                        <Text style={[modalStyles.closeText, { color: theme.colors.primary }]}>CANCEL</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-        </Modal>
-    );
-};
-
-const modalStyles = StyleSheet.create({
-    overlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.7)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    container: {
-        width: '80%',
-        borderRadius: 16,
-        padding: 24,
-        alignItems: 'center',
-    },
-    title: {
-        fontSize: 14,
-        fontFamily: 'Panchang-Bold',
-        letterSpacing: 2,
-        marginBottom: 20,
-    },
-    options: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-        gap: 10,
-        marginBottom: 20,
-    },
-    option: {
-        paddingVertical: 12,
-        paddingHorizontal: 20,
-        borderRadius: 8,
-        borderWidth: 2,
-        minWidth: 70,
-        alignItems: 'center',
-    },
-    optionText: {
-        fontSize: 14,
-        fontFamily: 'CabinetGrotesk-Black',
-        letterSpacing: 1,
-    },
-    closeButton: {
-        paddingVertical: 10,
-        paddingHorizontal: 30,
-        borderRadius: 20,
-        borderWidth: 2,
-    },
-    closeText: {
-        fontSize: 12,
-        fontFamily: 'CabinetGrotesk-Black',
-        letterSpacing: 2,
-    },
-});
-
 export default function SettingsScreen({ navigation }) {
     const { theme } = useTheme();
     const { settings, updateSetting, resetSettings } = useSettings();
-    const [showTimerSelector, setShowTimerSelector] = useState(false);
     const styles = getStyles(theme);
-
-    const formatTimer = (seconds) => {
-        if (seconds < 60) return `${seconds}s`;
-        return `${seconds / 60}m`;
-    };
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deletePassword, setDeletePassword] = useState('');
 
     const handleResetSettings = () => {
         Alert.alert(
@@ -295,6 +195,90 @@ export default function SettingsScreen({ navigation }) {
         );
     };
 
+    const handleDeleteAccount = () => {
+        const user = auth.currentUser;
+        if (!user) {
+            Alert.alert('Not Logged In', 'You need to be logged in to delete your account.');
+            return;
+        }
+        
+        Alert.alert(
+            'Delete Account',
+            'This will permanently delete your account and all data. This cannot be undone.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: () => setShowDeleteModal(true)
+                }
+            ]
+        );
+    };
+
+    const performAccountDeletion = async () => {
+        const user = auth.currentUser;
+        if (!user || !deletePassword) {
+            Alert.alert('Error', 'Password is required.');
+            return;
+        }
+        
+        setShowDeleteModal(false);
+        playHaptic('medium');
+        
+        try {
+            const credential = EmailAuthProvider.credential(user.email, deletePassword);
+            await reauthenticateWithCredential(user, credential);
+            
+            // Delete user data from database
+            if (user.displayName) {
+                await remove(ref(database, `usernames/${user.displayName.toLowerCase()}`));
+            }
+            await remove(ref(database, `users/${user.uid}`));
+            
+            // Clear local storage
+            await AsyncStorage.clear();
+            
+            // Delete Firebase account
+            await deleteUser(user);
+            
+            playHaptic('success');
+            Alert.alert('Account Deleted', 'Your account has been permanently deleted.', [
+                { text: 'OK', onPress: () => navigation.navigate('Home') }
+            ]);
+        } catch (error) {
+            playHaptic('error');
+            setDeletePassword('');
+            if (error.code === 'auth/wrong-password') {
+                Alert.alert('Error', 'Incorrect password.');
+            } else if (error.code === 'auth/requires-recent-login') {
+                Alert.alert('Session Expired', 'Please log out and log back in, then try again.');
+            } else {
+                Alert.alert('Error', 'Failed to delete account.');
+            }
+        }
+    };
+
+    const handleRateApp = () => {
+        // Placeholder - update with actual store URLs
+        Alert.alert('Rate Us', 'Thanks for your support! Rating coming soon.');
+    };
+
+    const handleShareApp = async () => {
+        try {
+            const { Share } = require('react-native');
+            await Share.share({
+                message: 'Check out Impostor Game! A fun party game to play with friends.',
+            });
+        } catch (e) {
+            console.log('Share error:', e);
+        }
+    };
+
+    const handleContact = () => {
+        Linking.openURL('mailto:support@impostorgame.com?subject=Impostor Game Feedback');
+    };
+
     return (
         <LinearGradient colors={theme.colors.backgroundGradient} style={styles.container}>
             <FilmPerforations side="left" theme={theme} />
@@ -317,37 +301,20 @@ export default function SettingsScreen({ navigation }) {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                {/* Feedback */}
-                <SectionHeader title="FEEDBACK" theme={theme} />
-                <SettingToggle
-                    label="Sound Effects"
-                    description="Play sounds during gameplay"
-                    value={settings.soundEnabled}
-                    onToggle={(val) => updateSetting('soundEnabled', val)}
-                    theme={theme}
-                />
+                {/* Preferences */}
+                <SectionHeader title="PREFERENCES" theme={theme} />
                 <SettingToggle
                     label="Haptic Feedback"
-                    description="Vibration on button presses"
+                    description="Vibration on interactions"
                     value={settings.hapticsEnabled}
                     onToggle={(val) => updateSetting('hapticsEnabled', val)}
                     theme={theme}
                 />
-
-                {/* Game Settings */}
-                <SectionHeader title="GAME" theme={theme} />
-                <SettingButton
-                    label="Discussion Timer"
-                    description="Default time for discussions"
-                    value={formatTimer(settings.timerDuration)}
-                    onPress={() => setShowTimerSelector(true)}
-                    theme={theme}
-                />
                 <SettingToggle
-                    label="Show Role Hints"
-                    description="Tips during role reveal"
-                    value={settings.showRoleHints}
-                    onToggle={(val) => updateSetting('showRoleHints', val)}
+                    label="Reduced Motion"
+                    description="Minimize animations"
+                    value={settings.reducedMotion}
+                    onToggle={(val) => updateSetting('reducedMotion', val)}
                     theme={theme}
                 />
 
@@ -355,25 +322,50 @@ export default function SettingsScreen({ navigation }) {
                 <SectionHeader title="APPEARANCE" theme={theme} />
                 <SettingButton
                     label="Theme"
+                    description="Change app colors"
                     value={theme.name}
                     onPress={() => navigation.navigate('ThemeSelector')}
                     theme={theme}
                 />
-                <SettingToggle
-                    label="Reduced Motion"
-                    description="Less animations"
-                    value={settings.reducedMotion}
-                    onToggle={(val) => updateSetting('reducedMotion', val)}
+
+                {/* Account */}
+                <SectionHeader title="ACCOUNT" theme={theme} />
+                <SettingButton
+                    label="Edit Profile"
+                    description="Change name and avatar"
+                    onPress={() => navigation.navigate('Profile')}
                     theme={theme}
                 />
 
-                {/* Info */}
-                <SectionHeader title="INFO" theme={theme} />
+                {/* Support */}
+                <SectionHeader title="SUPPORT" theme={theme} />
                 <SettingButton
                     label="How to Play"
+                    description="Learn the rules"
                     onPress={() => navigation.navigate('HowToPlay')}
                     theme={theme}
                 />
+                <SettingButton
+                    label="Rate App"
+                    description="Leave a review"
+                    onPress={handleRateApp}
+                    theme={theme}
+                />
+                <SettingButton
+                    label="Share App"
+                    description="Tell your friends"
+                    onPress={handleShareApp}
+                    theme={theme}
+                />
+                <SettingButton
+                    label="Contact Us"
+                    description="Send feedback"
+                    onPress={handleContact}
+                    theme={theme}
+                />
+
+                {/* Legal */}
+                <SectionHeader title="LEGAL" theme={theme} />
                 <SettingButton
                     label="Privacy Policy"
                     onPress={() => navigation.navigate('PrivacyPolicy')}
@@ -389,13 +381,21 @@ export default function SettingsScreen({ navigation }) {
                 <SectionHeader title="DATA" theme={theme} />
                 <SettingButton
                     label="Reset Settings"
+                    description="Restore defaults"
                     onPress={handleResetSettings}
                     theme={theme}
                 />
                 <SettingButton
                     label="Clear All Data"
-                    description="Delete profile and saved data"
+                    description="Delete local saved data"
                     onPress={handleClearData}
+                    theme={theme}
+                    danger
+                />
+                <SettingButton
+                    label="Delete Account"
+                    description="Permanently delete your account"
+                    onPress={handleDeleteAccount}
                     theme={theme}
                     danger
                 />
@@ -403,18 +403,51 @@ export default function SettingsScreen({ navigation }) {
                 {/* Footer */}
                 <View style={styles.footer}>
                     <Text style={[styles.footerText, { color: theme.colors.textMuted }]}>
-                        IMPOSTOR GAME v1.0.0
+                        IMPOSTOR GAME
+                    </Text>
+                    <Text style={[styles.versionText, { color: theme.colors.textMuted }]}>
+                        Version 1.0.0
                     </Text>
                 </View>
             </ScrollView>
 
-            <TimerSelector
-                visible={showTimerSelector}
-                currentValue={settings.timerDuration}
-                onSelect={(val) => updateSetting('timerDuration', val)}
-                onClose={() => setShowTimerSelector(false)}
-                theme={theme}
-            />
+            {/* Delete Account Password Modal */}
+            <Modal visible={showDeleteModal} transparent animationType="fade">
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
+                        <Text style={[styles.modalTitle, { color: theme.colors.error }]}>DELETE ACCOUNT</Text>
+                        <Text style={[styles.modalText, { color: theme.colors.textMuted }]}>
+                            Enter your password to confirm deletion
+                        </Text>
+                        <TextInput
+                            style={[styles.modalInput, { 
+                                backgroundColor: theme.colors.background, 
+                                color: theme.colors.text,
+                                borderColor: theme.colors.primary 
+                            }]}
+                            value={deletePassword}
+                            onChangeText={setDeletePassword}
+                            placeholder="Password"
+                            placeholderTextColor={theme.colors.textMuted}
+                            secureTextEntry
+                        />
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity 
+                                onPress={() => { setShowDeleteModal(false); setDeletePassword(''); }}
+                                style={[styles.modalBtn, { borderColor: theme.colors.primary }]}
+                            >
+                                <Text style={[styles.modalBtnText, { color: theme.colors.text }]}>CANCEL</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                onPress={performAccountDeletion}
+                                style={[styles.modalBtn, { backgroundColor: theme.colors.error }]}
+                            >
+                                <Text style={[styles.modalBtnText, { color: '#fff' }]}>DELETE</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </LinearGradient>
     );
 }
@@ -457,8 +490,68 @@ const getStyles = (theme) => StyleSheet.create({
         paddingVertical: 30,
     },
     footerText: {
-        fontSize: 10,
+        fontSize: 11,
+        fontFamily: 'Panchang-Bold',
+        letterSpacing: 3,
+    },
+    versionText: {
+        fontSize: 11,
         fontFamily: 'Teko-Medium',
+        letterSpacing: 1,
+        marginTop: 4,
+    },
+    // Modal styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.8)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    modalContent: {
+        width: '100%',
+        borderRadius: 16,
+        padding: 24,
+        alignItems: 'center',
+    },
+    modalTitle: {
+        fontSize: 16,
+        fontFamily: 'Panchang-Bold',
         letterSpacing: 2,
+        marginBottom: 8,
+    },
+    modalText: {
+        fontSize: 13,
+        fontFamily: 'Teko-Medium',
+        textAlign: 'center',
+        marginBottom: 16,
+    },
+    modalInput: {
+        width: '100%',
+        height: 48,
+        borderRadius: 8,
+        borderWidth: 2,
+        paddingHorizontal: 16,
+        fontSize: 14,
+        fontFamily: 'Teko-Medium',
+        marginBottom: 16,
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        gap: 12,
+        width: '100%',
+    },
+    modalBtn: {
+        flex: 1,
+        paddingVertical: 12,
+        borderRadius: 8,
+        borderWidth: 2,
+        borderColor: 'transparent',
+        alignItems: 'center',
+    },
+    modalBtnText: {
+        fontSize: 13,
+        fontFamily: 'CabinetGrotesk-Black',
+        letterSpacing: 1,
     },
 });

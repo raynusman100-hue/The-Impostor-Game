@@ -1195,20 +1195,7 @@ export default function ProfileScreen({ navigation }) {
                 <CinemaButton title="SAVE PROFILE" onPress={handleSaveProfile} theme={theme} style={{ marginTop: 8 }} />
 
                 {isEditing && (
-                    <>
-                        <CinemaButton title="LOG OUT" onPress={handleLogout} variant="secondary" theme={theme} style={{ marginTop: 12 }} />
-                        <CinemaButton title="DELETE ACCOUNT" onPress={handleDeleteAccount} variant="error" theme={theme} style={{ marginTop: 8 }} />
-                        
-                        {/* Legal Links - Google Play Compliance */}
-                        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 16 }}>
-                            <TouchableOpacity onPress={openPrivacyPolicy}>
-                                <Text style={{ color: theme.colors.textMuted, fontSize: 11, fontFamily: 'Teko-Medium', textDecorationLine: 'underline' }}>Privacy Policy</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={openTermsOfService}>
-                                <Text style={{ color: theme.colors.textMuted, fontSize: 11, fontFamily: 'Teko-Medium', textDecorationLine: 'underline' }}>Terms of Service</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </>
+                    <CinemaButton title="LOG OUT" onPress={handleLogout} variant="secondary" theme={theme} style={{ marginTop: 12 }} />
                 )}
             </View>
         );
