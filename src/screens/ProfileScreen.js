@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, BackHandler, Animated, PanResponder, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, BackHandler, Animated, PanResponder, Dimensions, Modal } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, onAuthStateChanged, sendEmailVerification, signOut, reload, sendPasswordResetEmail } from 'firebase/auth';
-import { ref, get, set, child } from 'firebase/database';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, onAuthStateChanged, sendEmailVerification, signOut, reload, sendPasswordResetEmail, deleteUser, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
+import { ref, get, set, child, remove } from 'firebase/database';
 import { auth, database } from '../utils/firebase';
 import { useTheme } from '../utils/ThemeContext';
 import { playHaptic } from '../utils/haptics';
@@ -601,12 +601,21 @@ export default function ProfileScreen({ navigation }) {
     const handleBackPress = () => {
         if (mode === 'profile_setup' || (mode === 'profile_view' && hasUnsavedChanges())) {
             Alert.alert("Unsaved Changes", "Save before leaving?", [
-                { text: "Leave", onPress: () => navigation.goBack(), style: "destructive" },
+                { text: "Leave", onPress: () => safeGoBack(), style: "destructive" },
                 { text: "Save", onPress: handleSaveProfile },
                 { text: "Cancel", style: "cancel" }
             ]);
         } else {
+            safeGoBack();
+        }
+    };
+
+    // Safe navigation that checks if we can go back
+    const safeGoBack = () => {
+        if (navigation.canGoBack()) {
             navigation.goBack();
+        } else {
+            navigation.navigate('Home');
         }
     };
 
@@ -726,14 +735,45 @@ export default function ProfileScreen({ navigation }) {
         const usernameRef = child(ref(database), `usernames/${name.toLowerCase()}`);
         const snapshot = await get(usernameRef);
         if (!snapshot.exists()) return null;
+        
         const data = snapshot.val();
-        if (typeof data === 'string') return data;
-        if (data.releasedAt) {
-            const cooldownMs = 2 * 60 * 1000;
-            if (Date.now() - data.releasedAt >= cooldownMs) return null;
-            return data.uid;
+        let ownerUid = null;
+        
+        if (typeof data === 'string') {
+            ownerUid = data;
+        } else if (data.releasedAt) {
+            // Username was released - check cooldown
+            const cooldownMs = 2 * 60 * 1000; // 2 minutes
+            if (Date.now() - data.releasedAt >= cooldownMs) {
+                // Cooldown passed, username is available - clean it up
+                await set(ref(database, `usernames/${name.toLowerCase()}`), null);
+                return null;
+            }
+            ownerUid = data.uid;
+        } else {
+            ownerUid = data.uid || data;
         }
-        return data.uid || data;
+        
+        // IMPORTANT: Verify the owner UID still exists (account not deleted)
+        if (ownerUid) {
+            try {
+                const userRef = child(ref(database), `users/${ownerUid}`);
+                const userSnapshot = await get(userRef);
+                
+                // If user doesn't exist in database, the username is orphaned - clean it up
+                if (!userSnapshot.exists()) {
+                    // Also check if there's any auth user with this UID by checking usernames
+                    // If the username entry exists but user data doesn't, it's orphaned
+                    await set(ref(database, `usernames/${name.toLowerCase()}`), null);
+                    return null;
+                }
+            } catch (error) {
+                // If we can't verify, assume username is taken to be safe
+                console.log('Error verifying username owner:', error);
+            }
+        }
+        
+        return ownerUid;
     };
 
     const releaseUsername = async (oldName) => {
@@ -765,7 +805,17 @@ export default function ProfileScreen({ navigation }) {
             if (oldUsername && oldUsername.toLowerCase() !== name.toLowerCase()) {
                 await releaseUsername(oldUsername);
             }
+            
+            // Save username registry entry
             await set(ref(database, `usernames/${name.toLowerCase()}`), { uid: firebaseUser.uid });
+            
+            // Save user data (so we can verify username ownership later)
+            await set(ref(database, `users/${firebaseUser.uid}`), {
+                username: name,
+                avatarId: selectedAvatarId,
+                updatedAt: Date.now()
+            });
+            
             await updateProfile(firebaseUser, { displayName: name });
             const userProfile = {
                 username: name,
@@ -776,7 +826,7 @@ export default function ProfileScreen({ navigation }) {
             await AsyncStorage.setItem('user_profile', JSON.stringify(userProfile));
             setExistingProfile(userProfile);
             playHaptic('success');
-            Alert.alert('Saved', 'Profile updated.', [{ text: 'OK', onPress: () => { setMode('profile_view'); navigation.goBack(); } }]);
+            Alert.alert('Saved', 'Profile updated.', [{ text: 'OK', onPress: () => { setMode('profile_view'); safeGoBack(); } }]);
         } catch (error) {
             Alert.alert('Error', 'Failed to save. ' + error.message);
         }
@@ -799,6 +849,87 @@ export default function ProfileScreen({ navigation }) {
                 }
             }
         ]);
+    };
+
+    const [deletePassword, setDeletePassword] = useState('');
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+    // GOOGLE PLAY COMPLIANCE: In-app account deletion
+    const handleDeleteAccount = async () => {
+        Alert.alert(
+            'Delete Account',
+            'This will permanently delete your account and all associated data. This action cannot be undone.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete Account',
+                    style: 'destructive',
+                    onPress: () => setShowDeleteModal(true)
+                }
+            ]
+        );
+    };
+
+    const performAccountDeletion = async () => {
+        if (!firebaseUser || !deletePassword) {
+            Alert.alert('Error', 'Password is required to delete account.');
+            return;
+        }
+        
+        setShowDeleteModal(false);
+        playHaptic('medium');
+        
+        try {
+            // Re-authenticate user before deletion
+            const credential = EmailAuthProvider.credential(firebaseUser.email, deletePassword);
+            await reauthenticateWithCredential(firebaseUser, credential);
+            
+            // Delete username from database (check both existingProfile and displayName)
+            const usernameToDelete = existingProfile?.username || firebaseUser.displayName;
+            if (usernameToDelete) {
+                await remove(ref(database, `usernames/${usernameToDelete.toLowerCase()}`));
+            }
+            await remove(ref(database, `users/${firebaseUser.uid}`));
+            
+            // Clear local storage
+            await AsyncStorage.removeItem('user_profile');
+            await AsyncStorage.removeItem('user_settings');
+            
+            // Delete Firebase Auth account
+            await deleteUser(firebaseUser);
+            
+            playHaptic('success');
+            Alert.alert('Account Deleted', 'Your account and all data have been permanently deleted.');
+            
+            setExistingProfile(null);
+            setUsername('');
+            setEmail('');
+            setPassword('');
+            setDeletePassword('');
+            setMode('login');
+        } catch (error) {
+            playHaptic('error');
+            setDeletePassword('');
+            if (error.code === 'auth/wrong-password') {
+                Alert.alert('Error', 'Incorrect password. Please try again.');
+            } else if (error.code === 'auth/requires-recent-login') {
+                Alert.alert('Session Expired', 'Please log out and log back in, then try again.');
+            } else {
+                Alert.alert('Error', 'Failed to delete account: ' + error.message);
+            }
+        }
+    };
+
+    // Open Privacy Policy
+    const openPrivacyPolicy = () => {
+        playHaptic('light');
+        navigation.navigate('PrivacyPolicy');
+    };
+
+    // Open Terms of Service
+    const openTermsOfService = () => {
+        playHaptic('light');
+        navigation.navigate('TermsOfService');
     };
 
     // --- Render Functions ---
@@ -888,6 +1019,17 @@ export default function ProfileScreen({ navigation }) {
                     {mode === 'login' ? "New here? CREATE ACCOUNT" : "Have account? SIGN IN"}
                 </Text>
             </TouchableOpacity>
+
+            {/* Legal Links - Required by Apple before signup */}
+            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: 14 }}>
+                <TouchableOpacity onPress={openPrivacyPolicy}>
+                    <Text style={{ color: theme.colors.textMuted, fontSize: 10, fontFamily: 'Teko-Medium', textDecorationLine: 'underline' }}>Privacy Policy</Text>
+                </TouchableOpacity>
+                <Text style={{ color: theme.colors.textMuted, fontSize: 10 }}>•</Text>
+                <TouchableOpacity onPress={openTermsOfService}>
+                    <Text style={{ color: theme.colors.textMuted, fontSize: 10, fontFamily: 'Teko-Medium', textDecorationLine: 'underline' }}>Terms of Service</Text>
+                </TouchableOpacity>
+            </View>
         </View>
     );
 
@@ -963,7 +1105,20 @@ export default function ProfileScreen({ navigation }) {
             <CinemaButton title="SAVE PROFILE" onPress={handleSaveProfile} theme={theme} style={{ marginTop: 8 }} />
 
             {isEditing && (
-                <CinemaButton title="LOG OUT" onPress={handleLogout} variant="error" theme={theme} style={{ marginTop: 12 }} />
+                <>
+                    <CinemaButton title="LOG OUT" onPress={handleLogout} variant="secondary" theme={theme} style={{ marginTop: 12 }} />
+                    <CinemaButton title="DELETE ACCOUNT" onPress={handleDeleteAccount} variant="error" theme={theme} style={{ marginTop: 8 }} />
+                    
+                    {/* Legal Links - Google Play Compliance */}
+                    <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 16 }}>
+                        <TouchableOpacity onPress={openPrivacyPolicy}>
+                            <Text style={{ color: theme.colors.textMuted, fontSize: 11, fontFamily: 'Teko-Medium', textDecorationLine: 'underline' }}>Privacy Policy</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={openTermsOfService}>
+                            <Text style={{ color: theme.colors.textMuted, fontSize: 11, fontFamily: 'Teko-Medium', textDecorationLine: 'underline' }}>Terms of Service</Text>
+                        </TouchableOpacity>
+                    </View>
+                </>
             )}
         </View>
     );
@@ -1014,6 +1169,48 @@ export default function ProfileScreen({ navigation }) {
                     {content}
                 </View>
             )}
+
+            {/* Delete Account Confirmation Modal - Cross-platform */}
+            <Modal
+                visible={showDeleteModal}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowDeleteModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
+                        <Text style={[styles.modalTitle, { color: theme.colors.error }]}>⚠️ CONFIRM DELETION</Text>
+                        <Text style={[styles.modalText, { color: theme.colors.textSecondary }]}>
+                            Enter your password to permanently delete your account:
+                        </Text>
+                        <TextInput
+                            style={[styles.input, { marginVertical: 16 }]}
+                            value={deletePassword}
+                            onChangeText={setDeletePassword}
+                            placeholder="Password"
+                            placeholderTextColor={theme.colors.textMuted}
+                            secureTextEntry
+                            autoCapitalize="none"
+                        />
+                        <View style={{ flexDirection: 'row', gap: 12 }}>
+                            <CinemaButton
+                                title="CANCEL"
+                                onPress={() => { setShowDeleteModal(false); setDeletePassword(''); }}
+                                variant="secondary"
+                                theme={theme}
+                                style={{ flex: 1 }}
+                            />
+                            <CinemaButton
+                                title="DELETE"
+                                onPress={performAccountDeletion}
+                                variant="error"
+                                theme={theme}
+                                style={{ flex: 1 }}
+                            />
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </KeyboardAvoidingView>
     );
 }
@@ -1252,5 +1449,34 @@ const getStyles = (theme) => StyleSheet.create({
         fontFamily: 'Teko-Medium',
         letterSpacing: 3,
         opacity: 0.6,
+    },
+    // Delete Account Modal
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.8)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    modalContent: {
+        width: '100%',
+        maxWidth: 340,
+        borderRadius: 16,
+        padding: 24,
+        borderWidth: 2,
+        borderColor: theme.colors.error + '50',
+    },
+    modalTitle: {
+        fontSize: 16,
+        fontFamily: 'Panchang-Bold',
+        textAlign: 'center',
+        marginBottom: 12,
+        letterSpacing: 2,
+    },
+    modalText: {
+        fontSize: 14,
+        fontFamily: 'Teko-Medium',
+        textAlign: 'center',
+        lineHeight: 20,
     },
 });

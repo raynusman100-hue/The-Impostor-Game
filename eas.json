@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 3.0.0"
+    "version": ">= 3.0.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
@@ -11,11 +12,19 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
+      }
     }
   },
   "submit": {
     "production": {
+      "android": {
+        "serviceAccountKeyPath": "./play-store-key.json",
+        "track": "internal"
+      },
       "ios": {
         "appleId": "YOUR_APPLE_ID",
         "ascAppId": "YOUR_APP_STORE_CONNECT_APP_ID",

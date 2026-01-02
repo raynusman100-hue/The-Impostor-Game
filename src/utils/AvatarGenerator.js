@@ -353,4 +353,4 @@ export const CustomAvatar = ({ id, size = 100 }) => {
     );
 };
 
-export const TOTAL_AVATARS = 10; // Reduced to 10 for testing (was 20)
+export const TOTAL_AVATARS = 10;

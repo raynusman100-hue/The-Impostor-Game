@@ -78,11 +78,12 @@ export default function RoleRevealScreen({ route, navigation }) {
                 return;
             }
             hasNavigated = true;
-            console.log("[Sync] Navigating to discussion with", playerCount, "players");
+            console.log("[Sync] Navigating to WifiWhoStarts with", playerCount, "players");
             playHaptic('success');
             
-            navigation.replace('Discussion', {
-                timeLeft: playerCount * 60,
+            // Navigate to WifiWhoStarts screen first (shows who starts the discussion)
+            navigation.replace('WifiWhoStarts', {
+                playerCount: playerCount,
                 mode: 'wifi',
                 roomCode,
                 playerId

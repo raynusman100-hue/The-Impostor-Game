@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, Animated, ActivityIndicator, TouchableOpacity, Alert, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, Animated, ActivityIndicator, TouchableOpacity, Alert, BackHandler, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../utils/ThemeContext';
 import Button from '../components/Button';
@@ -61,32 +61,44 @@ export default function WifiLobbyScreen({ route, navigation }) {
     const [showChat, setShowChat] = useState(false);
     const [unreadMessages, setUnreadMessages] = useState(0);
 
+    // Disable iOS swipe back gesture
+    useEffect(() => {
+        navigation.setOptions({
+            gestureEnabled: false,
+        });
+    }, [navigation]);
+
+    // Handle leaving room with confirmation
+    const handleLeaveRoom = useCallback(() => {
+        Alert.alert(
+            'Leave Room?',
+            'Are you sure you want to leave the room?',
+            [
+                { text: 'Stay', style: 'cancel' },
+                { 
+                    text: 'Leave', 
+                    style: 'destructive',
+                    onPress: async () => {
+                        if (roomCode && playerId) {
+                            const playerRef = ref(database, `rooms/${roomCode}/players/${playerId}`);
+                            await remove(playerRef);
+                        }
+                        navigation.navigate('Home');
+                    }
+                }
+            ]
+        );
+    }, [roomCode, playerId, navigation]);
+
     // Disable Android back button
     useEffect(() => {
         const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-            Alert.alert(
-                'Leave Room?',
-                'Are you sure you want to leave the room?',
-                [
-                    { text: 'Stay', style: 'cancel' },
-                    { 
-                        text: 'Leave', 
-                        style: 'destructive',
-                        onPress: async () => {
-                            if (roomCode && playerId) {
-                                const playerRef = ref(database, `rooms/${roomCode}/players/${playerId}`);
-                                await remove(playerRef);
-                            }
-                            navigation.navigate('Home');
-                        }
-                    }
-                ]
-            );
+            handleLeaveRoom();
             return true; // Prevent default back behavior
         });
 
         return () => backHandler.remove();
-    }, [roomCode, playerId, navigation]);
+    }, [handleLeaveRoom]);
 
     // Enhanced unread message handler
     const handleUnreadChange = useCallback((count) => {
@@ -303,13 +315,9 @@ export default function WifiLobbyScreen({ route, navigation }) {
             {!showChat && (
                 <KodakButton
                     title="LEAVE ROOM"
-                    onPress={async () => {
+                    onPress={() => {
                         playHaptic('medium');
-                        if (roomCode && playerId) {
-                            const playerRef = ref(database, `rooms/${roomCode}/players/${playerId}`);
-                            await remove(playerRef);
-                        }
-                        navigation.navigate('Home');
+                        handleLeaveRoom();
                     }}
                     variant="secondary"
                     style={styles.leaveBtn}
