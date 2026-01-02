@@ -24,7 +24,7 @@ import { ThemeProvider, useTheme } from './src/utils/ThemeContext';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { useFonts } from 'expo-font';
-import { View, Platform, Animated, StyleSheet, Image } from 'react-native';
+import { View, Platform, Animated, StyleSheet } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ConsentScreen from './src/screens/ConsentScreen';
@@ -87,25 +87,17 @@ function AppNavigator() {
   );
 }
 
-// Custom animated splash overlay for smooth transition
-function AnimatedSplashOverlay({ onAnimationComplete }) {
+// Smooth fade overlay - just a solid color that fades out
+function SmoothFadeOverlay({ onAnimationComplete }) {
   const fadeAnim = useRef(new Animated.Value(1)).current;
-  const scaleAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // Smooth fade out with slight scale for cinematic feel
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1.1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
+    // Smooth fade out of the dark background
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 400,
+      useNativeDriver: true,
+    }).start(() => {
       onAnimationComplete();
     });
   }, []);
@@ -114,19 +106,10 @@ function AnimatedSplashOverlay({ onAnimationComplete }) {
     <Animated.View
       style={[
         splashStyles.overlay,
-        {
-          opacity: fadeAnim,
-          transform: [{ scale: scaleAnim }],
-        },
+        { opacity: fadeAnim },
       ]}
       pointerEvents="none"
-    >
-      <Image
-        source={require('./assets/splash-icon.png')}
-        style={splashStyles.splashImage}
-        resizeMode="contain"
-      />
-    </Animated.View>
+    />
   );
 }
 
@@ -134,13 +117,7 @@ const splashStyles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#0a0a0a',
-    justifyContent: 'center',
-    alignItems: 'center',
     zIndex: 999,
-  },
-  splashImage: {
-    width: 200,
-    height: 200,
   },
 });
 
@@ -210,21 +187,15 @@ export default function App() {
           <AppNavigator />
         ) : null}
         
-        {/* Animated splash overlay - fades out smoothly after app is ready */}
+        {/* Smooth fade overlay - fades out to reveal content */}
         {appIsReady && !splashAnimationComplete && hasAcceptedTerms !== null && (
-          <AnimatedSplashOverlay 
+          <SmoothFadeOverlay 
             onAnimationComplete={() => setSplashAnimationComplete(true)} 
           />
         )}
-        {/* Static overlay while fonts are loading but app not ready */}
+        {/* Static overlay while fonts are loading */}
         {!appIsReady && (
-          <View style={splashStyles.overlay}>
-            <Image
-              source={require('./assets/splash-icon.png')}
-              style={splashStyles.splashImage}
-              resizeMode="contain"
-            />
-          </View>
+          <View style={splashStyles.overlay} />
         )}
       </ThemeProvider>
     </GestureHandlerRootView>
