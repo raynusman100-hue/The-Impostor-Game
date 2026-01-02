@@ -1201,8 +1201,8 @@ export default function ProfileScreen({ navigation }) {
         );
     };
 
-    // Use View for profile modes (no scroll needed), ScrollView for auth forms or avatar builder
-    const needsScroll = mode === 'login' || mode === 'signup' || mode === 'forgot_password' || showAvatarBuilder;
+    // Use View for profile modes (no scroll needed), ScrollView for auth forms only
+    const needsScroll = mode === 'login' || mode === 'signup' || mode === 'forgot_password';
 
     const content = (
         <>

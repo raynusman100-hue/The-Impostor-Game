@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { playHaptic } from '../utils/haptics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -186,7 +186,7 @@ const CustomAvatarBuilder = ({ initialConfig, onSave, onCancel, theme }) => {
         switch (activeTab) {
             case 'face':
                 return (
-                    <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                    <View style={styles.tabContent}>
                         <Text style={[styles.sectionTitle, { color: colors.primary }]}>SHAPE</Text>
                         <View style={styles.optionGrid}>
                             {FACE_SHAPES.map(v => (
@@ -194,49 +194,55 @@ const CustomAvatarBuilder = ({ initialConfig, onSave, onCancel, theme }) => {
                             ))}
                         </View>
                         
-                        <Text style={[styles.sectionTitle, { color: colors.primary }]}>SKIN COLOR</Text>
-                        <View style={styles.colorRow}>
-                            {SKIN_COLORS.map(c => (
-                                <ColorBtn key={c} color={c} selected={config.skinColor === c} onPress={() => update('skinColor', c)} />
-                            ))}
+                        <View style={styles.colorSection}>
+                            <View style={styles.colorGroup}>
+                                <Text style={[styles.sectionTitleSmall, { color: colors.primary }]}>SKIN</Text>
+                                <View style={styles.colorRowCompact}>
+                                    {SKIN_COLORS.map(c => (
+                                        <ColorBtn key={c} color={c} selected={config.skinColor === c} onPress={() => update('skinColor', c)} />
+                                    ))}
+                                </View>
+                            </View>
+                            
+                            <View style={styles.colorGroup}>
+                                <Text style={[styles.sectionTitleSmall, { color: colors.primary }]}>BACKGROUND</Text>
+                                <View style={styles.colorRowCompact}>
+                                    {BG_COLORS.map(c => (
+                                        <ColorBtn key={c} color={c} selected={config.bgColor === c} onPress={() => update('bgColor', c)} />
+                                    ))}
+                                </View>
+                            </View>
                         </View>
-                        
-                        <Text style={[styles.sectionTitle, { color: colors.primary }]}>BACKGROUND</Text>
-                        <View style={styles.colorRow}>
-                            {BG_COLORS.map(c => (
-                                <ColorBtn key={c} color={c} selected={config.bgColor === c} onPress={() => update('bgColor', c)} />
-                            ))}
-                        </View>
-                    </ScrollView>
+                    </View>
                 );
                 
             case 'eyes':
                 return (
-                    <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                    <View style={styles.tabContent}>
                         <Text style={[styles.sectionTitle, { color: colors.primary }]}>EYE STYLE</Text>
                         <View style={styles.optionGrid}>
                             {EYE_STYLES.map(v => (
                                 <TextBtn key={v} value={v} selected={config.eyeStyle === v} onPress={() => update('eyeStyle', v)} />
                             ))}
                         </View>
-                    </ScrollView>
+                    </View>
                 );
                 
             case 'mouth':
                 return (
-                    <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                    <View style={styles.tabContent}>
                         <Text style={[styles.sectionTitle, { color: colors.primary }]}>MOUTH STYLE</Text>
                         <View style={styles.optionGrid}>
                             {MOUTH_STYLES.map(v => (
                                 <TextBtn key={v} value={v} selected={config.mouthStyle === v} onPress={() => update('mouthStyle', v)} />
                             ))}
                         </View>
-                    </ScrollView>
+                    </View>
                 );
                 
             case 'hair':
                 return (
-                    <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                    <View style={styles.tabContent}>
                         <Text style={[styles.sectionTitle, { color: colors.primary }]}>HAIR STYLE</Text>
                         <View style={styles.optionGrid}>
                             {HAIR_STYLES.map(v => (
@@ -250,19 +256,19 @@ const CustomAvatarBuilder = ({ initialConfig, onSave, onCancel, theme }) => {
                                 <ColorBtn key={c} color={c} selected={config.hairColor === c} onPress={() => update('hairColor', c)} />
                             ))}
                         </View>
-                    </ScrollView>
+                    </View>
                 );
                 
             case 'extras':
                 return (
-                    <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                    <View style={styles.tabContent}>
                         <Text style={[styles.sectionTitle, { color: colors.primary }]}>ACCESSORIES</Text>
                         <View style={styles.optionGrid}>
                             {ACCESSORIES.map(v => (
                                 <TextBtn key={v} value={v} selected={config.accessory === v} onPress={() => update('accessory', v)} />
                             ))}
                         </View>
-                    </ScrollView>
+                    </View>
                 );
                 
             default: 
@@ -274,7 +280,7 @@ const CustomAvatarBuilder = ({ initialConfig, onSave, onCancel, theme }) => {
         <View style={styles.container}>
             {/* Preview Header */}
             <View style={styles.previewSection}>
-                <CustomBuiltAvatar config={config} size={90} />
+                <CustomBuiltAvatar config={config} size={80} />
                 <TouchableOpacity 
                     onPress={randomize} 
                     style={[styles.randomBtn, { backgroundColor: colors.primary }]}
@@ -338,18 +344,18 @@ const styles = StyleSheet.create({
         flexDirection: 'row', 
         alignItems: 'center', 
         justifyContent: 'center', 
-        paddingVertical: 16,
-        gap: 24,
+        paddingVertical: 12,
+        gap: 20,
     },
     randomBtn: { 
-        width: 50, 
-        height: 50, 
-        borderRadius: 25, 
+        width: 44, 
+        height: 44, 
+        borderRadius: 22, 
         alignItems: 'center', 
         justifyContent: 'center',
     },
     randomText: { 
-        fontSize: 24,
+        fontSize: 22,
     },
     
     // Tab Bar
@@ -376,47 +382,67 @@ const styles = StyleSheet.create({
     contentArea: { 
         flex: 1,
     },
-    scrollContent: {
+    tabContent: {
         flex: 1,
     },
     sectionTitle: { 
         fontSize: 11, 
         fontFamily: 'Panchang-Bold', 
         letterSpacing: 2, 
-        marginBottom: 12, 
-        marginTop: 8,
+        marginBottom: 8, 
+        marginTop: 4,
+    },
+    sectionTitleSmall: { 
+        fontSize: 10, 
+        fontFamily: 'Panchang-Bold', 
+        letterSpacing: 1, 
+        marginBottom: 6,
     },
     
     // Option Grid
     optionGrid: { 
         flexDirection: 'row', 
         flexWrap: 'wrap', 
-        gap: 10,
-        marginBottom: 16,
+        gap: 8,
+        marginBottom: 12,
     },
     textBtn: { 
-        paddingHorizontal: 14, 
-        paddingVertical: 10, 
+        paddingHorizontal: 12, 
+        paddingVertical: 8, 
         borderRadius: 8, 
         borderWidth: 2,
     },
     textBtnLabel: { 
-        fontSize: 12, 
+        fontSize: 11, 
         fontFamily: 'Teko-Medium', 
         letterSpacing: 1,
+    },
+    
+    // Color Section - side by side layout
+    colorSection: {
+        flexDirection: 'row',
+        gap: 16,
+    },
+    colorGroup: {
+        flex: 1,
+    },
+    colorRowCompact: { 
+        flexDirection: 'row', 
+        flexWrap: 'wrap', 
+        gap: 8,
     },
     
     // Color Row
     colorRow: { 
         flexDirection: 'row', 
         flexWrap: 'wrap', 
-        gap: 12, 
-        marginBottom: 16,
+        gap: 10, 
+        marginBottom: 12,
     },
     colorBtn: { 
-        width: 38, 
-        height: 38, 
-        borderRadius: 19,
+        width: 32, 
+        height: 32, 
+        borderRadius: 16,
         borderWidth: 0,
     },
     
