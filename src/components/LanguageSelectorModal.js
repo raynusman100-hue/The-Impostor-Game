@@ -86,6 +86,7 @@ export default function LanguageSelectorModal({ visible, onClose, onSelect, curr
                                 onClose();
                             }}
                             style={styles.closeButton}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                         >
                             <Text style={styles.closeButtonText}>✕</Text>
                         </TouchableOpacity>

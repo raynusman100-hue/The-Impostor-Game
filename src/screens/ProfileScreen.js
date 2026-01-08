@@ -2,13 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, BackHandler, Animated, PanResponder, Dimensions, Modal } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, onAuthStateChanged, sendEmailVerification, signOut, reload, sendPasswordResetEmail, deleteUser, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, onAuthStateChanged, sendEmailVerification, signOut, reload, sendPasswordResetEmail, deleteUser, reauthenticateWithCredential, EmailAuthProvider, signInWithCredential, GoogleAuthProvider } from 'firebase/auth';
 import { ref, get, set, child, remove } from 'firebase/database';
 import { auth, database } from '../utils/firebase';
 import { useTheme } from '../utils/ThemeContext';
 import { playHaptic } from '../utils/haptics';
 import { CustomAvatar, TOTAL_AVATARS } from '../utils/AvatarGenerator';
 import { CustomBuiltAvatar, AvatarBuilder } from '../components/CustomAvatarBuilder';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
 // Omnitrix-style Avatar Wheel - Drag to rotate like a dial!
 const AvatarWheel = ({ selectedId, onSelect, theme }) => {
@@ -17,11 +18,11 @@ const AvatarWheel = ({ selectedId, onSelect, theme }) => {
     const AVATAR_SIZE = 44;
     const RADIUS = 88;
     const DEGREES_PER_AVATAR = 360 / TOTAL_AVATARS;
-    
+
     // Physics constants
     const FRICTION = 0.96;
     const MIN_VELOCITY = 0.3;
-    
+
     // State and refs
     const [selected, setSelected] = useState(selectedId);
     // To show avatar N at top, rotation = -((N-1) * DEGREES_PER_AVATAR)
@@ -31,7 +32,7 @@ const AvatarWheel = ({ selectedId, onSelect, theme }) => {
     const velocityRef = useRef(0);
     const animationRef = useRef(null);
     const isSpinning = useRef(false);
-    
+
     // For angular tracking - store wheel's position on screen
     const wheelLayoutRef = useRef({ x: 0, y: 0, width: WHEEL_SIZE, height: WHEEL_SIZE });
     const lastAngleRef = useRef(0);
@@ -68,7 +69,7 @@ const AvatarWheel = ({ selectedId, onSelect, theme }) => {
         let targetDeg = snapDeg;
         while (targetDeg - rotationRef.current > 180) targetDeg -= 360;
         while (targetDeg - rotationRef.current < -180) targetDeg += 360;
-        
+
         Animated.spring(rotation, {
             toValue: targetDeg,
             friction: 8,
@@ -93,15 +94,15 @@ const AvatarWheel = ({ selectedId, onSelect, theme }) => {
     const startMomentumSpin = () => {
         if (animationRef.current) cancelAnimationFrame(animationRef.current);
         isSpinning.current = true;
-        
+
         let lastUpdateTime = Date.now();
         let lastSelectedAvatar = selected;
-        
+
         const animate = () => {
             velocityRef.current *= FRICTION;
             rotationRef.current += velocityRef.current;
             rotation.setValue(rotationRef.current);
-            
+
             // Throttle state updates to reduce re-renders
             const now = Date.now();
             if (now - lastUpdateTime > 50) {
@@ -113,7 +114,7 @@ const AvatarWheel = ({ selectedId, onSelect, theme }) => {
                 }
                 lastUpdateTime = now;
             }
-            
+
             if (Math.abs(velocityRef.current) > MIN_VELOCITY) {
                 animationRef.current = requestAnimationFrame(animate);
             } else {
@@ -155,7 +156,7 @@ const AvatarWheel = ({ selectedId, onSelect, theme }) => {
             });
         }
     };
-    
+
     const wheelRef = useRef(null);
     const isDragging = useRef(false);
 
@@ -170,72 +171,72 @@ const AvatarWheel = ({ selectedId, onSelect, theme }) => {
                 const dominated = Math.abs(gesture.dx) > 8 || Math.abs(gesture.dy) > 8;
                 return dominated;
             },
-            
+
             onPanResponderGrant: (evt) => {
                 stopAnimation();
                 isSpinning.current = true;
                 isDragging.current = true;
                 prevAnglesRef.current = [];
-                
+
                 // Measure wheel position right when touch starts
                 if (wheelRef.current) {
                     wheelRef.current.measure((fx, fy, w, h, px, py) => {
                         wheelLayoutRef.current = { x: px, y: py, width: w, height: h };
                     });
                 }
-                
+
                 const { pageX, pageY } = evt.nativeEvent;
                 lastAngleRef.current = getAngle(pageX, pageY);
             },
-            
+
             onPanResponderMove: (evt) => {
                 if (!isDragging.current) return;
-                
+
                 const { pageX, pageY } = evt.nativeEvent;
                 const currentAngle = getAngle(pageX, pageY);
-                
+
                 // Calculate delta with wrap-around handling
                 let delta = currentAngle - lastAngleRef.current;
                 if (delta > 180) delta -= 360;
                 if (delta < -180) delta += 360;
-                
+
                 // Store for velocity calculation
                 const now = Date.now();
                 prevAnglesRef.current.push({ angle: currentAngle, time: now });
                 // Keep only last 5 samples
                 if (prevAnglesRef.current.length > 5) prevAnglesRef.current.shift();
-                
+
                 lastAngleRef.current = currentAngle;
-                
+
                 // Apply rotation directly - 1:1 tracking like Omnitrix dial
                 rotationRef.current += delta;
                 rotation.setValue(rotationRef.current);
-                
+
                 // Update selection during drag
                 const currentAvatar = getAvatarAtTop(rotationRef.current);
                 if (currentAvatar !== selected) {
                     setSelected(currentAvatar);
                 }
             },
-            
+
             onPanResponderRelease: () => {
                 isDragging.current = false;
-                
+
                 // Calculate velocity from recent angle samples
                 const samples = prevAnglesRef.current;
                 if (samples.length >= 2) {
                     const oldest = samples[0];
                     const newest = samples[samples.length - 1];
                     const timeDiff = newest.time - oldest.time;
-                    
+
                     if (timeDiff > 0) {
                         let angleDiff = newest.angle - oldest.angle;
                         if (angleDiff > 180) angleDiff -= 360;
                         if (angleDiff < -180) angleDiff += 360;
-                        
+
                         // Convert to velocity (degrees per frame at 60fps)
                         const velocity = (angleDiff / timeDiff) * 16.67 * 1.5;
-                        
+
                         if (Math.abs(velocity) > 1) {
                             velocityRef.current = velocity;
                             playHaptic('light');
@@ -246,7 +247,7 @@ const AvatarWheel = ({ selectedId, onSelect, theme }) => {
                 }
                 snapToNearest();
             },
-            
+
             onPanResponderTerminate: () => {
                 isDragging.current = false;
                 snapToNearest();
@@ -258,20 +259,20 @@ const AvatarWheel = ({ selectedId, onSelect, theme }) => {
     const spinToAvatar = (avatarId) => {
         stopAnimation();
         isSpinning.current = true;
-        
+
         // Calculate target rotation to put this avatar at top
         const targetDeg = -((avatarId - 1) * DEGREES_PER_AVATAR);
-        
+
         // Find the shortest path (could go clockwise or counter-clockwise)
         let diff = targetDeg - rotationRef.current;
         // Normalize to -180 to 180
         while (diff > 180) diff -= 360;
         while (diff < -180) diff += 360;
-        
+
         const finalTarget = rotationRef.current + diff;
-        
+
         playHaptic('medium');
-        
+
         Animated.spring(rotation, {
             toValue: finalTarget,
             friction: 7,
@@ -297,13 +298,13 @@ const AvatarWheel = ({ selectedId, onSelect, theme }) => {
         // Each subsequent avatar is spaced by DEGREES_PER_AVATAR clockwise
         const angleInDegrees = -90 + (index * DEGREES_PER_AVATAR);
         const angleInRadians = (angleInDegrees * Math.PI) / 180;
-        
+
         // Calculate position on circle
         const x = WHEEL_SIZE / 2 + RADIUS * Math.cos(angleInRadians) - AVATAR_SIZE / 2;
         const y = WHEEL_SIZE / 2 + RADIUS * Math.sin(angleInRadians) - AVATAR_SIZE / 2;
-        
+
         const isSelected = avatarId === selected;
-        
+
         return (
             <TouchableOpacity
                 key={avatarId}
@@ -330,20 +331,20 @@ const AvatarWheel = ({ selectedId, onSelect, theme }) => {
     };
 
     return (
-        <View 
+        <View
             ref={wheelRef}
             onLayout={onWheelLayout}
-            style={[styles.wheelContainer, { width: WHEEL_SIZE, height: WHEEL_SIZE }]} 
+            style={[styles.wheelContainer, { width: WHEEL_SIZE, height: WHEEL_SIZE }]}
             {...panResponder.panHandlers}
         >
             {/* Background rings */}
-            <View style={[styles.outerRing, { 
-                width: WHEEL_SIZE, height: WHEEL_SIZE, 
+            <View style={[styles.outerRing, {
+                width: WHEEL_SIZE, height: WHEEL_SIZE,
                 borderRadius: WHEEL_SIZE / 2,
                 borderColor: theme.colors.primary + '20',
             }]} />
-            <View style={[styles.innerRing, { 
-                width: WHEEL_SIZE - 30, height: WHEEL_SIZE - 30, 
+            <View style={[styles.innerRing, {
+                width: WHEEL_SIZE - 30, height: WHEEL_SIZE - 30,
                 borderRadius: (WHEEL_SIZE - 30) / 2,
                 borderColor: theme.colors.primary + '10',
                 backgroundColor: theme.colors.background,
@@ -356,13 +357,13 @@ const AvatarWheel = ({ selectedId, onSelect, theme }) => {
             </View>
 
             {/* Rotating wheel with avatars */}
-            <Animated.View 
+            <Animated.View
                 style={[
                     styles.wheel,
-                    { 
-                        width: WHEEL_SIZE, 
+                    {
+                        width: WHEEL_SIZE,
                         height: WHEEL_SIZE,
-                        transform: [{ 
+                        transform: [{
                             rotate: rotation.interpolate({
                                 inputRange: [-36000, 0, 36000],
                                 outputRange: ['-36000deg', '0deg', '36000deg'],
@@ -548,11 +549,11 @@ const CinemaButton = ({ title, onPress, variant = 'primary', theme, style }) => 
         activeOpacity={0.8}
         style={[
             {
-                backgroundColor: variant === 'primary' ? theme.colors.primary : 
-                                 variant === 'error' ? theme.colors.error + '20' : theme.colors.surface,
+                backgroundColor: variant === 'primary' ? theme.colors.primary :
+                    variant === 'error' ? theme.colors.error + '20' : theme.colors.surface,
                 borderWidth: 2,
-                borderColor: variant === 'primary' ? theme.colors.primary : 
-                             variant === 'error' ? theme.colors.error : theme.colors.primary,
+                borderColor: variant === 'primary' ? theme.colors.primary :
+                    variant === 'error' ? theme.colors.error : theme.colors.primary,
                 borderRadius: 8,
                 paddingVertical: 10,
                 paddingHorizontal: 16,
@@ -562,8 +563,8 @@ const CinemaButton = ({ title, onPress, variant = 'primary', theme, style }) => 
         ]}
     >
         <Text style={{
-            color: variant === 'primary' ? theme.colors.secondary : 
-                   variant === 'error' ? theme.colors.error : theme.colors.text,
+            color: variant === 'primary' ? theme.colors.secondary :
+                variant === 'error' ? theme.colors.error : theme.colors.text,
             fontSize: 13,
             fontFamily: 'CabinetGrotesk-Black',
             letterSpacing: 2,
@@ -599,10 +600,10 @@ export default function ProfileScreen({ navigation }) {
 
     const hasUnsavedChanges = () => {
         if (!existingProfile) return true;
-        return username !== existingProfile.username || 
-               selectedAvatarId !== existingProfile.avatarId ||
-               useCustomAvatar !== (existingProfile.useCustomAvatar || false) ||
-               JSON.stringify(customAvatarConfig) !== JSON.stringify(existingProfile.customAvatarConfig);
+        return username !== existingProfile.username ||
+            selectedAvatarId !== existingProfile.avatarId ||
+            useCustomAvatar !== (existingProfile.useCustomAvatar || false) ||
+            JSON.stringify(customAvatarConfig) !== JSON.stringify(existingProfile.customAvatarConfig);
     };
 
     const handleBackPress = () => {
@@ -626,6 +627,8 @@ export default function ProfileScreen({ navigation }) {
         }
     };
 
+
+
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setFirebaseUser(user);
@@ -646,8 +649,38 @@ export default function ProfileScreen({ navigation }) {
                 setMode('login');
             }
         });
+
+        GoogleSignin.configure({
+            webClientId: '831244408092-mn4bhuvq6v4il0nippaiaf7q729o97bu.apps.googleusercontent.com',
+        });
+
         return unsubscribe;
     }, []);
+
+    const handleGoogleLogin = async () => {
+        try {
+            playHaptic('medium');
+            await GoogleSignin.hasPlayServices();
+            const userInfo = await GoogleSignin.signIn();
+            const idToken = userInfo.data.idToken;
+            const credential = GoogleAuthProvider.credential(idToken);
+            await signInWithCredential(auth, credential);
+            playHaptic('success');
+        } catch (error) {
+            if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+                // user cancelled the login flow
+            } else if (error.code === statusCodes.IN_PROGRESS) {
+                // operation (e.g. sign in) is in progress already
+            } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+                // play services not available or outdated
+                Alert.alert('Error', 'Google Play Services not available');
+            } else {
+                // some other error happened
+                console.error(error);
+                Alert.alert('Google Login Error', error.message);
+            }
+        }
+    };
 
     const loadProfile = async (user) => {
         try {
@@ -702,6 +735,8 @@ export default function ProfileScreen({ navigation }) {
         }
     };
 
+
+
     const handlePasswordReset = async () => {
         if (!email.trim()) { Alert.alert('Error', 'Please enter your email'); return; }
         try {
@@ -744,10 +779,10 @@ export default function ProfileScreen({ navigation }) {
         const usernameRef = child(ref(database), `usernames/${name.toLowerCase()}`);
         const snapshot = await get(usernameRef);
         if (!snapshot.exists()) return null;
-        
+
         const data = snapshot.val();
         let ownerUid = null;
-        
+
         if (typeof data === 'string') {
             ownerUid = data;
         } else if (data.releasedAt) {
@@ -762,13 +797,13 @@ export default function ProfileScreen({ navigation }) {
         } else {
             ownerUid = data.uid || data;
         }
-        
+
         // IMPORTANT: Verify the owner UID still exists (account not deleted)
         if (ownerUid) {
             try {
                 const userRef = child(ref(database), `users/${ownerUid}`);
                 const userSnapshot = await get(userRef);
-                
+
                 // If user doesn't exist in database, the username is orphaned - clean it up
                 if (!userSnapshot.exists()) {
                     // Also check if there's any auth user with this UID by checking usernames
@@ -781,7 +816,7 @@ export default function ProfileScreen({ navigation }) {
                 console.log('Error verifying username owner:', error);
             }
         }
-        
+
         return ownerUid;
     };
 
@@ -814,17 +849,17 @@ export default function ProfileScreen({ navigation }) {
             if (oldUsername && oldUsername.toLowerCase() !== name.toLowerCase()) {
                 await releaseUsername(oldUsername);
             }
-            
+
             // Save username registry entry
             await set(ref(database, `usernames/${name.toLowerCase()}`), { uid: firebaseUser.uid });
-            
+
             // Save user data (so we can verify username ownership later)
             await set(ref(database, `users/${firebaseUser.uid}`), {
                 username: name,
                 avatarId: selectedAvatarId,
                 updatedAt: Date.now()
             });
-            
+
             await updateProfile(firebaseUser, { displayName: name });
             const userProfile = {
                 username: name,
@@ -886,32 +921,32 @@ export default function ProfileScreen({ navigation }) {
             Alert.alert('Error', 'Password is required to delete account.');
             return;
         }
-        
+
         setShowDeleteModal(false);
         playHaptic('medium');
-        
+
         try {
             // Re-authenticate user before deletion
             const credential = EmailAuthProvider.credential(firebaseUser.email, deletePassword);
             await reauthenticateWithCredential(firebaseUser, credential);
-            
+
             // Delete username from database (check both existingProfile and displayName)
             const usernameToDelete = existingProfile?.username || firebaseUser.displayName;
             if (usernameToDelete) {
                 await remove(ref(database, `usernames/${usernameToDelete.toLowerCase()}`));
             }
             await remove(ref(database, `users/${firebaseUser.uid}`));
-            
+
             // Clear local storage
             await AsyncStorage.removeItem('user_profile');
             await AsyncStorage.removeItem('user_settings');
-            
+
             // Delete Firebase Auth account
             await deleteUser(firebaseUser);
-            
+
             playHaptic('success');
             Alert.alert('Account Deleted', 'Your account and all data have been permanently deleted.');
-            
+
             setExistingProfile(null);
             setUsername('');
             setEmail('');
@@ -1019,11 +1054,27 @@ export default function ProfileScreen({ navigation }) {
                 style={{ marginTop: 8 }}
             />
 
-            <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>OR</Text>
-                <View style={styles.dividerLine} />
-            </View>
+            {mode === 'login' && (
+                <>
+                    <View style={styles.divider}>
+                        <View style={styles.dividerLine} />
+                        <Text style={styles.dividerText}>OR</Text>
+                        <View style={styles.dividerLine} />
+                    </View>
+
+                    <CinemaButton
+                        title="G - SIGN IN WITH GOOGLE"
+                        onPress={handleGoogleLogin}
+                        theme={theme}
+                        variant="secondary"
+                        style={{ borderColor: theme.colors.textSecondary }}
+                    />
+                </>
+            )}
+
+
+
+
 
             <TouchableOpacity onPress={() => { playHaptic('light'); setMode(mode === 'login' ? 'signup' : 'login'); }}>
                 <Text style={styles.switchText}>
@@ -1122,8 +1173,8 @@ export default function ProfileScreen({ navigation }) {
                         </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                        onPress={() => { 
-                            playHaptic('light'); 
+                        onPress={() => {
+                            playHaptic('light');
                             if (!customAvatarConfig) {
                                 // No custom avatar yet, open builder
                                 setShowAvatarBuilder(true);
@@ -1148,7 +1199,7 @@ export default function ProfileScreen({ navigation }) {
                     <>
                         <Text style={styles.sectionLabel}>SPIN TO SELECT CHARACTER</Text>
                         <View style={styles.omnitrixContainer}>
-                            <AvatarWheel 
+                            <AvatarWheel
                                 selectedId={selectedAvatarId}
                                 onSelect={setSelectedAvatarId}
                                 theme={theme}
@@ -1201,16 +1252,18 @@ export default function ProfileScreen({ navigation }) {
         );
     };
 
-    // Use View for profile modes (no scroll needed), ScrollView for auth forms only
-    const needsScroll = mode === 'login' || mode === 'signup' || mode === 'forgot_password';
+    // Use ScrollView for small screens (iPhone 8 height ~667)
+    const { height } = Dimensions.get('window');
+    const isSmallScreen = height < 700;
+    const needsScroll = mode === 'login' || mode === 'signup' || mode === 'forgot_password' || (isSmallScreen && (mode === 'profile_view' || mode === 'profile_setup'));
 
     const content = (
         <>
             {renderHeader(
                 mode === 'profile_view' ? 'PROFILE' :
-                mode === 'profile_setup' ? 'SETUP' :
-                mode === 'forgot_password' ? 'RECOVER' :
-                mode === 'verification' ? 'VERIFY' : 'ACCOUNT'
+                    mode === 'profile_setup' ? 'SETUP' :
+                        mode === 'forgot_password' ? 'RECOVER' :
+                            mode === 'verification' ? 'VERIFY' : 'ACCOUNT'
             )}
 
             {authLoading ? (
@@ -1234,8 +1287,8 @@ export default function ProfileScreen({ navigation }) {
             <FilmPerforations side="right" theme={theme} />
 
             {needsScroll ? (
-                <ScrollView 
-                    contentContainerStyle={styles.scrollContent} 
+                <ScrollView
+                    contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                     bounces={false}
