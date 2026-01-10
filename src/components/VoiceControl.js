@@ -25,10 +25,20 @@ export default function VoiceControl() {
                 }}
                 activeOpacity={0.8}
             >
+                {/* Visual Background for contrast */}
+                <View style={{
+                    position: 'absolute',
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    backgroundColor: isMuted ? theme.colors.error : theme.colors.primary,
+                    opacity: 0.2,
+                }} />
+
                 <Ionicons
                     name={isMuted ? "mic-off" : "mic"}
-                    size={20}
-                    color={isMuted ? theme.colors.text : "#000"}
+                    size={24}
+                    color={isMuted ? theme.colors.error : theme.colors.primary}
                 />
 
                 {/* Tech Deco Lines */}
@@ -42,44 +52,48 @@ export default function VoiceControl() {
 const getStyles = (theme) => StyleSheet.create({
     container: {
         position: 'absolute',
-        top: Platform.OS === 'ios' ? 60 : 40,
+        top: Platform.OS === 'ios' ? 50 : 35, // Align with typical header area
         left: '50%',
-        marginLeft: -22, // Center the 44px button
-        zIndex: 100,
+        marginLeft: -24, // Center the 48px button
+        zIndex: 999, // Ensure it's on top of everything
     },
     button: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 2,
-        elevation: 5,
+        elevation: 8,
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 3,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.5,
+        shadowRadius: 5,
+        backgroundColor: theme.colors.surface,
     },
     activeButton: {
-        backgroundColor: theme.colors.primary, // Kodak Yellow
         borderColor: theme.colors.primary,
+        backgroundColor: 'rgba(255, 184, 0, 0.1)', // Subtle tint
     },
     mutedButton: {
-        backgroundColor: theme.colors.error, // Red
         borderColor: theme.colors.error,
+        backgroundColor: 'rgba(255, 59, 48, 0.1)',
     },
+    // Extra visual for "Cinematic" feel
     decoLineTop: {
         position: 'absolute',
-        top: -4,
-        width: 2,
-        height: 4,
+        top: -6,
+        width: 4,
+        height: 6,
         backgroundColor: theme.colors.text,
+        borderRadius: 2,
     },
     decoLineBottom: {
         position: 'absolute',
-        bottom: -4,
-        width: 2,
-        height: 4,
+        bottom: -6,
+        width: 4,
+        height: 6,
         backgroundColor: theme.colors.text,
+        borderRadius: 2,
     }
 });

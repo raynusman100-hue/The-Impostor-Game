@@ -11,6 +11,7 @@ import ChatSystem from '../components/ChatSystem';
 import { CustomAvatar } from '../utils/AvatarGenerator';
 import { CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
 import VoiceControl from '../components/VoiceControl';
+import AdComponent from '../components/AdComponent';
 
 export default function WifiVotingScreen({ route, navigation }) {
     const { theme } = useTheme();

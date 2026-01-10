@@ -20,6 +20,7 @@ import HowToPlayScreen from './src/screens/HowToPlayScreen';
 import ThemeSelectorScreen from './src/screens/ThemeSelectorScreen';
 import PrivacyPolicyScreen from './src/screens/PrivacyPolicyScreen';
 import TermsOfServiceScreen from './src/screens/TermsOfServiceScreen';
+import ProVersionScreen from './src/screens/ProVersionScreen';
 import { ThemeProvider, useTheme } from './src/utils/ThemeContext';
 import { SettingsProvider } from './src/utils/SettingsContext';
 import { VoiceChatProvider } from './src/utils/VoiceChatContext';
@@ -49,7 +50,7 @@ function AppNavigator() {
         initialRouteName="Home"
         screenOptions={{
           headerStyle: {
-            backgroundColor: theme.colors.background,
+            backgroundColor: 'transparent',
             elevation: 0,
             shadowOpacity: 0,
             borderBottomWidth: 0,
@@ -71,7 +72,7 @@ function AppNavigator() {
         <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
         <Stack.Screen name="HowToPlay" component={HowToPlayScreen} options={{ headerShown: true }} />
-        <Stack.Screen name="WifiModeSelector" component={WifiModeSelectorScreen} options={{ headerShown: true }} />
+        <Stack.Screen name="WifiModeSelector" component={WifiModeSelectorScreen} options={{ headerShown: true, headerTransparent: true }} />
         <Stack.Screen name="Host" component={HostScreen} options={{ headerShown: true }} />
         <Stack.Screen name="Join" component={JoinScreen} options={{ headerShown: true }} />
         <Stack.Screen name="WifiLobby" component={WifiLobbyScreen} options={{ headerShown: false }} />
@@ -86,6 +87,7 @@ function AppNavigator() {
         <Stack.Screen name="WifiWhoStarts" component={WifiWhoStartsScreen} options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="Discussion" component={DiscussionScreen} options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="Result" component={ResultScreen} options={{ headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen name="ProVersion" component={ProVersionScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

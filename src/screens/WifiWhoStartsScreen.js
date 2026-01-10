@@ -6,12 +6,16 @@ import { CustomAvatar } from '../utils/AvatarGenerator';
 import { database } from '../utils/firebase';
 import { ref, get, onValue, off, update } from 'firebase/database';
 import { playHaptic } from '../utils/haptics';
+import VoiceControl from '../components/VoiceControl';
+import { useVoiceChat } from '../utils/VoiceChatContext';
 
 export default function WifiWhoStartsScreen({ route, navigation }) {
     const { theme } = useTheme();
     const styles = getStyles(theme);
     const { roomCode, playerId, playerCount } = route.params;
-    
+
+
+
     const [startPlayer, setStartPlayer] = useState(null);
     const isHost = playerId === 'host-id';
     const [countdown, setCountdown] = useState(5);
@@ -27,7 +31,7 @@ export default function WifiWhoStartsScreen({ route, navigation }) {
     const navigateToDiscussion = useCallback(() => {
         if (hasNavigated.current) return;
         hasNavigated.current = true;
-        
+
         playHaptic('medium');
         navigation.replace('Discussion', {
             timeLeft: playerCount * 60,
@@ -45,26 +49,26 @@ export default function WifiWhoStartsScreen({ route, navigation }) {
                 navigateToDiscussion();
             }
         }, 3000);
-        
+
         return () => clearTimeout(timeout);
     }, [startPlayer, navigateToDiscussion]);
 
     // Host picks and sets starting player, others ONLY listen for it from Firebase
     useEffect(() => {
         if (startPlayerSet.current) return;
-        
+
         const gameStateRef = ref(database, `rooms/${roomCode}/gameState`);
-        
+
         // Listen for starting player updates FIRST (for all players)
         const unsubscribe = onValue(gameStateRef, (snapshot) => {
             if (!snapshot.exists()) return;
-            
+
             const gameState = snapshot.val();
             if (gameState.startingPlayerId) {
                 const assignments = gameState.assignments || {};
                 const players = Object.values(assignments);
                 const starter = players.find(p => p.id === gameState.startingPlayerId);
-                
+
                 if (starter) {
                     console.log("[WifiWhoStarts] Firebase has starter:", starter.name);
                     startPlayerSet.current = true;
@@ -80,66 +84,66 @@ export default function WifiWhoStartsScreen({ route, navigation }) {
                 }
             }
         });
-        
+
         // Only HOST sets the starting player if not already set
         const setupStartingPlayer = async () => {
             if (!isHost) {
                 console.log("[WifiWhoStarts] Not host, waiting for Firebase...");
                 return; // Non-host players only listen, never set
             }
-            
+
             try {
                 const snapshot = await get(gameStateRef);
-                
+
                 if (!snapshot.exists()) {
                     console.log("[WifiWhoStarts] No game state found");
                     return;
                 }
-                
+
                 const gameState = snapshot.val();
                 const assignments = gameState.assignments || {};
                 const players = Object.values(assignments);
-                
+
                 console.log("[WifiWhoStarts] Host checking - Players:", players.length);
                 console.log("[WifiWhoStarts] Existing startingPlayerId:", gameState.startingPlayerId);
-                
+
                 // If starting player already set, don't override
                 if (gameState.startingPlayerId) {
                     console.log("[WifiWhoStarts] Starting player already set, skipping");
                     return;
                 }
-                
+
                 // Host picks the starting player
                 if (players.length > 0) {
                     const randomPlayer = players[Math.floor(Math.random() * players.length)];
                     console.log("[WifiWhoStarts] Host picking starter:", randomPlayer.name);
-                    
+
                     // Save to Firebase so all devices see the same player
                     await update(gameStateRef, {
                         startingPlayerId: randomPlayer.id,
                         startingPlayerName: randomPlayer.name,
                         startingPlayerAvatar: randomPlayer.avatarId || 1
                     });
-                    
+
                     // The onValue listener above will pick this up and set the state
                 }
             } catch (error) {
                 console.error("[WifiWhoStarts] Error setting starting player:", error);
             }
         };
-        
+
         // Small delay for host to ensure Firebase listener is ready
         if (isHost) {
             setTimeout(setupStartingPlayer, 300);
         }
-        
+
         return () => off(gameStateRef);
     }, [roomCode, isHost]);
 
     // Auto-countdown to discussion
     useEffect(() => {
         if (!startPlayer) return;
-        
+
         const timer = setInterval(() => {
             setCountdown(prev => {
                 if (prev <= 1) {
@@ -149,7 +153,7 @@ export default function WifiWhoStartsScreen({ route, navigation }) {
                 return prev - 1;
             });
         }, 1000);
-        
+
         return () => clearInterval(timer);
     }, [startPlayer]);
 
@@ -159,6 +163,14 @@ export default function WifiWhoStartsScreen({ route, navigation }) {
             navigateToDiscussion();
         }
     }, [countdown, startPlayer, navigateToDiscussion]);
+
+    // Voice Chat
+    const { joinChannel } = useVoiceChat();
+    useEffect(() => {
+        if (roomCode) {
+            joinChannel(roomCode, 0);
+        }
+    }, [roomCode]);
 
     if (!startPlayer) {
         return (
@@ -170,6 +182,7 @@ export default function WifiWhoStartsScreen({ route, navigation }) {
 
     return (
         <LinearGradient style={styles.container} colors={theme.colors.backgroundGradient || [theme.colors.background, theme.colors.background]}>
+            <VoiceControl />
             {/* Film Strip Header */}
             <View style={styles.filmHeader}>
                 <View style={styles.filmStrip}>
@@ -181,14 +194,14 @@ export default function WifiWhoStartsScreen({ route, navigation }) {
 
             <View style={styles.content}>
                 <Text style={styles.title}>DISCUSSION STARTS WITH</Text>
-                
+
                 <View style={styles.playerContainer}>
                     <View style={styles.avatarWrapper}>
                         <CustomAvatar id={startPlayer.avatarId || 1} size={120} />
                     </View>
                     <Text style={styles.playerName}>{startPlayer.name?.toUpperCase()}</Text>
                 </View>
-                
+
                 <Text style={styles.hint}>THEY WILL GIVE THE FIRST CLUE</Text>
             </View>
 

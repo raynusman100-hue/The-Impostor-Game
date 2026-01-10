@@ -13,6 +13,7 @@ import { ref, onValue, off, update, set, get, serverTimestamp, remove } from 'fi
 import { safeFirebaseUpdate, verifyRoomAccess } from '../utils/connectionUtils';
 import ChatSystem from '../components/ChatSystem';
 import VoiceControl from '../components/VoiceControl';
+import { useVoiceChat } from '../utils/VoiceChatContext';
 
 // Film perforation component for Kodak aesthetic (same as SetupScreen)
 const FilmPerforations = ({ side, theme }) => {
@@ -198,6 +199,14 @@ export default function DiscussionScreen({ route, navigation }) {
             return () => off(playerRef);
         }
     }, [isWifi, roomCode, playerId]);
+
+    // Voice Chat Integration
+    const { joinChannel } = useVoiceChat();
+    useEffect(() => {
+        if (isWifi && roomCode) {
+            joinChannel(roomCode, 0);
+        }
+    }, [isWifi, roomCode]);
 
     // 2. Main Game Stream Listener + Room Monitoring - OPTIMIZED TO PREVENT DOUBLE LOADING
     useEffect(() => {

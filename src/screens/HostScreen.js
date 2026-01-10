@@ -14,504 +14,267 @@ import LanguageSelectorModal from '../components/LanguageSelectorModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ChatSystem from '../components/ChatSystem';
 import { CustomAvatar } from '../utils/AvatarGenerator';
+import { CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
 import VoiceControl from '../components/VoiceControl';
 import { useVoiceChat } from '../utils/VoiceChatContext';
-
-// Film perforation component for Kodak aesthetic
-const FilmPerforations = ({ side, theme }) => {
-    const perforationColor = theme.colors.primary + '40';
-
-    return (
-        <View style={[filmPerforationStyles.perforationStrip, side === 'left' ? filmPerforationStyles.leftStrip : filmPerforationStyles.rightStrip]}>
-            {[...Array(12)].map((_, i) => (
-                <View key={i} style={[filmPerforationStyles.perforation, { backgroundColor: perforationColor }]} />
-            ))}
-        </View>
-    );
-};
-
-const filmPerforationStyles = StyleSheet.create({
-    perforationStrip: {
-        position: 'absolute',
-        top: 0,
-        bottom: 0,
-        width: 18,
-        justifyContent: 'space-evenly',
-        alignItems: 'center',
-        paddingVertical: 40,
-        zIndex: 1,
-    },
-    leftStrip: { left: 2 },
-    rightStrip: { right: 2 },
-    perforation: {
-        width: 10,
-        height: 14,
-        borderRadius: 2,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 184, 0, 0.3)',
-    },
-});
+import AdManager from '../utils/AdManager';
 
 export default function HostScreen({ navigation, route }) {
     const { theme } = useTheme();
     const styles = getStyles(theme);
-    const { playerData, existingRoomCode } = route.params || {}; // Added existingRoomCode for play again
+    const { playerData, existingRoomCode } = route.params || {};
 
     const [roomCode, setRoomCode] = useState(existingRoomCode || '');
     const [players, setPlayers] = useState([]);
 
-    // Voice Chat Integration
-    const { joinChannel, leaveChannel } = useVoiceChat();
-
     // Game Settings
     const [impostorCount, setImpostorCount] = useState(1);
-    const [selectedCategories, setSelectedCategories] = useState(['all']);
-    const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
+    const [selectedCategory, setSelectedCategory] = useState('all');
     const [language, setLanguage] = useState('en');
-    const [isLanguageModalVisible, setIsLanguageModalVisible] = useState(false);
 
+    // UI State
+    const [showChat, setShowChat] = useState(false);
+
+    // Voice Chat
+    const { joinChannel, leaveChannel } = useVoiceChat();
+
+    // Generate Room Code if needed
     useEffect(() => {
-        if (!playerData) {
-            Alert.alert("Error", "Missing profile data.", [
-                { text: "Go Back", onPress: () => navigation.goBack() }
-            ]);
-            return;
-        }
-
-        const loadLanguage = async () => {
-            try {
-                const savedLanguage = await AsyncStorage.getItem('player_language_pref');
-                if (savedLanguage && SUPPORTED_LANGUAGES.some(l => l.code === savedLanguage)) {
-                    setLanguage(savedLanguage);
-                }
-            } catch (error) {
-                console.log('Failed to load language', error);
-            }
-        };
-        loadLanguage();
-    }, [playerData]);
-
-    const handleLanguageChange = async (lang) => {
-        setLanguage(lang);
-        setIsLanguageModalVisible(false);
-        try {
-            await AsyncStorage.setItem('player_language_pref', lang);
-        } catch (error) {
-            console.log('Failed to save language', error);
-        }
-    };
-
-    const pulseAnim = React.useRef(new Animated.Value(1)).current;
-
-    // Initialize room code once
-    useEffect(() => {
-        if (!playerData) return;
-
         if (!roomCode) {
-            const code = existingRoomCode || Math.floor(100000 + Math.random() * 900000).toString();
+            // Generate 4 letter code
+            const code = Math.random().toString(36).substring(2, 6).toUpperCase();
             setRoomCode(code);
         }
-    }, [playerData, existingRoomCode, roomCode]);
+    }, []);
 
-    // Auto-join Voice Channel when room is created/ready
+    // Setup Room and Listeners
     useEffect(() => {
-        if (roomCode && playerData?.uid) {
-            console.log("🔊 HOST: Joining voice channel", roomCode);
-            // Use numeric ID for Agora if possible, or hash string. 
-            // For simplicity in this demo, passing 0 lets Agora assign one, 
-            // but for tracking who is talking we usually want a consistent ID.
-            // Since we don't have integer IDs easily effectively here without mapping, 
-            // we'll pass 0 for now or a simple hash.
-            joinChannel(roomCode, 0);
-        }
-        return () => {
-            // Optional: Don't leave if navigating to game screens (handled by context/navigation persistence), 
-            // but usually we want to stay connected.
-            // If we strictly leave on unmount, audio cuts during transition.
-            // Strategy: Only leave if we are actually destroying the session (like going back home).
-            // Handled by beforeRemove listener below?
-        }
-    }, [roomCode, playerData]);
-
-    // Cleanup voice on total exit
-    useEffect(() => {
-        const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-            // If going back to Home (not game), leave channel
-            const targetRoute = e.data?.action?.payload?.name;
-            if (targetRoute === 'Home') {
-                leaveChannel();
-            }
-        });
-        return unsubscribe;
-    }, [navigation]);
-
-    // Track if listener is set up
-    const listenerSetupRef = React.useRef(false);
-    const currentRoomCodeRef = React.useRef(null);
-
-    // Main room setup and listeners - only run when roomCode is set
-    useEffect(() => {
-        Animated.loop(
-            Animated.sequence([
-                Animated.timing(pulseAnim, { toValue: 1.05, duration: 1000, useNativeDriver: true }),
-                Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
-            ])
-        ).start();
-
-        if (!playerData || !roomCode) return;
-
-        // Skip if listener already set up for this room
-        if (listenerSetupRef.current && currentRoomCodeRef.current === roomCode) {
-            console.log("🔄 HOST: Listener already set up for room:", roomCode);
-            return;
-        }
+        if (!roomCode || !playerData) return;
 
         const roomRef = ref(database, `rooms/${roomCode}`);
-        const playersRef = ref(database, `rooms/${roomCode}/players`);
 
+        // Create room if new
         const setupRoom = async () => {
-            if (existingRoomCode) {
-                // RETURNING TO EXISTING ROOM - just update status, don't recreate
-                console.log("🔄 HOST: Returning to existing room:", roomCode);
-
-                // First cancel any existing onDisconnect handlers
-                try {
-                    await onDisconnect(roomRef).cancel();
-                } catch (e) {
-                    // Ignore if no handler exists
-                }
-
-                await update(roomRef, {
-                    status: 'lobby',
-                    gameStarted: false,
-                    gameInProgress: false,
-                    hostDisconnected: false,
-                    hostLeft: false
-                });
-            } else {
-                // CREATING NEW ROOM
+            if (!existingRoomCode) {
                 console.log("🔄 HOST: Creating new room:", roomCode);
                 await set(roomRef, {
                     status: 'lobby',
                     createdAt: Date.now(),
                     host: playerData.name,
                     hostId: playerData.uid,
-                    hostAvatar: playerData.avatarId
+                    hostAvatar: playerData.avatarId,
+                    hostAvatarConfig: playerData.customAvatarConfig || null,
+                    players: {
+                        [playerData.uid]: {
+                            id: playerData.uid,
+                            name: playerData.name,
+                            avatarId: playerData.avatarId,
+                            customAvatarConfig: playerData.customAvatarConfig || null,
+                            isHost: true
+                        }
+                    },
+                    gameState: {
+                        language: language,
+                        impostorCount: impostorCount,
+                        category: selectedCategory
+                    }
                 });
             }
-
-            // Set up disconnect handler AFTER room is ready
             onDisconnect(roomRef).remove();
         };
 
         setupRoom();
 
-        console.log("🔄 HOST: Setting up players listener for room:", roomCode);
-        listenerSetupRef.current = true;
-        currentRoomCodeRef.current = roomCode;
-
-        // Use the unsubscribe function returned by onValue
-        const unsubscribePlayers = onValue(playersRef, (snapshot) => {
+        // Listen for players
+        const playersRef = ref(database, `rooms/${roomCode}/players`);
+        const unsubPlayers = onValue(playersRef, (snapshot) => {
             const data = snapshot.val();
-            console.log("🔄 HOST: Players update received:", data);
             if (data) {
-                // Filter out any null/undefined entries and create fresh array
-                const playerList = Object.entries(data)
-                    .filter(([id, info]) => info && info.name) // Only include valid players
-                    .map(([id, info]) => ({
-                        id,
-                        ...info
-                    }));
-                // Replace entire state with new array
+                const playerList = Object.values(data).filter(p => p.id !== playerData.uid);
                 setPlayers(playerList);
-                console.log("🔄 HOST: Players list updated:", playerList.length, "players");
             } else {
                 setPlayers([]);
-                console.log("🔄 HOST: No players in room");
             }
         });
-
-        // When host navigates away (NOT during play again), delete the room
-        // Only set this up for NEW rooms, not existing ones
-        let beforeRemoveListener = null;
-        if (!existingRoomCode) {
-            beforeRemoveListener = navigation.addListener('beforeRemove', (e) => {
-                // Don't delete room if navigating to game screens
-                const targetRoute = e.data?.action?.payload?.name;
-                if (targetRoute === 'RoleReveal' || targetRoute === 'Discussion' || targetRoute === 'WifiVoting' || targetRoute === 'Result') {
-                    return; // Don't delete room during game
-                }
-                remove(roomRef);
-            });
-        }
 
         return () => {
-            console.log("🔄 HOST: Cleaning up listeners for room:", roomCode);
-            listenerSetupRef.current = false;
-            currentRoomCodeRef.current = null;
-            unsubscribePlayers(); // Use the unsubscribe function
-            if (beforeRemoveListener) {
-                beforeRemoveListener();
-            }
+            off(playersRef);
         };
-    }, [navigation, playerData, roomCode, existingRoomCode]);
+    }, [roomCode, playerData, existingRoomCode]);
 
-    const toggleCategory = (key) => {
-        playHaptic('light');
-        setSelectedCategories(prev => {
-            if (key === 'all') return ['all'];
-            let newCategories = prev.includes('all') ? [] : [...prev];
-            if (newCategories.includes(key)) {
-                newCategories = newCategories.filter(c => c !== key);
-            } else {
-                newCategories.push(key);
+    // Listen for Game Start (Navigation)
+    useEffect(() => {
+        if (!roomCode) return;
+        const roomRef = ref(database, `rooms/${roomCode}`);
+        const unsub = onValue(roomRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data && data.status === 'reveal') {
+                console.log("HOST: Game started, navigating to RoleReveal");
+                navigation.replace('RoleReveal', {
+                    mode: 'wifi',
+                    roomCode: roomCode,
+                    playerId: playerData.uid,
+                    category: selectedCategory, // Pass category
+                    playerCount: players.length + 1
+                });
             }
-            return newCategories.length ? newCategories : ['all'];
+        });
+        return () => off(roomRef);
+    }, [roomCode, navigation, playerData, players, selectedCategory]);
+
+    // Cleanup Room on Unmount/Leave
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+            // If navigating to Game, don't destroy room.
+            // If navigating back to Home, destroy room.
+            const action = e.data.action;
+            if (action.type === 'POP' || (action.payload && action.payload.name === 'Home')) {
+                if (roomCode) {
+                    remove(ref(database, `rooms/${roomCode}`));
+                }
+            }
+        });
+        return unsubscribe;
+    }, [navigation, roomCode]);
+
+    // Voice Chat Integration
+    useEffect(() => {
+        if (roomCode) {
+            console.log("🔊 HOST: Joining voice channel", roomCode);
+            joinChannel(roomCode, 0);
+        }
+        return () => {
+            leaveChannel();
+        };
+    }, [roomCode]);
+
+    // Load Ad
+    useEffect(() => {
+        AdManager.loadInterstitial();
+    }, []);
+
+    const handleStartGame = () => {
+        if (players.length + 1 < 3) {
+            Alert.alert("Not Enough Players", "You need at least 3 players to start.");
+            return;
+        }
+
+        playHaptic('success');
+        AdManager.showInterstitial(() => {
+            startWifiGame(roomCode, players.length + 1, impostorCount, selectedCategory, language);
         });
     };
 
-    const handleShare = async () => {
-        try {
-            await Share.share({
-                message: `Join my Impostor IRL game! Room Code: ${roomCode}`,
-            });
-        } catch (error) {
-            console.log(error.message);
-        }
+    const handlePlayerTap = (name) => {
+        playHaptic('light');
+        Alert.alert('Player', name);
     };
-
-    const getMaxImpostors = (totalPlayers) => {
-        return Math.floor((totalPlayers - 1) / 2) || 1;
-    };
-
-    const handleStartGame = async () => {
-        const totalPlayers = players.length + 1; // +1 for host
-        if (totalPlayers < 3) {
-            playHaptic('error');
-            Alert.alert('Not Enough Players', 'Need at least 3 players (including you) to start!');
-            return;
-        }
-
-        const maxImpostors = getMaxImpostors(totalPlayers);
-        if (impostorCount > maxImpostors) {
-            playHaptic('error');
-            Alert.alert('Invalid Settings', `For ${totalPlayers} players, you can have max ${maxImpostors} impostors.`);
-            setImpostorCount(maxImpostors);
-            return;
-        }
-
-        try {
-            playHaptic('success');
-            const allPlayers = [
-                { id: 'host-id', name: playerData.name, avatarId: playerData.avatarId },
-                ...players
-            ];
-
-            await startWifiGame(roomCode, allPlayers, {
-                language,
-                impostorCount,
-                categories: selectedCategories
-            });
-
-            navigation.navigate('RoleReveal', {
-                mode: 'wifi',
-                roomCode,
-                playerId: 'host-id',
-                category: selectedCategories[0]
-            });
-        } catch (error) {
-            Alert.alert('Error', 'Failed to start game. Please try again.');
-        }
-    };
-
-    const [showChat, setShowChat] = useState(false);
-    const [unreadMessages, setUnreadMessages] = useState(0);
-
-    // Enhanced unread message handler
-    const handleUnreadChange = useCallback((count) => {
-        // Only show unread count when chat is not active
-        if (!showChat) {
-            setUnreadMessages(count);
-        } else {
-            setUnreadMessages(0);
-        }
-    }, [showChat]);
-
-    if (!playerData) return null;
 
     return (
-        <LinearGradient colors={theme.colors.backgroundGradient || [theme.colors.background, theme.colors.background, theme.colors.background]} style={styles.container}>
-            {/* Film perforations - side strips */}
-            <FilmPerforations side="left" theme={theme} />
-            <FilmPerforations side="right" theme={theme} />
-
-            {/* Header with room code */}
-            <View style={styles.header}>
-                <VoiceControl />
-                <Text style={styles.title}>ROOM CODE</Text>
-                <Animated.Text style={[styles.codeText, { transform: [{ scale: pulseAnim }] }]}>
-                    {roomCode}
-                </Animated.Text>
-            </View>
-
-            {/* Toggle Chat / Lobby */}
-            <View style={styles.tabContainer}>
-                <TouchableOpacity
-                    style={[styles.tab, !showChat && styles.activeTab]}
-                    onPress={() => {
-                        playHaptic('light');
-                        setShowChat(false);
-                    }}
-                >
-                    <Text style={[styles.tabText, !showChat && styles.activeTabText]}>LOBBY</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tab, showChat && styles.activeTab]}
-                    onPress={() => {
-                        playHaptic('light');
-                        setShowChat(true);
-                        setUnreadMessages(0);
-                    }}
-                >
-                    <View style={styles.tabContent}>
-                        <Text style={[styles.tabText, showChat && styles.activeTabText]}>CHAT</Text>
-                        {unreadMessages > 0 && !showChat && (
-                            <View style={styles.notificationDot} />
-                        )}
-                    </View>
-                </TouchableOpacity>
-            </View>
-
-            {showChat ? (
-                <View style={{ flex: 1, width: '100%', paddingBottom: 20 }}>
-                    <ChatSystem
-                        roomCode={roomCode}
-                        playerId="host-id"
-                        playerName={playerData.name}
-                        onUnreadChange={handleUnreadChange}
-                    />
+        <LinearGradient style={styles.container} colors={theme.colors.backgroundGradient || [theme.colors.background, theme.colors.background, theme.colors.background]}>
+            {/* Film Strip Header */}
+            <View style={styles.filmHeader}>
+                <View style={styles.filmStrip}>
+                    {[...Array(16)].map((_, i) => (
+                        <View key={i} style={styles.filmHole} />
+                    ))}
                 </View>
-            ) : (
-                <ScrollView
-                    contentContainerStyle={styles.scrollContent}
-                    showsVerticalScrollIndicator={false}
-                >
-                    {/* QR Code */}
-                    <View style={styles.qrContainer}>
-                        {roomCode ? (
-                            <QRCode value={roomCode} size={120} color={theme.colors.tertiary} backgroundColor="transparent" />
-                        ) : (
-                            <ActivityIndicator color={theme.colors.tertiary} />
-                        )}
-                    </View>
+            </View>
 
-                    {/* Host Info - Compact */}
-                    <View style={styles.hostCard}>
-                        <CustomAvatar id={playerData.avatarId} size={50} />
-                        <View style={styles.hostInfo}>
-                            <Text style={styles.hostName}>{playerData.name.toUpperCase()}</Text>
-                            <View style={styles.hostBadge}>
-                                <Text style={styles.hostBadgeText}>HOST</Text>
-                            </View>
+            <View style={styles.container}>
+                {/* Voice Control */}
+                <VoiceControl />
+
+                {/* Header / Room Code */}
+                <View style={styles.header}>
+                    <Text style={styles.title}>ROOM CODE</Text>
+                    <Text style={styles.codeText}>{roomCode}</Text>
+                </View>
+
+                {showChat ? (
+                    <View style={{ flex: 1 }}>
+                        <ChatSystem
+                            roomCode={roomCode}
+                            playerId={playerData.uid}
+                            playerName={playerData.name}
+                            onClose={() => setShowChat(false)}
+                        />
+                        <View style={{ padding: 10, alignItems: 'center' }}>
+                            <KodakButton
+                                title="CLOSE CHAT"
+                                onPress={() => setShowChat(false)}
+                                size="small"
+                                variant="secondary"
+                            />
                         </View>
                     </View>
+                ) : (
+                    <ScrollView contentContainerStyle={styles.scrollContent}>
+                        {/* QR Code */}
+                        <View style={styles.qrContainer}>
+                            <QRCode value={roomCode || 'LOADING'} size={120} color={theme.colors.text} backgroundColor="transparent" />
+                        </View>
 
-                    {/* Game Settings - Compact */}
-                    <View style={styles.settingsCard}>
-                        <View style={styles.settingRow}>
-                            <Text style={styles.settingLabel}>IMPOSTORS</Text>
-                            <View style={styles.counterControls}>
-                                <TouchableOpacity onPress={() => setImpostorCount(Math.max(1, impostorCount - 1))} style={styles.countBtn}>
-                                    <Text style={styles.countBtnText}>−</Text>
-                                </TouchableOpacity>
-                                <Text style={styles.countValue}>{impostorCount}</Text>
-                                <TouchableOpacity onPress={() => {
-                                    const max = getMaxImpostors(players.length + 1);
-                                    if (impostorCount < max) {
-                                        setImpostorCount(impostorCount + 1);
-                                    } else {
-                                        playHaptic('warning');
-                                    }
-                                }} style={styles.countBtn}>
-                                    <Text style={styles.countBtnText}>+</Text>
-                                </TouchableOpacity>
+                        {/* Chat Toggle */}
+                        <TouchableOpacity style={styles.tabContainer} onPress={() => setShowChat(true)}>
+                            <Text style={styles.tabText}>OPEN CHAT</Text>
+                        </TouchableOpacity>
+
+                        {/* Host Info */}
+                        <TouchableOpacity onPress={() => handlePlayerTap(playerData.name)} activeOpacity={0.8} style={styles.hostCard}>
+                            {playerData.customAvatarConfig ? (
+                                <CustomBuiltAvatar config={playerData.customAvatarConfig} size={50} />
+                            ) : (
+                                <CustomAvatar id={playerData.avatarId} size={50} />
+                            )}
+                            <View style={styles.hostInfo}>
+                                <Text style={styles.hostName}>{playerData.name?.toUpperCase()}</Text>
+                                <View style={styles.hostBadge}>
+                                    <Text style={styles.hostBadgeText}>HOST</Text>
+                                </View>
                             </View>
-                        </View>
+                        </TouchableOpacity>
 
-                        <View style={styles.settingButtons}>
-                            <TouchableOpacity
-                                style={styles.settingBtn}
-                                onPress={() => setIsLanguageModalVisible(true)}
-                            >
-                                <Text style={styles.settingBtnLabel}>LANG</Text>
-                                <Text style={styles.settingBtnValue}>
-                                    {SUPPORTED_LANGUAGES.find(l => l.code === language)?.code.toUpperCase()}
-                                </Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={styles.settingBtn}
-                                onPress={() => {
-                                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                                    setIsCategoriesOpen(!isCategoriesOpen);
-                                }}
-                            >
-                                <Text style={styles.settingBtnLabel}>CATEGORY</Text>
-                                <Text style={styles.settingBtnValue}>
-                                    {selectedCategories.includes('all') ? 'ALL' : selectedCategories.length}
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {isCategoriesOpen && (
-                            <View style={styles.categoryGrid}>
-                                {CATEGORY_LABELS.map((cat) => (
-                                    <TouchableOpacity
-                                        key={cat.key}
-                                        style={[styles.catItem, selectedCategories.includes(cat.key) && styles.catItemSelected]}
-                                        onPress={() => toggleCategory(cat.key)}
-                                    >
-                                        <Text style={[styles.catText, selectedCategories.includes(cat.key) && styles.catTextSelected]}>
-                                            {cat.label.toUpperCase()}
-                                        </Text>
+                        {/* Players List */}
+                        <View style={styles.playersCard}>
+                            <Text style={styles.playerCount}>PLAYERS ({players.length + 1}/3 MIN)</Text>
+                            <View style={styles.playerList}>
+                                <View style={styles.playerRow}>
+                                    {playerData.customAvatarConfig ? (
+                                        <CustomBuiltAvatar config={playerData.customAvatarConfig} size={28} />
+                                    ) : (
+                                        <CustomAvatar id={playerData.avatarId} size={28} />
+                                    )}
+                                    <Text style={styles.playerName}>{playerData.name}</Text>
+                                    <Text style={styles.youTag}>(YOU)</Text>
+                                </View>
+                                {players.map(p => (
+                                    <TouchableOpacity key={p.id} onPress={() => handlePlayerTap(p.name)} style={styles.playerRow}>
+                                        {p.customAvatarConfig ? (
+                                            <CustomBuiltAvatar config={p.customAvatarConfig} size={28} />
+                                        ) : (
+                                            <CustomAvatar id={p.avatarId || 1} size={28} />
+                                        )}
+                                        <Text style={styles.playerName}>{p.name}</Text>
                                     </TouchableOpacity>
                                 ))}
                             </View>
-                        )}
-                    </View>
-
-                    {/* Players List */}
-                    <View style={styles.playersCard}>
-                        <Text style={styles.playerCount}>PLAYERS ({players.length + 1}/3 MIN)</Text>
-                        <View style={styles.playerList}>
-                            <View style={styles.playerRow}>
-                                <CustomAvatar id={playerData.avatarId} size={28} />
-                                <Text style={styles.playerName}>{playerData.name.toUpperCase()}</Text>
-                                <Text style={styles.youTag}>(YOU)</Text>
-                            </View>
-                            {players.map((p) => (
-                                <View key={p.id} style={styles.playerRow}>
-                                    <CustomAvatar id={p.avatarId || 1} size={28} />
-                                    <Text style={styles.playerName}>{p.name}</Text>
-                                </View>
-                            ))}
                         </View>
-                    </View>
 
-                    {/* Action Buttons */}
-                    <View style={styles.footer}>
-                        <KodakButton title="SHARE INVITE" onPress={handleShare} variant="secondary" />
-                        <KodakButton title="START GAME" onPress={handleStartGame} disabled={players.length + 1 < 3} variant="primary" />
-                    </View>
-                </ScrollView>
-            )}
-
-            <LanguageSelectorModal
-                visible={isLanguageModalVisible}
-                onClose={() => setIsLanguageModalVisible(false)}
-                onSelect={handleLanguageChange}
-                currentLanguage={language}
-            />
+                        {/* Start Button */}
+                        <View style={styles.footer}>
+                            <KodakButton
+                                title="START GAME"
+                                onPress={handleStartGame}
+                                variant="primary"
+                                size="large"
+                                disabled={players.length + 1 < 3}
+                                fullWidth
+                            />
+                        </View>
+                    </ScrollView>
+                )}
+            </View>
         </LinearGradient>
     );
 }
@@ -565,6 +328,8 @@ const getStyles = (theme) => StyleSheet.create({
         fontFamily: theme.fonts.bold,
         fontSize: 13,
         letterSpacing: 2,
+        paddingHorizontal: 20,
+        paddingVertical: 5
     },
     activeTabText: {
         color: theme.colors.secondary,
@@ -772,5 +537,27 @@ const getStyles = (theme) => StyleSheet.create({
 
     footer: {
         gap: 12,
+    },
+
+    // Kodak Film Strip Decorations
+    filmHeader: {
+        width: '100%',
+        position: 'absolute',
+        top: 45,
+        left: 0,
+        right: 0,
+        zIndex: 5
+    },
+    filmStrip: {
+        flexDirection: 'row',
+        justifyContent: 'space-evenly',
+        paddingHorizontal: 5,
+    },
+    filmHole: {
+        width: 12,
+        height: 8,
+        backgroundColor: theme.colors.primary,
+        borderRadius: 2,
+        opacity: 0.8,
     },
 });

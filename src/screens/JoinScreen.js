@@ -9,6 +9,9 @@ import { playHaptic } from '../utils/haptics';
 import { database } from '../utils/firebase';
 import { ref, get, set, push, onDisconnect } from 'firebase/database';
 import { CustomAvatar } from '../utils/AvatarGenerator';
+import { CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
+import VoiceControl from '../components/VoiceControl';
+import { useVoiceChat } from '../utils/VoiceChatContext';
 
 export default function JoinScreen({ navigation, route }) {
     const { theme } = useTheme();
@@ -85,6 +88,7 @@ export default function JoinScreen({ navigation, route }) {
                     avatarId: playerData.avatarId,
                     uid: playerData.uid,
                     status: 'waiting',
+                    customAvatarConfig: playerData.customAvatarConfig || null // SAVE CONFIG
                 });
 
                 // Navigate to lobby
@@ -162,14 +166,20 @@ export default function JoinScreen({ navigation, route }) {
                     ))}
                 </View>
             </View>
-            
+
+            <VoiceControl />
+
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <Text style={styles.title}>JOIN GAME</Text>
 
                 <View style={styles.inputSection}>
                     {/* User Profile Display */}
                     <View style={styles.profileCard}>
-                        <CustomAvatar id={playerData.avatarId} size={80} />
+                        {playerData.customAvatarConfig ? (
+                            <CustomBuiltAvatar config={playerData.customAvatarConfig} size={80} />
+                        ) : (
+                            <CustomAvatar id={playerData.avatarId} size={80} />
+                        )}
                         <Text style={styles.profileName}>{playerData.name.toUpperCase()}</Text>
                         <View style={styles.loggedInBadge}>
                             <Text style={styles.loggedInText}>LOGGED IN</Text>
@@ -205,7 +215,7 @@ export default function JoinScreen({ navigation, route }) {
                 </View>
 
             </ScrollView>
-            
+
             {/* Kodak Film Footer */}
             <View style={styles.filmFooter}>
                 <View style={styles.filmStrip}>
@@ -222,7 +232,7 @@ const getStyles = (theme) => StyleSheet.create({
     container: {
         flex: 1,
     },
-    
+
     // Kodak Film Strip Decorations
     filmHeader: {
         width: '100%',
@@ -244,7 +254,7 @@ const getStyles = (theme) => StyleSheet.create({
         borderRadius: 2,
         opacity: 0.8,
     },
-    
+
     scrollContent: {
         padding: theme.spacing.xl,
         alignItems: 'center',
@@ -258,7 +268,7 @@ const getStyles = (theme) => StyleSheet.create({
         marginBottom: 30,
         ...theme.textShadows.depth,
     },
-    
+
     inputSection: {
         width: '100%',
         marginBottom: 30,
@@ -285,7 +295,7 @@ const getStyles = (theme) => StyleSheet.create({
         letterSpacing: 8,
         textAlign: 'center',
     },
-    
+
     buttonRow: {
         flexDirection: 'row',
         width: '100%',
@@ -295,7 +305,7 @@ const getStyles = (theme) => StyleSheet.create({
     modeButton: {
         flex: 1,
     },
-    
+
     scannerContainer: {
         flex: 1,
         backgroundColor: 'black',
@@ -315,7 +325,7 @@ const getStyles = (theme) => StyleSheet.create({
         marginTop: 100,
         ...theme.textShadows.depth,
     },
-    
+
     profileCard: {
         alignItems: 'center',
         marginBottom: 30,

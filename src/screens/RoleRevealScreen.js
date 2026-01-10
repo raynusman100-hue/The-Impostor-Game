@@ -9,9 +9,11 @@ import { setPlayerReady } from '../utils/multiplayerLogic';
 import { database } from '../utils/firebase';
 import { ref, onValue, off, get, update } from 'firebase/database';
 import { CustomAvatar } from '../utils/AvatarGenerator';
+import { CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SUPPORTED_LANGUAGES } from '../utils/translationService';
 import VoiceControl from '../components/VoiceControl';
+import { useVoiceChat } from '../utils/VoiceChatContext';
 
 export default function RoleRevealScreen({ route, navigation }) {
     const { theme } = useTheme();
@@ -43,6 +45,14 @@ export default function RoleRevealScreen({ route, navigation }) {
             });
 
             return () => off(languageRef);
+        }
+    }, [isWifi, params.roomCode]);
+
+    // Voice Chat
+    const { joinChannel } = useVoiceChat();
+    useEffect(() => {
+        if (isWifi && params.roomCode) {
+            joinChannel(params.roomCode, 0);
         }
     }, [isWifi, params.roomCode]);
 
@@ -180,6 +190,7 @@ export default function RoleRevealScreen({ route, navigation }) {
                     name: p.name,
                     ready: p.ready || false, // Ensure boolean
                     avatarId: p.avatarId,
+                    customAvatarConfig: p.customAvatarConfig,
                     order: p.order || 0
                 })).sort((a, b) => a.order - b.order);
 
@@ -388,16 +399,28 @@ export default function RoleRevealScreen({ route, navigation }) {
                         contentContainerStyle={styles.statusListContent}
                     >
                         {allPlayersStatus.map((p) => (
-                            <View key={p.id} style={[styles.statusItem, styles.kodakStatusItem, p.ready && styles.statusItemReady, p.ready && styles.kodakStatusItemReady]}>
-                                <CustomAvatar id={p.avatarId} size={30} />
-                                <View style={[styles.statusBadge, styles.kodakStatusBadge]}>
-                                    {p.ready ? (
-                                        <Text style={styles.checkMark}>✓</Text>
-                                    ) : (
-                                        <ActivityIndicator size={10} color={theme.colors.secondary} />
-                                    )}
-                                </View>
-                            </View>
+                            {
+                                allPlayersStatus.map((p) => (
+                                    <TouchableOpacity
+                                        key={p.id}
+                                        style={[styles.statusItem, styles.kodakStatusItem, p.ready && styles.statusItemReady, p.ready && styles.kodakStatusItemReady]}
+                                        onPress={() => { playHaptic('light'); Alert.alert('Player', p.name); }}
+                                    >
+                                        {p.customAvatarConfig ? (
+                                            <CustomBuiltAvatar config={p.customAvatarConfig} size={30} />
+                                        ) : (
+                                            <CustomAvatar id={p.avatarId} size={30} />
+                                        )}
+                                        <View style={[styles.statusBadge, styles.kodakStatusBadge]}>
+                                            {p.ready ? (
+                                                <Text style={styles.checkMark}>✓</Text>
+                                            ) : (
+                                                <ActivityIndicator size={10} color={theme.colors.secondary} />
+                                            )}
+                                        </View>
+                                    </TouchableOpacity>
+                                ))
+                            }
                         ))}
                     </ScrollView>
                     <Text style={[styles.statusCount, styles.kodakStatusCount]}>

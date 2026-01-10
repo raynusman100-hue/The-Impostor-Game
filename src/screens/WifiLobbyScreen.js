@@ -8,11 +8,11 @@ import { playHaptic } from '../utils/haptics';
 import { database } from '../utils/firebase';
 import { ref, onValue, off, remove, get } from 'firebase/database';
 import { CustomAvatar } from '../utils/AvatarGenerator';
+import { CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
 
 import ChatSystem from '../components/ChatSystem';
 import VoiceControl from '../components/VoiceControl';
 import { useVoiceChat } from '../utils/VoiceChatContext';
-// ... existing imports
 
 // Film perforation component for Kodak aesthetic (same as SetupScreen)
 const FilmPerforations = ({ side, theme }) => {
@@ -62,6 +62,7 @@ export default function WifiLobbyScreen({ route, navigation }) {
     // Host Data
     const [hostName, setHostName] = useState('Waiting...');
     const [hostAvatar, setHostAvatar] = useState(1);
+    const [hostAvatarConfig, setHostAvatarConfig] = useState(null);
 
     const [showChat, setShowChat] = useState(false);
     const [unreadMessages, setUnreadMessages] = useState(0);
@@ -173,6 +174,7 @@ export default function WifiLobbyScreen({ route, navigation }) {
                 setRoomStatus(data.status);
                 setHostName(data.host || 'Unknown Host');
                 setHostAvatar(data.hostAvatar || 1);
+                setHostAvatarConfig(data.hostAvatarConfig || null); // Load host custom config
 
                 if (!hasNavigated && (data.status === 'voting' || data.status === 'game' || data.status === 'roles' || data.status === 'reveal')) {
                     navigateToGame(data.status);
@@ -242,6 +244,11 @@ export default function WifiLobbyScreen({ route, navigation }) {
             clearInterval(checkInterval);
         };
     }, [roomCode, playerId, navigation]);
+
+    const handlePlayerTap = (name) => {
+        playHaptic('light');
+        Alert.alert('Player', name);
+    };
 
     return (
         <LinearGradient
@@ -316,21 +323,29 @@ export default function WifiLobbyScreen({ route, navigation }) {
                             <Text style={styles.playerCount}>PLAYERS JOINED: {players.length + 1}</Text>
 
                             {/* Host Row */}
-                            <View style={styles.playerRow}>
-                                <CustomAvatar id={hostAvatar} size={32} />
+                            <TouchableOpacity onPress={() => handlePlayerTap(hostName)} style={styles.playerRow}>
+                                {hostAvatarConfig ? (
+                                    <CustomBuiltAvatar config={hostAvatarConfig} size={32} />
+                                ) : (
+                                    <CustomAvatar id={hostAvatar} size={32} />
+                                )}
                                 <Text style={styles.playerName} numberOfLines={1} ellipsizeMode="tail">
                                     {hostName.toUpperCase()} (HOST)
                                 </Text>
-                            </View>
+                            </TouchableOpacity>
 
                             {/* Players Rows */}
                             {players.map(p => (
-                                <View key={p.id} style={styles.playerRow}>
-                                    <CustomAvatar id={p.avatarId || 1} size={32} />
+                                <TouchableOpacity key={p.id} onPress={() => handlePlayerTap(p.name)} style={styles.playerRow}>
+                                    {p.customAvatarConfig ? (
+                                        <CustomBuiltAvatar config={p.customAvatarConfig} size={32} />
+                                    ) : (
+                                        <CustomAvatar id={p.avatarId || 1} size={32} />
+                                    )}
                                     <Text style={styles.playerName} numberOfLines={1} ellipsizeMode="tail">
                                         {p.name}
                                     </Text>
-                                </View>
+                                </TouchableOpacity>
                             ))}
                         </View>
                     </>

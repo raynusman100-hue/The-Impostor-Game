@@ -334,7 +334,7 @@ function AnimatedCharacter({ theme }) {
 
     const characterSize = getCharacterSize();
     const characterTop = getCharacterTop();
-    const characterSource = require('../../assets/nervous.png');
+    const characterSource = require('../../assets/sweat boy .png');
 
     return (
         <Animated.View

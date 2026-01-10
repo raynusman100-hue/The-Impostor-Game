@@ -9,7 +9,10 @@ import { useTheme } from '../utils/ThemeContext';
 import { playHaptic } from '../utils/haptics';
 import { CustomAvatar, TOTAL_AVATARS } from '../utils/AvatarGenerator';
 import { CustomBuiltAvatar, AvatarBuilder } from '../components/CustomAvatarBuilder';
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+
+WebBrowser.maybeCompleteAuthSession();
 
 // Omnitrix-style Avatar Wheel - Drag to rotate like a dial!
 const AvatarWheel = ({ selectedId, onSelect, theme }) => {
@@ -650,1012 +653,1001 @@ export default function ProfileScreen({ navigation }) {
             }
         });
 
-        GoogleSignin.configure({
+        const [request, response, promptAsync] = Google.useAuthRequest({
+            iosClientId: '831244408092-mn4bhuvq6v4il0nippaiaf7q729o97bu.apps.googleusercontent.com',
+            androidClientId: '831244408092-mn4bhuvq6v4il0nippaiaf7q729o97bu.apps.googleusercontent.com',
             webClientId: '831244408092-mn4bhuvq6v4il0nippaiaf7q729o97bu.apps.googleusercontent.com',
         });
 
-        return unsubscribe;
-    }, []);
-
-    const handleGoogleLogin = async () => {
-        try {
-            playHaptic('medium');
-            await GoogleSignin.hasPlayServices();
-            const userInfo = await GoogleSignin.signIn();
-            const idToken = userInfo.data.idToken;
-            const credential = GoogleAuthProvider.credential(idToken);
-            await signInWithCredential(auth, credential);
-            playHaptic('success');
-        } catch (error) {
-            if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-                // user cancelled the login flow
-            } else if (error.code === statusCodes.IN_PROGRESS) {
-                // operation (e.g. sign in) is in progress already
-            } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-                // play services not available or outdated
-                Alert.alert('Error', 'Google Play Services not available');
-            } else {
-                // some other error happened
-                console.error(error);
-                Alert.alert('Google Login Error', error.message);
+        useEffect(() => {
+            if (response?.type === 'success') {
+                const { id_token } = response.params;
+                const credential = GoogleAuthProvider.credential(id_token);
+                signInWithCredential(auth, credential)
+                    .then(() => playHaptic('success'))
+                    .catch((error) => Alert.alert('Login Failed', error.message));
             }
-        }
-    };
+        }, [response]);
 
-    const loadProfile = async (user) => {
-        try {
-            const savedProfile = await AsyncStorage.getItem('user_profile');
-            if (savedProfile) {
-                const profile = JSON.parse(savedProfile);
-                setExistingProfile(profile);
-                setSelectedAvatarId(profile.avatarId || 1);
-                setUseCustomAvatar(profile.useCustomAvatar || false);
-                setCustomAvatarConfig(profile.customAvatarConfig || null);
-                if (profile.username) setUsername(profile.username);
-            } else {
-                generateNewCode();
-            }
-        } catch (error) {
-            console.log('Error loading profile', error);
-        }
-    };
-
-    const generateNewCode = () => {
-        const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-        const numbers = "23456789";
-        let code = "#";
-        for (let i = 0; i < 2; i++) code += letters.charAt(Math.floor(Math.random() * letters.length));
-        for (let i = 0; i < 2; i++) code += numbers.charAt(Math.floor(Math.random() * numbers.length));
-        setGeneratedCode(code);
-    };
-
-    const handleSignup = async () => {
-        if (!email.trim() || !password.trim()) { Alert.alert('Error', 'Please enter email and password'); return; }
-        if (password.length < 6) { Alert.alert('Error', 'Password must be at least 6 characters'); return; }
-        if (password !== confirmPassword) { Alert.alert('Error', 'Passwords do not match'); return; }
-        try {
+        const handleGoogleLogin = () => {
             playHaptic('medium');
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            await sendEmailVerification(userCredential.user);
-            playHaptic('success');
-        } catch (error) {
-            if (error.code === 'auth/email-already-in-use') Alert.alert('Error', 'Email already in use.');
-            else Alert.alert('Signup Failed', error.message);
-        }
-    };
+            promptAsync();
+        };
 
-    const handleLogin = async () => {
-        if (!email.trim() || !password.trim()) { Alert.alert('Error', 'Please enter email and password'); return; }
-        try {
-            playHaptic('medium');
-            await signInWithEmailAndPassword(auth, email, password);
-            playHaptic('success');
-        } catch (error) {
-            Alert.alert('Login Failed', 'Invalid email or password');
-        }
-    };
-
-
-
-    const handlePasswordReset = async () => {
-        if (!email.trim()) { Alert.alert('Error', 'Please enter your email'); return; }
-        try {
-            playHaptic('medium');
-            await sendPasswordResetEmail(auth, email);
-            playHaptic('success');
-            Alert.alert('Email Sent', 'Check your inbox for reset link.', [{ text: 'OK', onPress: () => setMode('login') }]);
-        } catch (error) {
-            Alert.alert('Error', error.code === 'auth/user-not-found' ? 'No account found.' : error.message);
-        }
-    };
-
-    const handleCheckVerification = async () => {
-        if (!firebaseUser) return;
-        playHaptic('light');
-        try {
-            await reload(firebaseUser);
-            if (firebaseUser.emailVerified) {
-                playHaptic('success');
-                setMode(firebaseUser.displayName ? 'profile_view' : 'profile_setup');
-            } else {
-                Alert.alert('Not Verified', 'Please check your inbox.');
-            }
-        } catch (e) { console.log("Reload error", e); }
-    };
-
-    const handleResendVerification = async () => {
-        if (!firebaseUser) return;
-        try {
-            playHaptic('medium');
-            await sendEmailVerification(firebaseUser);
-            playHaptic('success');
-            Alert.alert('Email Sent', 'Verification email resent.');
-        } catch (error) {
-            Alert.alert('Error', error.code === 'auth/too-many-requests' ? 'Too many requests.' : 'Failed to resend.');
-        }
-    };
-
-    const checkUsernameOwner = async (name) => {
-        const usernameRef = child(ref(database), `usernames/${name.toLowerCase()}`);
-        const snapshot = await get(usernameRef);
-        if (!snapshot.exists()) return null;
-
-        const data = snapshot.val();
-        let ownerUid = null;
-
-        if (typeof data === 'string') {
-            ownerUid = data;
-        } else if (data.releasedAt) {
-            // Username was released - check cooldown
-            const cooldownMs = 2 * 60 * 1000; // 2 minutes
-            if (Date.now() - data.releasedAt >= cooldownMs) {
-                // Cooldown passed, username is available - clean it up
-                await set(ref(database, `usernames/${name.toLowerCase()}`), null);
-                return null;
-            }
-            ownerUid = data.uid;
-        } else {
-            ownerUid = data.uid || data;
-        }
-
-        // IMPORTANT: Verify the owner UID still exists (account not deleted)
-        if (ownerUid) {
+        const loadProfile = async (user) => {
             try {
-                const userRef = child(ref(database), `users/${ownerUid}`);
-                const userSnapshot = await get(userRef);
+                const savedProfile = await AsyncStorage.getItem('user_profile');
+                if (savedProfile) {
+                    const profile = JSON.parse(savedProfile);
+                    setExistingProfile(profile);
+                    setSelectedAvatarId(profile.avatarId || 1);
+                    setUseCustomAvatar(profile.useCustomAvatar || false);
+                    setCustomAvatarConfig(profile.customAvatarConfig || null);
+                    if (profile.username) setUsername(profile.username);
+                } else {
+                    generateNewCode();
+                }
+            } catch (error) {
+                console.log('Error loading profile', error);
+            }
+        };
 
-                // If user doesn't exist in database, the username is orphaned - clean it up
-                if (!userSnapshot.exists()) {
-                    // Also check if there's any auth user with this UID by checking usernames
-                    // If the username entry exists but user data doesn't, it's orphaned
+        const generateNewCode = () => {
+            const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+            const numbers = "23456789";
+            let code = "#";
+            for (let i = 0; i < 2; i++) code += letters.charAt(Math.floor(Math.random() * letters.length));
+            for (let i = 0; i < 2; i++) code += numbers.charAt(Math.floor(Math.random() * numbers.length));
+            setGeneratedCode(code);
+        };
+
+        const handleSignup = async () => {
+            if (!email.trim() || !password.trim()) { Alert.alert('Error', 'Please enter email and password'); return; }
+            if (password.length < 6) { Alert.alert('Error', 'Password must be at least 6 characters'); return; }
+            if (password !== confirmPassword) { Alert.alert('Error', 'Passwords do not match'); return; }
+            try {
+                playHaptic('medium');
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                await sendEmailVerification(userCredential.user);
+                playHaptic('success');
+            } catch (error) {
+                if (error.code === 'auth/email-already-in-use') Alert.alert('Error', 'Email already in use.');
+                else Alert.alert('Signup Failed', error.message);
+            }
+        };
+
+        const handleLogin = async () => {
+            if (!email.trim() || !password.trim()) { Alert.alert('Error', 'Please enter email and password'); return; }
+            try {
+                playHaptic('medium');
+                await signInWithEmailAndPassword(auth, email, password);
+                playHaptic('success');
+            } catch (error) {
+                Alert.alert('Login Failed', 'Invalid email or password');
+            }
+        };
+
+
+
+        const handlePasswordReset = async () => {
+            if (!email.trim()) { Alert.alert('Error', 'Please enter your email'); return; }
+            try {
+                playHaptic('medium');
+                await sendPasswordResetEmail(auth, email);
+                playHaptic('success');
+                Alert.alert('Email Sent', 'Check your inbox for reset link.', [{ text: 'OK', onPress: () => setMode('login') }]);
+            } catch (error) {
+                Alert.alert('Error', error.code === 'auth/user-not-found' ? 'No account found.' : error.message);
+            }
+        };
+
+        const handleCheckVerification = async () => {
+            if (!firebaseUser) return;
+            playHaptic('light');
+            try {
+                await reload(firebaseUser);
+                if (firebaseUser.emailVerified) {
+                    playHaptic('success');
+                    setMode(firebaseUser.displayName ? 'profile_view' : 'profile_setup');
+                } else {
+                    Alert.alert('Not Verified', 'Please check your inbox.');
+                }
+            } catch (e) { console.log("Reload error", e); }
+        };
+
+        const handleResendVerification = async () => {
+            if (!firebaseUser) return;
+            try {
+                playHaptic('medium');
+                await sendEmailVerification(firebaseUser);
+                playHaptic('success');
+                Alert.alert('Email Sent', 'Verification email resent.');
+            } catch (error) {
+                Alert.alert('Error', error.code === 'auth/too-many-requests' ? 'Too many requests.' : 'Failed to resend.');
+            }
+        };
+
+        const checkUsernameOwner = async (name) => {
+            const usernameRef = child(ref(database), `usernames/${name.toLowerCase()}`);
+            const snapshot = await get(usernameRef);
+            if (!snapshot.exists()) return null;
+
+            const data = snapshot.val();
+            let ownerUid = null;
+
+            if (typeof data === 'string') {
+                ownerUid = data;
+            } else if (data.releasedAt) {
+                // Username was released - check cooldown
+                const cooldownMs = 2 * 60 * 1000; // 2 minutes
+                if (Date.now() - data.releasedAt >= cooldownMs) {
+                    // Cooldown passed, username is available - clean it up
                     await set(ref(database, `usernames/${name.toLowerCase()}`), null);
                     return null;
                 }
-            } catch (error) {
-                // If we can't verify, assume username is taken to be safe
-                console.log('Error verifying username owner:', error);
-            }
-        }
-
-        return ownerUid;
-    };
-
-    const releaseUsername = async (oldName) => {
-        if (!oldName || !firebaseUser) return;
-        const usernameRef = ref(database, `usernames/${oldName.toLowerCase()}`);
-        const snapshot = await get(usernameRef);
-        if (snapshot.exists()) {
-            const data = snapshot.val();
-            const ownerUid = typeof data === 'string' ? data : data.uid;
-            if (ownerUid === firebaseUser.uid) {
-                await set(usernameRef, { uid: firebaseUser.uid, releasedAt: Date.now() });
-            }
-        }
-    };
-
-    const handleSaveProfile = async () => {
-        const name = username.trim();
-        if (!name) { Alert.alert('Error', 'Please enter a username'); return; }
-        if (name.length > 12) { Alert.alert('Error', 'Username too long (max 12)'); return; }
-        playHaptic('medium');
-        try {
-            const ownerUid = await checkUsernameOwner(name);
-            if (ownerUid && ownerUid !== firebaseUser.uid) {
-                playHaptic('error');
-                Alert.alert('Username Taken', 'Choose another username.');
-                return;
-            }
-            const oldUsername = existingProfile?.username || firebaseUser.displayName;
-            if (oldUsername && oldUsername.toLowerCase() !== name.toLowerCase()) {
-                await releaseUsername(oldUsername);
+                ownerUid = data.uid;
+            } else {
+                ownerUid = data.uid || data;
             }
 
-            // Save username registry entry
-            await set(ref(database, `usernames/${name.toLowerCase()}`), { uid: firebaseUser.uid });
+            // IMPORTANT: Verify the owner UID still exists (account not deleted)
+            if (ownerUid) {
+                try {
+                    const userRef = child(ref(database), `users/${ownerUid}`);
+                    const userSnapshot = await get(userRef);
 
-            // Save user data (so we can verify username ownership later)
-            await set(ref(database, `users/${firebaseUser.uid}`), {
-                username: name,
-                avatarId: selectedAvatarId,
-                updatedAt: Date.now()
-            });
-
-            await updateProfile(firebaseUser, { displayName: name });
-            const userProfile = {
-                username: name,
-                avatarId: selectedAvatarId,
-                useCustomAvatar: useCustomAvatar,
-                customAvatarConfig: customAvatarConfig,
-                userCode: existingProfile ? existingProfile.userCode : generatedCode,
-                updatedAt: new Date().toISOString()
-            };
-            await AsyncStorage.setItem('user_profile', JSON.stringify(userProfile));
-            setExistingProfile(userProfile);
-            playHaptic('success');
-            Alert.alert('Saved', 'Profile updated.', [{ text: 'OK', onPress: () => { setMode('profile_view'); safeGoBack(); } }]);
-        } catch (error) {
-            Alert.alert('Error', 'Failed to save. ' + error.message);
-        }
-    };
-
-    const handleLogout = async () => {
-        Alert.alert('Logout', 'Are you sure?', [
-            { text: 'Cancel', style: 'cancel' },
-            {
-                text: 'Logout', style: 'destructive',
-                onPress: async () => {
-                    await AsyncStorage.removeItem('user_profile');
-                    await signOut(auth);
-                    setExistingProfile(null);
-                    setUsername('');
-                    setEmail('');
-                    setPassword('');
-                    setMode('login');
-                    playHaptic('medium');
+                    // If user doesn't exist in database, the username is orphaned - clean it up
+                    if (!userSnapshot.exists()) {
+                        // Also check if there's any auth user with this UID by checking usernames
+                        // If the username entry exists but user data doesn't, it's orphaned
+                        await set(ref(database, `usernames/${name.toLowerCase()}`), null);
+                        return null;
+                    }
+                } catch (error) {
+                    // If we can't verify, assume username is taken to be safe
+                    console.log('Error verifying username owner:', error);
                 }
             }
-        ]);
-    };
 
-    const [deletePassword, setDeletePassword] = useState('');
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
+            return ownerUid;
+        };
 
-    // GOOGLE PLAY COMPLIANCE: In-app account deletion
-    const handleDeleteAccount = async () => {
-        Alert.alert(
-            'Delete Account',
-            'This will permanently delete your account and all associated data. This action cannot be undone.',
-            [
+        const releaseUsername = async (oldName) => {
+            if (!oldName || !firebaseUser) return;
+            const usernameRef = ref(database, `usernames/${oldName.toLowerCase()}`);
+            const snapshot = await get(usernameRef);
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                const ownerUid = typeof data === 'string' ? data : data.uid;
+                if (ownerUid === firebaseUser.uid) {
+                    await set(usernameRef, { uid: firebaseUser.uid, releasedAt: Date.now() });
+                }
+            }
+        };
+
+        const handleSaveProfile = async () => {
+            const name = username.trim();
+            if (!name) { Alert.alert('Error', 'Please enter a username'); return; }
+            if (name.length > 12) { Alert.alert('Error', 'Username too long (max 12)'); return; }
+            playHaptic('medium');
+            try {
+                const ownerUid = await checkUsernameOwner(name);
+                if (ownerUid && ownerUid !== firebaseUser.uid) {
+                    playHaptic('error');
+                    Alert.alert('Username Taken', 'Choose another username.');
+                    return;
+                }
+                const oldUsername = existingProfile?.username || firebaseUser.displayName;
+                if (oldUsername && oldUsername.toLowerCase() !== name.toLowerCase()) {
+                    await releaseUsername(oldUsername);
+                }
+
+                // Save username registry entry
+                await set(ref(database, `usernames/${name.toLowerCase()}`), { uid: firebaseUser.uid });
+
+                // Save user data (so we can verify username ownership later)
+                await set(ref(database, `users/${firebaseUser.uid}`), {
+                    username: name,
+                    avatarId: selectedAvatarId,
+                    updatedAt: Date.now()
+                });
+
+                await updateProfile(firebaseUser, { displayName: name });
+                const userProfile = {
+                    username: name,
+                    avatarId: selectedAvatarId,
+                    useCustomAvatar: useCustomAvatar,
+                    customAvatarConfig: customAvatarConfig,
+                    userCode: existingProfile ? existingProfile.userCode : generatedCode,
+                    updatedAt: new Date().toISOString()
+                };
+                await AsyncStorage.setItem('user_profile', JSON.stringify(userProfile));
+                setExistingProfile(userProfile);
+                playHaptic('success');
+                Alert.alert('Saved', 'Profile updated.', [{ text: 'OK', onPress: () => { setMode('profile_view'); safeGoBack(); } }]);
+            } catch (error) {
+                Alert.alert('Error', 'Failed to save. ' + error.message);
+            }
+        };
+
+        const handleLogout = async () => {
+            Alert.alert('Logout', 'Are you sure?', [
                 { text: 'Cancel', style: 'cancel' },
                 {
-                    text: 'Delete Account',
-                    style: 'destructive',
-                    onPress: () => setShowDeleteModal(true)
+                    text: 'Logout', style: 'destructive',
+                    onPress: async () => {
+                        await AsyncStorage.removeItem('user_profile');
+                        await signOut(auth);
+                        setExistingProfile(null);
+                        setUsername('');
+                        setEmail('');
+                        setPassword('');
+                        setMode('login');
+                        playHaptic('medium');
+                    }
                 }
-            ]
-        );
-    };
+            ]);
+        };
 
-    const performAccountDeletion = async () => {
-        if (!firebaseUser || !deletePassword) {
-            Alert.alert('Error', 'Password is required to delete account.');
-            return;
-        }
+        const [deletePassword, setDeletePassword] = useState('');
+        const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-        setShowDeleteModal(false);
-        playHaptic('medium');
+        // GOOGLE PLAY COMPLIANCE: In-app account deletion
+        const handleDeleteAccount = async () => {
+            Alert.alert(
+                'Delete Account',
+                'This will permanently delete your account and all associated data. This action cannot be undone.',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                        text: 'Delete Account',
+                        style: 'destructive',
+                        onPress: () => setShowDeleteModal(true)
+                    }
+                ]
+            );
+        };
 
-        try {
-            // Re-authenticate user before deletion
-            const credential = EmailAuthProvider.credential(firebaseUser.email, deletePassword);
-            await reauthenticateWithCredential(firebaseUser, credential);
-
-            // Delete username from database (check both existingProfile and displayName)
-            const usernameToDelete = existingProfile?.username || firebaseUser.displayName;
-            if (usernameToDelete) {
-                await remove(ref(database, `usernames/${usernameToDelete.toLowerCase()}`));
+        const performAccountDeletion = async () => {
+            if (!firebaseUser || !deletePassword) {
+                Alert.alert('Error', 'Password is required to delete account.');
+                return;
             }
-            await remove(ref(database, `users/${firebaseUser.uid}`));
 
-            // Clear local storage
-            await AsyncStorage.removeItem('user_profile');
-            await AsyncStorage.removeItem('user_settings');
+            setShowDeleteModal(false);
+            playHaptic('medium');
 
-            // Delete Firebase Auth account
-            await deleteUser(firebaseUser);
+            try {
+                // Re-authenticate user before deletion
+                const credential = EmailAuthProvider.credential(firebaseUser.email, deletePassword);
+                await reauthenticateWithCredential(firebaseUser, credential);
 
-            playHaptic('success');
-            Alert.alert('Account Deleted', 'Your account and all data have been permanently deleted.');
+                // Delete username from database (check both existingProfile and displayName)
+                const usernameToDelete = existingProfile?.username || firebaseUser.displayName;
+                if (usernameToDelete) {
+                    await remove(ref(database, `usernames/${usernameToDelete.toLowerCase()}`));
+                }
+                await remove(ref(database, `users/${firebaseUser.uid}`));
 
-            setExistingProfile(null);
-            setUsername('');
-            setEmail('');
-            setPassword('');
-            setDeletePassword('');
-            setMode('login');
-        } catch (error) {
-            playHaptic('error');
-            setDeletePassword('');
-            if (error.code === 'auth/wrong-password') {
-                Alert.alert('Error', 'Incorrect password. Please try again.');
-            } else if (error.code === 'auth/requires-recent-login') {
-                Alert.alert('Session Expired', 'Please log out and log back in, then try again.');
-            } else {
-                Alert.alert('Error', 'Failed to delete account: ' + error.message);
+                // Clear local storage
+                await AsyncStorage.removeItem('user_profile');
+                await AsyncStorage.removeItem('user_settings');
+
+                // Delete Firebase Auth account
+                await deleteUser(firebaseUser);
+
+                playHaptic('success');
+                Alert.alert('Account Deleted', 'Your account and all data have been permanently deleted.');
+
+                setExistingProfile(null);
+                setUsername('');
+                setEmail('');
+                setPassword('');
+                setDeletePassword('');
+                setMode('login');
+            } catch (error) {
+                playHaptic('error');
+                setDeletePassword('');
+                if (error.code === 'auth/wrong-password') {
+                    Alert.alert('Error', 'Incorrect password. Please try again.');
+                } else if (error.code === 'auth/requires-recent-login') {
+                    Alert.alert('Session Expired', 'Please log out and log back in, then try again.');
+                } else {
+                    Alert.alert('Error', 'Failed to delete account: ' + error.message);
+                }
             }
-        }
-    };
+        };
 
-    // Open Privacy Policy
-    const openPrivacyPolicy = () => {
-        playHaptic('light');
-        navigation.navigate('PrivacyPolicy');
-    };
+        // Open Privacy Policy
+        const openPrivacyPolicy = () => {
+            playHaptic('light');
+            navigation.navigate('PrivacyPolicy');
+        };
 
-    // Open Terms of Service
-    const openTermsOfService = () => {
-        playHaptic('light');
-        navigation.navigate('TermsOfService');
-    };
+        // Open Terms of Service
+        const openTermsOfService = () => {
+            playHaptic('light');
+            navigation.navigate('TermsOfService');
+        };
 
-    // --- Render Functions ---
+        // --- Render Functions ---
 
-    const renderHeader = (title) => (
-        <View style={styles.header}>
-            <TouchableOpacity onPress={handleBackPress} style={styles.backBtn}>
-                <Text style={styles.backText}>‹</Text>
-            </TouchableOpacity>
-            <View style={styles.headerCenter}>
-                <View style={styles.kodakBadge}>
-                    <Text style={styles.kodakBadgeText}>{title}</Text>
+        const renderHeader = (title) => (
+            <View style={styles.header}>
+                <TouchableOpacity onPress={handleBackPress} style={styles.backBtn}>
+                    <Text style={styles.backText}>‹</Text>
+                </TouchableOpacity>
+                <View style={styles.headerCenter}>
+                    <View style={styles.kodakBadge}>
+                        <Text style={styles.kodakBadgeText}>{title}</Text>
+                    </View>
                 </View>
+                <View style={{ width: 40 }} />
             </View>
-            <View style={{ width: 40 }} />
-        </View>
-    );
+        );
 
-    const renderAuthForm = () => (
-        <View style={styles.filmFrame}>
-            <Text style={styles.frameTitle}>
-                {mode === 'login' ? '★ WELCOME BACK ★' : '★ JOIN THE CAST ★'}
-            </Text>
+        const renderAuthForm = () => (
+            <View style={styles.filmFrame}>
+                <Text style={styles.frameTitle}>
+                    {mode === 'login' ? '★ WELCOME BACK ★' : '★ JOIN THE CAST ★'}
+                </Text>
 
-            <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>EMAIL</Text>
-                <TextInput
-                    style={styles.input}
-                    value={email}
-                    onChangeText={setEmail}
-                    placeholder="your@email.com"
-                    placeholderTextColor={theme.colors.textMuted}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                />
-            </View>
-
-            <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>PASSWORD</Text>
-                <TextInput
-                    style={styles.input}
-                    value={password}
-                    onChangeText={setPassword}
-                    placeholder="••••••"
-                    placeholderTextColor={theme.colors.textMuted}
-                    secureTextEntry
-                    autoCapitalize="none"
-                />
-            </View>
-
-            {mode === 'signup' && (
                 <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>CONFIRM PASSWORD</Text>
+                    <Text style={styles.inputLabel}>EMAIL</Text>
                     <TextInput
                         style={styles.input}
-                        value={confirmPassword}
-                        onChangeText={setConfirmPassword}
+                        value={email}
+                        onChangeText={setEmail}
+                        placeholder="your@email.com"
+                        placeholderTextColor={theme.colors.textMuted}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                    />
+                </View>
+
+                <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>PASSWORD</Text>
+                    <TextInput
+                        style={styles.input}
+                        value={password}
+                        onChangeText={setPassword}
                         placeholder="••••••"
                         placeholderTextColor={theme.colors.textMuted}
                         secureTextEntry
                         autoCapitalize="none"
                     />
                 </View>
-            )}
 
-            {mode === 'login' && (
-                <TouchableOpacity onPress={() => { playHaptic('light'); setMode('forgot_password'); }} style={styles.forgotBtn}>
-                    <Text style={styles.forgotText}>FORGOT PASSWORD?</Text>
-                </TouchableOpacity>
-            )}
-
-            <CinemaButton
-                title={mode === 'login' ? "SIGN IN" : "SIGN UP"}
-                onPress={mode === 'login' ? handleLogin : handleSignup}
-                theme={theme}
-                style={{ marginTop: 8 }}
-            />
-
-            {mode === 'login' && (
-                <>
-                    <View style={styles.divider}>
-                        <View style={styles.dividerLine} />
-                        <Text style={styles.dividerText}>OR</Text>
-                        <View style={styles.dividerLine} />
-                    </View>
-
-                    <CinemaButton
-                        title="G - SIGN IN WITH GOOGLE"
-                        onPress={handleGoogleLogin}
-                        theme={theme}
-                        variant="secondary"
-                        style={{ borderColor: theme.colors.textSecondary }}
-                    />
-                </>
-            )}
-
-
-
-
-
-            <TouchableOpacity onPress={() => { playHaptic('light'); setMode(mode === 'login' ? 'signup' : 'login'); }}>
-                <Text style={styles.switchText}>
-                    {mode === 'login' ? "New here? CREATE ACCOUNT" : "Have account? SIGN IN"}
-                </Text>
-            </TouchableOpacity>
-
-            {/* Legal Links - Required by Apple before signup */}
-            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: 14 }}>
-                <TouchableOpacity onPress={openPrivacyPolicy}>
-                    <Text style={{ color: theme.colors.textMuted, fontSize: 10, fontFamily: 'Teko-Medium', textDecorationLine: 'underline' }}>Privacy Policy</Text>
-                </TouchableOpacity>
-                <Text style={{ color: theme.colors.textMuted, fontSize: 10 }}>•</Text>
-                <TouchableOpacity onPress={openTermsOfService}>
-                    <Text style={{ color: theme.colors.textMuted, fontSize: 10, fontFamily: 'Teko-Medium', textDecorationLine: 'underline' }}>Terms of Service</Text>
-                </TouchableOpacity>
-            </View>
-        </View>
-    );
-
-    const renderForgotPassword = () => (
-        <View style={styles.filmFrame}>
-            <Text style={styles.frameTitle}>★ RESET PASSWORD ★</Text>
-            <Text style={styles.infoText}>Enter your email to receive a reset link.</Text>
-            <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>EMAIL</Text>
-                <TextInput
-                    style={styles.input}
-                    value={email}
-                    onChangeText={setEmail}
-                    placeholder="your@email.com"
-                    placeholderTextColor={theme.colors.textMuted}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                />
-            </View>
-            <CinemaButton title="SEND RESET LINK" onPress={handlePasswordReset} theme={theme} />
-            <TouchableOpacity onPress={() => { playHaptic('light'); setMode('login'); }} style={{ marginTop: 16 }}>
-                <Text style={styles.switchText}>← Back to Login</Text>
-            </TouchableOpacity>
-        </View>
-    );
-
-    const renderVerification = () => (
-        <View style={styles.filmFrame}>
-            <Text style={[styles.frameTitle, { color: theme.colors.primary }]}>★ VERIFICATION ★</Text>
-            <Text style={styles.infoText}>We sent a verification email to:</Text>
-            <Text style={[styles.infoText, { color: theme.colors.text, fontFamily: 'Panchang-Bold', marginVertical: 8 }]}>
-                {firebaseUser?.email}
-            </Text>
-            <View style={{ gap: 10, marginTop: 16, width: '100%' }}>
-                <CinemaButton title="I HAVE VERIFIED" onPress={handleCheckVerification} theme={theme} />
-                <CinemaButton title="RESEND EMAIL" onPress={handleResendVerification} variant="secondary" theme={theme} />
-                <CinemaButton title="LOGOUT" onPress={handleLogout} variant="error" theme={theme} />
-            </View>
-        </View>
-    );
-
-    const renderProfileSetup = (isEditing = false) => {
-        // If showing avatar builder modal
-        if (showAvatarBuilder) {
-            return (
-                <View style={[styles.filmFrame, { flex: 1 }]}>
-                    <Text style={styles.frameTitle}>★ CREATE AVATAR ★</Text>
-                    <AvatarBuilder
-                        initialConfig={customAvatarConfig}
-                        onSave={(config) => {
-                            setCustomAvatarConfig(config);
-                            setUseCustomAvatar(true);
-                            setShowAvatarBuilder(false);
-                        }}
-                        onCancel={() => setShowAvatarBuilder(false)}
-                        theme={theme}
-                    />
-                </View>
-            );
-        }
-
-        return (
-            <View style={styles.filmFrame}>
-                <Text style={styles.frameTitle}>
-                    {isEditing ? '★ YOUR PROFILE ★' : '★ SETUP PROFILE ★'}
-                </Text>
-
-                {/* Avatar Type Toggle */}
-                <View style={styles.avatarToggle}>
-                    <TouchableOpacity
-                        onPress={() => { playHaptic('light'); setUseCustomAvatar(false); }}
-                        style={[
-                            styles.toggleBtn,
-                            !useCustomAvatar && { backgroundColor: theme.colors.primary }
-                        ]}
-                    >
-                        <Text style={[styles.toggleText, { color: !useCustomAvatar ? theme.colors.secondary : theme.colors.textMuted }]}>
-                            PRE-MADE
-                        </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        onPress={() => {
-                            playHaptic('light');
-                            if (!customAvatarConfig) {
-                                // No custom avatar yet, open builder
-                                setShowAvatarBuilder(true);
-                            } else {
-                                // Already have custom avatar, just switch to it
-                                setUseCustomAvatar(true);
-                            }
-                        }}
-                        style={[
-                            styles.toggleBtn,
-                            useCustomAvatar && { backgroundColor: theme.colors.primary }
-                        ]}
-                    >
-                        <Text style={[styles.toggleText, { color: useCustomAvatar ? theme.colors.secondary : theme.colors.textMuted }]}>
-                            CUSTOM
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Avatar Selection */}
-                {!useCustomAvatar ? (
-                    <>
-                        <Text style={styles.sectionLabel}>SPIN TO SELECT CHARACTER</Text>
-                        <View style={styles.omnitrixContainer}>
-                            <AvatarWheel
-                                selectedId={selectedAvatarId}
-                                onSelect={setSelectedAvatarId}
-                                theme={theme}
-                            />
-                        </View>
-                    </>
-                ) : (
-                    <View style={styles.customAvatarSection}>
-                        <Text style={styles.sectionLabel}>YOUR CUSTOM AVATAR</Text>
-                        <View style={styles.customAvatarPreview}>
-                            {customAvatarConfig ? (
-                                <CustomBuiltAvatar config={customAvatarConfig} size={100} />
-                            ) : (
-                                <View style={[styles.emptyAvatar, { borderColor: theme.colors.primary }]}>
-                                    <Text style={{ color: theme.colors.textMuted, fontSize: 30 }}>?</Text>
-                                </View>
-                            )}
-                        </View>
-                        <TouchableOpacity
-                            onPress={() => { playHaptic('medium'); setShowAvatarBuilder(true); }}
-                            style={[styles.editAvatarBtn, { borderColor: theme.colors.primary }]}
-                        >
-                            <Text style={[styles.editAvatarText, { color: theme.colors.primary }]}>
-                                {customAvatarConfig ? '✏️ EDIT AVATAR' : '+ CREATE AVATAR'}
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
-
-                {/* Username Input */}
-                <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>SCREEN NAME</Text>
-                    <TextInput
-                        style={[styles.input, styles.inputCentered]}
-                        value={username}
-                        onChangeText={setUsername}
-                        placeholder="YOUR NAME"
-                        placeholderTextColor={theme.colors.textMuted}
-                        maxLength={12}
-                        autoCapitalize="none"
-                    />
-                </View>
-
-                <CinemaButton title="SAVE PROFILE" onPress={handleSaveProfile} theme={theme} style={{ marginTop: 8 }} />
-
-                {isEditing && (
-                    <CinemaButton title="LOG OUT" onPress={handleLogout} variant="secondary" theme={theme} style={{ marginTop: 12 }} />
-                )}
-            </View>
-        );
-    };
-
-    // Use ScrollView for small screens (iPhone 8 height ~667)
-    const { height } = Dimensions.get('window');
-    const isSmallScreen = height < 700;
-    const needsScroll = mode === 'login' || mode === 'signup' || mode === 'forgot_password' || (isSmallScreen && (mode === 'profile_view' || mode === 'profile_setup'));
-
-    const content = (
-        <>
-            {renderHeader(
-                mode === 'profile_view' ? 'PROFILE' :
-                    mode === 'profile_setup' ? 'SETUP' :
-                        mode === 'forgot_password' ? 'RECOVER' :
-                            mode === 'verification' ? 'VERIFY' : 'ACCOUNT'
-            )}
-
-            {authLoading ? (
-                <Text style={styles.infoText}>Loading...</Text>
-            ) : (
-                <>
-                    {(mode === 'login' || mode === 'signup') && renderAuthForm()}
-                    {mode === 'forgot_password' && renderForgotPassword()}
-                    {mode === 'verification' && renderVerification()}
-                    {mode === 'profile_setup' && renderProfileSetup(false)}
-                    {mode === 'profile_view' && renderProfileSetup(true)}
-                </>
-            )}
-        </>
-    );
-
-    return (
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
-            <LinearGradient colors={theme.colors.backgroundGradient} style={StyleSheet.absoluteFillObject} />
-            <FilmPerforations side="left" theme={theme} />
-            <FilmPerforations side="right" theme={theme} />
-
-            {needsScroll ? (
-                <ScrollView
-                    contentContainerStyle={styles.scrollContent}
-                    showsVerticalScrollIndicator={false}
-                    keyboardShouldPersistTaps="handled"
-                    bounces={false}
-                >
-                    {content}
-                </ScrollView>
-            ) : (
-                <View style={styles.fixedContent}>
-                    {content}
-                </View>
-            )}
-
-            {/* Delete Account Confirmation Modal - Cross-platform */}
-            <Modal
-                visible={showDeleteModal}
-                transparent={true}
-                animationType="fade"
-                onRequestClose={() => setShowDeleteModal(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
-                        <Text style={[styles.modalTitle, { color: theme.colors.error }]}>⚠️ CONFIRM DELETION</Text>
-                        <Text style={[styles.modalText, { color: theme.colors.textSecondary }]}>
-                            Enter your password to permanently delete your account:
-                        </Text>
+                {mode === 'signup' && (
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.inputLabel}>CONFIRM PASSWORD</Text>
                         <TextInput
-                            style={[styles.input, { marginVertical: 16 }]}
-                            value={deletePassword}
-                            onChangeText={setDeletePassword}
-                            placeholder="Password"
+                            style={styles.input}
+                            value={confirmPassword}
+                            onChangeText={setConfirmPassword}
+                            placeholder="••••••"
                             placeholderTextColor={theme.colors.textMuted}
                             secureTextEntry
                             autoCapitalize="none"
                         />
-                        <View style={{ flexDirection: 'row', gap: 12 }}>
-                            <CinemaButton
-                                title="CANCEL"
-                                onPress={() => { setShowDeleteModal(false); setDeletePassword(''); }}
-                                variant="secondary"
-                                theme={theme}
-                                style={{ flex: 1 }}
+                    </View>
+                )}
+
+                {mode === 'login' && (
+                    <TouchableOpacity onPress={() => { playHaptic('light'); setMode('forgot_password'); }} style={styles.forgotBtn}>
+                        <Text style={styles.forgotText}>FORGOT PASSWORD?</Text>
+                    </TouchableOpacity>
+                )}
+
+                <CinemaButton
+                    title={mode === 'login' ? "SIGN IN" : "SIGN UP"}
+                    onPress={mode === 'login' ? handleLogin : handleSignup}
+                    theme={theme}
+                    style={{ marginTop: 8 }}
+                />
+
+                {mode === 'login' && (
+                    <>
+                        <View style={styles.divider}>
+                            <View style={styles.dividerLine} />
+                            <Text style={styles.dividerText}>OR</Text>
+                            <View style={styles.dividerLine} />
+                        </View>
+
+                        <CinemaButton
+                            title="G - SIGN IN WITH GOOGLE"
+                            onPress={handleGoogleLogin}
+                            theme={theme}
+                            variant="secondary"
+                            style={{ borderColor: theme.colors.textSecondary }}
+                        />
+                    </>
+                )}
+
+
+
+
+
+                <TouchableOpacity onPress={() => { playHaptic('light'); setMode(mode === 'login' ? 'signup' : 'login'); }}>
+                    <Text style={styles.switchText}>
+                        {mode === 'login' ? "New here? CREATE ACCOUNT" : "Have account? SIGN IN"}
+                    </Text>
+                </TouchableOpacity>
+
+                {/* Legal Links - Required by Apple before signup */}
+                <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: 14 }}>
+                    <TouchableOpacity onPress={openPrivacyPolicy}>
+                        <Text style={{ color: theme.colors.textMuted, fontSize: 10, fontFamily: 'Teko-Medium', textDecorationLine: 'underline' }}>Privacy Policy</Text>
+                    </TouchableOpacity>
+                    <Text style={{ color: theme.colors.textMuted, fontSize: 10 }}>•</Text>
+                    <TouchableOpacity onPress={openTermsOfService}>
+                        <Text style={{ color: theme.colors.textMuted, fontSize: 10, fontFamily: 'Teko-Medium', textDecorationLine: 'underline' }}>Terms of Service</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        );
+
+        const renderForgotPassword = () => (
+            <View style={styles.filmFrame}>
+                <Text style={styles.frameTitle}>★ RESET PASSWORD ★</Text>
+                <Text style={styles.infoText}>Enter your email to receive a reset link.</Text>
+                <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>EMAIL</Text>
+                    <TextInput
+                        style={styles.input}
+                        value={email}
+                        onChangeText={setEmail}
+                        placeholder="your@email.com"
+                        placeholderTextColor={theme.colors.textMuted}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                    />
+                </View>
+                <CinemaButton title="SEND RESET LINK" onPress={handlePasswordReset} theme={theme} />
+                <TouchableOpacity onPress={() => { playHaptic('light'); setMode('login'); }} style={{ marginTop: 16 }}>
+                    <Text style={styles.switchText}>← Back to Login</Text>
+                </TouchableOpacity>
+            </View>
+        );
+
+        const renderVerification = () => (
+            <View style={styles.filmFrame}>
+                <Text style={[styles.frameTitle, { color: theme.colors.primary }]}>★ VERIFICATION ★</Text>
+                <Text style={styles.infoText}>We sent a verification email to:</Text>
+                <Text style={[styles.infoText, { color: theme.colors.text, fontFamily: 'Panchang-Bold', marginVertical: 8 }]}>
+                    {firebaseUser?.email}
+                </Text>
+                <View style={{ gap: 10, marginTop: 16, width: '100%' }}>
+                    <CinemaButton title="I HAVE VERIFIED" onPress={handleCheckVerification} theme={theme} />
+                    <CinemaButton title="RESEND EMAIL" onPress={handleResendVerification} variant="secondary" theme={theme} />
+                    <CinemaButton title="LOGOUT" onPress={handleLogout} variant="error" theme={theme} />
+                </View>
+            </View>
+        );
+
+        const renderProfileSetup = (isEditing = false) => {
+            // If showing avatar builder modal
+            if (showAvatarBuilder) {
+                return (
+                    <View style={[styles.filmFrame, { flex: 1 }]}>
+                        <Text style={styles.frameTitle}>★ CREATE AVATAR ★</Text>
+                        <AvatarBuilder
+                            initialConfig={customAvatarConfig}
+                            onSave={(config) => {
+                                setCustomAvatarConfig(config);
+                                setUseCustomAvatar(true);
+                                setShowAvatarBuilder(false);
+                            }}
+                            onCancel={() => setShowAvatarBuilder(false)}
+                            theme={theme}
+                        />
+                    </View>
+                );
+            }
+
+            return (
+                <View style={styles.filmFrame}>
+                    <Text style={styles.frameTitle}>
+                        {isEditing ? '★ YOUR PROFILE ★' : '★ SETUP PROFILE ★'}
+                    </Text>
+
+                    {/* Avatar Type Toggle */}
+                    <View style={styles.avatarToggle}>
+                        <TouchableOpacity
+                            onPress={() => { playHaptic('light'); setUseCustomAvatar(false); }}
+                            style={[
+                                styles.toggleBtn,
+                                !useCustomAvatar && { backgroundColor: theme.colors.primary }
+                            ]}
+                        >
+                            <Text style={[styles.toggleText, { color: !useCustomAvatar ? theme.colors.secondary : theme.colors.textMuted }]}>
+                                PRE-MADE
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => {
+                                playHaptic('light');
+                                if (!customAvatarConfig) {
+                                    // No custom avatar yet, open builder
+                                    setShowAvatarBuilder(true);
+                                } else {
+                                    // Already have custom avatar, just switch to it
+                                    setUseCustomAvatar(true);
+                                }
+                            }}
+                            style={[
+                                styles.toggleBtn,
+                                useCustomAvatar && { backgroundColor: theme.colors.primary }
+                            ]}
+                        >
+                            <Text style={[styles.toggleText, { color: useCustomAvatar ? theme.colors.secondary : theme.colors.textMuted }]}>
+                                CUSTOM
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Avatar Selection */}
+                    {!useCustomAvatar ? (
+                        <>
+                            <Text style={styles.sectionLabel}>SPIN TO SELECT CHARACTER</Text>
+                            <View style={styles.omnitrixContainer}>
+                                <AvatarWheel
+                                    selectedId={selectedAvatarId}
+                                    onSelect={setSelectedAvatarId}
+                                    theme={theme}
+                                />
+                            </View>
+                        </>
+                    ) : (
+                        <View style={styles.customAvatarSection}>
+                            <Text style={styles.sectionLabel}>YOUR CUSTOM AVATAR</Text>
+                            <View style={styles.customAvatarPreview}>
+                                {customAvatarConfig ? (
+                                    <CustomBuiltAvatar config={customAvatarConfig} size={100} />
+                                ) : (
+                                    <View style={[styles.emptyAvatar, { borderColor: theme.colors.primary }]}>
+                                        <Text style={{ color: theme.colors.textMuted, fontSize: 30 }}>?</Text>
+                                    </View>
+                                )}
+                            </View>
+                            <TouchableOpacity
+                                onPress={() => { playHaptic('medium'); setShowAvatarBuilder(true); }}
+                                style={[styles.editAvatarBtn, { borderColor: theme.colors.primary }]}
+                            >
+                                <Text style={[styles.editAvatarText, { color: theme.colors.primary }]}>
+                                    {customAvatarConfig ? '✏️ EDIT AVATAR' : '+ CREATE AVATAR'}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
+                    {/* Username Input */}
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.inputLabel}>SCREEN NAME</Text>
+                        <TextInput
+                            style={[styles.input, styles.inputCentered]}
+                            value={username}
+                            onChangeText={setUsername}
+                            placeholder="YOUR NAME"
+                            placeholderTextColor={theme.colors.textMuted}
+                            maxLength={12}
+                            autoCapitalize="none"
+                        />
+                    </View>
+
+                    <CinemaButton title="SAVE PROFILE" onPress={handleSaveProfile} theme={theme} style={{ marginTop: 8 }} />
+
+                    {isEditing && (
+                        <CinemaButton title="LOG OUT" onPress={handleLogout} variant="secondary" theme={theme} style={{ marginTop: 12 }} />
+                    )}
+                </View>
+            );
+        };
+
+        // Use ScrollView for small screens (iPhone 8 height ~667)
+        const { height } = Dimensions.get('window');
+        const isSmallScreen = height < 700;
+        const needsScroll = mode === 'login' || mode === 'signup' || mode === 'forgot_password' || (isSmallScreen && (mode === 'profile_view' || mode === 'profile_setup'));
+
+        const content = (
+            <>
+                {renderHeader(
+                    mode === 'profile_view' ? 'PROFILE' :
+                        mode === 'profile_setup' ? 'SETUP' :
+                            mode === 'forgot_password' ? 'RECOVER' :
+                                mode === 'verification' ? 'VERIFY' : 'ACCOUNT'
+                )}
+
+                {authLoading ? (
+                    <Text style={styles.infoText}>Loading...</Text>
+                ) : (
+                    <>
+                        {(mode === 'login' || mode === 'signup') && renderAuthForm()}
+                        {mode === 'forgot_password' && renderForgotPassword()}
+                        {mode === 'verification' && renderVerification()}
+                        {mode === 'profile_setup' && renderProfileSetup(false)}
+                        {mode === 'profile_view' && renderProfileSetup(true)}
+                    </>
+                )}
+            </>
+        );
+
+        return (
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
+                <LinearGradient colors={theme.colors.backgroundGradient} style={StyleSheet.absoluteFillObject} />
+                <FilmPerforations side="left" theme={theme} />
+                <FilmPerforations side="right" theme={theme} />
+
+                {needsScroll ? (
+                    <ScrollView
+                        contentContainerStyle={styles.scrollContent}
+                        showsVerticalScrollIndicator={false}
+                        keyboardShouldPersistTaps="handled"
+                        bounces={false}
+                    >
+                        {content}
+                    </ScrollView>
+                ) : (
+                    <View style={styles.fixedContent}>
+                        {content}
+                    </View>
+                )}
+
+                {/* Delete Account Confirmation Modal - Cross-platform */}
+                <Modal
+                    visible={showDeleteModal}
+                    transparent={true}
+                    animationType="fade"
+                    onRequestClose={() => setShowDeleteModal(false)}
+                >
+                    <View style={styles.modalOverlay}>
+                        <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
+                            <Text style={[styles.modalTitle, { color: theme.colors.error }]}>⚠️ CONFIRM DELETION</Text>
+                            <Text style={[styles.modalText, { color: theme.colors.textSecondary }]}>
+                                Enter your password to permanently delete your account:
+                            </Text>
+                            <TextInput
+                                style={[styles.input, { marginVertical: 16 }]}
+                                value={deletePassword}
+                                onChangeText={setDeletePassword}
+                                placeholder="Password"
+                                placeholderTextColor={theme.colors.textMuted}
+                                secureTextEntry
+                                autoCapitalize="none"
                             />
-                            <CinemaButton
-                                title="DELETE"
-                                onPress={performAccountDeletion}
-                                variant="error"
-                                theme={theme}
-                                style={{ flex: 1 }}
-                            />
+                            <View style={{ flexDirection: 'row', gap: 12 }}>
+                                <CinemaButton
+                                    title="CANCEL"
+                                    onPress={() => { setShowDeleteModal(false); setDeletePassword(''); }}
+                                    variant="secondary"
+                                    theme={theme}
+                                    style={{ flex: 1 }}
+                                />
+                                <CinemaButton
+                                    title="DELETE"
+                                    onPress={performAccountDeletion}
+                                    variant="error"
+                                    theme={theme}
+                                    style={{ flex: 1 }}
+                                />
+                            </View>
                         </View>
                     </View>
-                </View>
-            </Modal>
-        </KeyboardAvoidingView>
-    );
-}
+                </Modal>
+            </KeyboardAvoidingView>
+        );
+    }
 
 
 const getStyles = (theme) => StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: theme.colors.background,
-    },
-    scrollContent: {
-        paddingHorizontal: 24,
-        paddingTop: Platform.OS === 'ios' ? 50 : 35,
-        paddingBottom: 20,
-        flexGrow: 1,
-    },
-    fixedContent: {
-        flex: 1,
-        paddingHorizontal: 24,
-        paddingTop: Platform.OS === 'ios' ? 50 : 35,
-        paddingBottom: 20,
-    },
-    // Header
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 16,
-        paddingBottom: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.primary + '30',
-    },
-    backBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: theme.colors.surface,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: theme.colors.primary + '50',
-    },
-    backText: {
-        color: theme.colors.primary,
-        fontSize: 26,
-        fontFamily: 'CabinetGrotesk-Black',
-        marginTop: -2,
-    },
-    headerCenter: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    kodakBadge: {
-        backgroundColor: theme.colors.primary,
-        paddingHorizontal: 16,
-        paddingVertical: 5,
-        borderRadius: 4,
-    },
-    kodakBadgeText: {
-        color: theme.colors.secondary,
-        fontSize: 12,
-        fontFamily: 'Panchang-Bold',
-        letterSpacing: 3,
-    },
-    // Film Frame Card
-    filmFrame: {
-        backgroundColor: theme.colors.surface,
-        borderRadius: 12,
-        padding: 18,
-        borderWidth: 2,
-        borderColor: theme.colors.primary + '40',
-    },
-    frameTitle: {
-        fontSize: 15,
-        fontFamily: 'Panchang-Bold',
-        color: theme.colors.text,
-        textAlign: 'center',
-        letterSpacing: 2,
-        marginBottom: 14,
-    },
-    // Input styles
-    inputGroup: {
-        marginBottom: 10,
-    },
-    inputLabel: {
-        color: theme.colors.primary,
-        fontSize: 10,
-        fontFamily: 'Panchang-Bold',
-        letterSpacing: 2,
-        marginBottom: 5,
-        marginLeft: 4,
-    },
-    input: {
-        backgroundColor: theme.colors.background,
-        borderRadius: 8,
-        paddingVertical: 12,
-        paddingHorizontal: 14,
-        color: theme.colors.text,
-        fontFamily: 'Teko-Medium',
-        fontSize: 18,
-        borderWidth: 1,
-        borderColor: theme.colors.textMuted + '50',
-    },
-    inputCentered: {
-        textAlign: 'center',
-        fontSize: 22,
-        letterSpacing: 2,
-    },
-    forgotBtn: {
-        alignSelf: 'flex-end',
-        marginBottom: 12,
-        marginTop: -4,
-    },
-    forgotText: {
-        color: theme.colors.primary,
-        fontSize: 11,
-        fontFamily: 'Teko-Medium',
-        letterSpacing: 1,
-    },
-    divider: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginVertical: 14,
-    },
-    dividerLine: {
-        flex: 1,
-        height: 1,
-        backgroundColor: theme.colors.textMuted + '40',
-    },
-    dividerText: {
-        color: theme.colors.textMuted,
-        fontSize: 11,
-        fontFamily: 'Teko-Medium',
-        marginHorizontal: 12,
-        letterSpacing: 2,
-    },
-    switchText: {
-        color: theme.colors.textSecondary,
-        fontSize: 13,
-        fontFamily: 'Teko-Medium',
-        textAlign: 'center',
-        letterSpacing: 1,
-    },
-    infoText: {
-        color: theme.colors.textSecondary,
-        fontSize: 14,
-        fontFamily: 'Teko-Medium',
-        textAlign: 'center',
-        lineHeight: 20,
-        marginBottom: 8,
-    },
-    // Avatar Omnitrix Selector
-    sectionLabel: {
-        color: theme.colors.primary,
-        fontSize: 10,
-        fontFamily: 'Panchang-Bold',
-        letterSpacing: 2,
-        textAlign: 'center',
-        marginBottom: 6,
-    },
-    avatarToggle: {
-        flexDirection: 'row',
-        backgroundColor: theme.colors.background,
-        borderRadius: 25,
-        padding: 4,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: theme.colors.primary + '30',
-    },
-    toggleBtn: {
-        flex: 1,
-        paddingVertical: 10,
-        borderRadius: 22,
-        alignItems: 'center',
-    },
-    toggleText: {
-        fontSize: 11,
-        fontFamily: 'CabinetGrotesk-Black',
-        letterSpacing: 1,
-    },
-    customAvatarSection: {
-        alignItems: 'center',
-        marginBottom: 14,
-    },
-    customAvatarPreview: {
-        marginVertical: 12,
-    },
-    emptyAvatar: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        borderWidth: 3,
-        borderStyle: 'dashed',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: theme.colors.background,
-    },
-    editAvatarBtn: {
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-        borderRadius: 20,
-        borderWidth: 2,
-    },
-    editAvatarText: {
-        fontSize: 12,
-        fontFamily: 'CabinetGrotesk-Bold',
-        letterSpacing: 1,
-    },
-    omnitrixContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 14,
-    },
-    avatarFilmStrip: {
-        backgroundColor: theme.colors.background,
-        borderRadius: 8,
-        paddingVertical: 8,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: theme.colors.primary + '30',
-    },
-    avatarScrollContent: {
-        paddingHorizontal: 8,
-        gap: 8,
-    },
-    avatarFrame: {
-        backgroundColor: theme.colors.surface,
-        borderRadius: 8,
-        padding: 6,
-        alignItems: 'center',
-        borderWidth: 2,
-        borderColor: 'transparent',
-        position: 'relative',
-    },
-    avatarFrameSelected: {
-        borderColor: theme.colors.primary,
-        backgroundColor: theme.colors.primary + '15',
-    },
-    avatarSprocket: {
-        width: 40,
-        height: 4,
-        backgroundColor: theme.colors.textMuted + '30',
-        borderRadius: 2,
-        marginVertical: 3,
-    },
-    selectedBadge: {
-        position: 'absolute',
-        top: -6,
-        right: -6,
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        backgroundColor: theme.colors.primary,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    selectedBadgeText: {
-        color: theme.colors.secondary,
-        fontSize: 12,
-    },
-    // Preview
-    previewSection: {
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    previewFrame: {
-        padding: 8,
-        borderRadius: 50,
-        borderWidth: 3,
-        borderColor: theme.colors.primary,
-        backgroundColor: theme.colors.background,
-    },
-    // Footer
-    footer: {
-        alignItems: 'center',
-        marginTop: 16,
-        paddingTop: 10,
-        borderTopWidth: 1,
-        borderTopColor: theme.colors.primary + '20',
-    },
-    footerText: {
-        color: theme.colors.textMuted,
-        fontSize: 9,
-        fontFamily: 'Teko-Medium',
-        letterSpacing: 3,
-        opacity: 0.6,
-    },
-    // Delete Account Modal
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.8)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-    },
-    modalContent: {
-        width: '100%',
-        maxWidth: 340,
-        borderRadius: 16,
-        padding: 24,
-        borderWidth: 2,
-        borderColor: theme.colors.error + '50',
-    },
-    modalTitle: {
-        fontSize: 16,
-        fontFamily: 'Panchang-Bold',
-        textAlign: 'center',
-        marginBottom: 12,
-        letterSpacing: 2,
-    },
-    modalText: {
-        fontSize: 14,
-        fontFamily: 'Teko-Medium',
-        textAlign: 'center',
-        lineHeight: 20,
-    },
-});
+        container: {
+            flex: 1,
+            backgroundColor: theme.colors.background,
+        },
+        scrollContent: {
+            paddingHorizontal: 24,
+            paddingTop: Platform.OS === 'ios' ? 50 : 35,
+            paddingBottom: 20,
+            flexGrow: 1,
+        },
+        fixedContent: {
+            flex: 1,
+            paddingHorizontal: 24,
+            paddingTop: Platform.OS === 'ios' ? 50 : 35,
+            paddingBottom: 20,
+        },
+        // Header
+        header: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 16,
+            paddingBottom: 10,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.primary + '30',
+        },
+        backBtn: {
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: theme.colors.surface,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 1,
+            borderColor: theme.colors.primary + '50',
+        },
+        backText: {
+            color: theme.colors.primary,
+            fontSize: 26,
+            fontFamily: 'CabinetGrotesk-Black',
+            marginTop: -2,
+        },
+        headerCenter: {
+            flex: 1,
+            alignItems: 'center',
+        },
+        kodakBadge: {
+            backgroundColor: theme.colors.primary,
+            paddingHorizontal: 16,
+            paddingVertical: 5,
+            borderRadius: 4,
+        },
+        kodakBadgeText: {
+            color: theme.colors.secondary,
+            fontSize: 12,
+            fontFamily: 'Panchang-Bold',
+            letterSpacing: 3,
+        },
+        // Film Frame Card
+        filmFrame: {
+            backgroundColor: theme.colors.surface,
+            borderRadius: 12,
+            padding: 18,
+            borderWidth: 2,
+            borderColor: theme.colors.primary + '40',
+        },
+        frameTitle: {
+            fontSize: 15,
+            fontFamily: 'Panchang-Bold',
+            color: theme.colors.text,
+            textAlign: 'center',
+            letterSpacing: 2,
+            marginBottom: 14,
+        },
+        // Input styles
+        inputGroup: {
+            marginBottom: 10,
+        },
+        inputLabel: {
+            color: theme.colors.primary,
+            fontSize: 10,
+            fontFamily: 'Panchang-Bold',
+            letterSpacing: 2,
+            marginBottom: 5,
+            marginLeft: 4,
+        },
+        input: {
+            backgroundColor: theme.colors.background,
+            borderRadius: 8,
+            paddingVertical: 12,
+            paddingHorizontal: 14,
+            color: theme.colors.text,
+            fontFamily: 'Teko-Medium',
+            fontSize: 18,
+            borderWidth: 1,
+            borderColor: theme.colors.textMuted + '50',
+        },
+        inputCentered: {
+            textAlign: 'center',
+            fontSize: 22,
+            letterSpacing: 2,
+        },
+        forgotBtn: {
+            alignSelf: 'flex-end',
+            marginBottom: 12,
+            marginTop: -4,
+        },
+        forgotText: {
+            color: theme.colors.primary,
+            fontSize: 11,
+            fontFamily: 'Teko-Medium',
+            letterSpacing: 1,
+        },
+        divider: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginVertical: 14,
+        },
+        dividerLine: {
+            flex: 1,
+            height: 1,
+            backgroundColor: theme.colors.textMuted + '40',
+        },
+        dividerText: {
+            color: theme.colors.textMuted,
+            fontSize: 11,
+            fontFamily: 'Teko-Medium',
+            marginHorizontal: 12,
+            letterSpacing: 2,
+        },
+        switchText: {
+            color: theme.colors.textSecondary,
+            fontSize: 13,
+            fontFamily: 'Teko-Medium',
+            textAlign: 'center',
+            letterSpacing: 1,
+        },
+        infoText: {
+            color: theme.colors.textSecondary,
+            fontSize: 14,
+            fontFamily: 'Teko-Medium',
+            textAlign: 'center',
+            lineHeight: 20,
+            marginBottom: 8,
+        },
+        // Avatar Omnitrix Selector
+        sectionLabel: {
+            color: theme.colors.primary,
+            fontSize: 10,
+            fontFamily: 'Panchang-Bold',
+            letterSpacing: 2,
+            textAlign: 'center',
+            marginBottom: 6,
+        },
+        avatarToggle: {
+            flexDirection: 'row',
+            backgroundColor: theme.colors.background,
+            borderRadius: 25,
+            padding: 4,
+            marginBottom: 12,
+            borderWidth: 1,
+            borderColor: theme.colors.primary + '30',
+        },
+        toggleBtn: {
+            flex: 1,
+            paddingVertical: 10,
+            borderRadius: 22,
+            alignItems: 'center',
+        },
+        toggleText: {
+            fontSize: 11,
+            fontFamily: 'CabinetGrotesk-Black',
+            letterSpacing: 1,
+        },
+        customAvatarSection: {
+            alignItems: 'center',
+            marginBottom: 14,
+        },
+        customAvatarPreview: {
+            marginVertical: 12,
+        },
+        emptyAvatar: {
+            width: 100,
+            height: 100,
+            borderRadius: 50,
+            borderWidth: 3,
+            borderStyle: 'dashed',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: theme.colors.background,
+        },
+        editAvatarBtn: {
+            paddingHorizontal: 20,
+            paddingVertical: 10,
+            borderRadius: 20,
+            borderWidth: 2,
+        },
+        editAvatarText: {
+            fontSize: 12,
+            fontFamily: 'CabinetGrotesk-Bold',
+            letterSpacing: 1,
+        },
+        omnitrixContainer: {
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: 14,
+        },
+        avatarFilmStrip: {
+            backgroundColor: theme.colors.background,
+            borderRadius: 8,
+            paddingVertical: 8,
+            marginBottom: 12,
+            borderWidth: 1,
+            borderColor: theme.colors.primary + '30',
+        },
+        avatarScrollContent: {
+            paddingHorizontal: 8,
+            gap: 8,
+        },
+        avatarFrame: {
+            backgroundColor: theme.colors.surface,
+            borderRadius: 8,
+            padding: 6,
+            alignItems: 'center',
+            borderWidth: 2,
+            borderColor: 'transparent',
+            position: 'relative',
+        },
+        avatarFrameSelected: {
+            borderColor: theme.colors.primary,
+            backgroundColor: theme.colors.primary + '15',
+        },
+        avatarSprocket: {
+            width: 40,
+            height: 4,
+            backgroundColor: theme.colors.textMuted + '30',
+            borderRadius: 2,
+            marginVertical: 3,
+        },
+        selectedBadge: {
+            position: 'absolute',
+            top: -6,
+            right: -6,
+            width: 20,
+            height: 20,
+            borderRadius: 10,
+            backgroundColor: theme.colors.primary,
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        selectedBadgeText: {
+            color: theme.colors.secondary,
+            fontSize: 12,
+        },
+        // Preview
+        previewSection: {
+            alignItems: 'center',
+            marginBottom: 16,
+        },
+        previewFrame: {
+            padding: 8,
+            borderRadius: 50,
+            borderWidth: 3,
+            borderColor: theme.colors.primary,
+            backgroundColor: theme.colors.background,
+        },
+        // Footer
+        footer: {
+            alignItems: 'center',
+            marginTop: 16,
+            paddingTop: 10,
+            borderTopWidth: 1,
+            borderTopColor: theme.colors.primary + '20',
+        },
+        footerText: {
+            color: theme.colors.textMuted,
+            fontSize: 9,
+            fontFamily: 'Teko-Medium',
+            letterSpacing: 3,
+            opacity: 0.6,
+        },
+        // Delete Account Modal
+        modalOverlay: {
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 20,
+        },
+        modalContent: {
+            width: '100%',
+            maxWidth: 340,
+            borderRadius: 16,
+            padding: 24,
+            borderWidth: 2,
+            borderColor: theme.colors.error + '50',
+        },
+        modalTitle: {
+            fontSize: 16,
+            fontFamily: 'Panchang-Bold',
+            textAlign: 'center',
+            marginBottom: 12,
+            letterSpacing: 2,
+        },
+        modalText: {
+            fontSize: 14,
+            fontFamily: 'Teko-Medium',
+            textAlign: 'center',
+            lineHeight: 20,
+        },
+    });
