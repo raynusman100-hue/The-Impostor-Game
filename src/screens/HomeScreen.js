@@ -13,7 +13,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 // Film perforation component for Kodak aesthetic (same as SetupScreen)
 const FilmPerforations = ({ side, theme }) => {
     const perforationColor = theme.colors.primary + '40'; // 40 = 25% opacity
-    
+
     return (
         <View style={[filmStyles.perforationStrip, side === 'left' ? filmStyles.leftStrip : filmStyles.rightStrip]}>
             {[...Array(12)].map((_, i) => (
@@ -48,11 +48,11 @@ const filmStyles = StyleSheet.create({
 // Simple Menu Button - Clean and minimal
 const SimpleMenuButton = ({ title, onPress, isPrimary }) => {
     const scaleAnim = useRef(new Animated.Value(1)).current;
-    
+
     const handlePressIn = () => {
         Animated.spring(scaleAnim, { toValue: 0.95, friction: 8, useNativeDriver: true }).start();
     };
-    
+
     const handlePressOut = () => {
         Animated.spring(scaleAnim, { toValue: 1, friction: 4, useNativeDriver: true }).start();
     };
@@ -163,7 +163,7 @@ export default function HomeScreen({ navigation }) {
             ]);
             Animated.loop(flicker).start();
         }, 600);
-        
+
         // Film grain animation
         const grain = Animated.loop(
             Animated.sequence([
@@ -200,7 +200,7 @@ export default function HomeScreen({ navigation }) {
                             key={rotation}
                             style={[
                                 styles.gearTooth,
-                                { 
+                                {
                                     backgroundColor: theme.colors.primary,
                                     transform: [{ rotate: `${rotation}deg` }]
                                 }
@@ -334,7 +334,7 @@ function AnimatedCharacter({ theme }) {
 
     const characterSize = getCharacterSize();
     const characterTop = getCharacterTop();
-    const characterSource = require('../../assets/starboy imposter 3.png');
+    const characterSource = require('../../assets/nervous.png');
 
     return (
         <Animated.View

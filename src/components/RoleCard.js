@@ -32,7 +32,7 @@ const THEME_COVER_IMAGES = {
         require('../../assets/Black3.png'),
         require('../../assets/Black4.png'),
         require('../../assets/Black5.png'),
-        require('../../assets/Black6.png'),
+        require('../../assets/Black5.png'),
     ],
     'retro-pop': [
         require('../../assets/Black1.png'),
@@ -40,23 +40,23 @@ const THEME_COVER_IMAGES = {
         require('../../assets/Black3.png'),
         require('../../assets/Black4.png'),
         require('../../assets/Black5.png'),
-        require('../../assets/Black6.png'),
+        require('../../assets/Black5.png'),
     ]
 };
 
 
 export default function RoleCard({ player, category, hintsEnabled, onNext, language, buttonTitle = "NEXT PLAYER", disabled = false, isWifi = false, playerIndex = 0 }) {
     const { theme } = useTheme();
-    
+
     // Use dynamic dimensions hook to handle orientation changes and get accurate sizes
     const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-    
+
     // Calculate card dimensions dynamically
     const CARD_WIDTH = Math.min(windowWidth * 0.9, 450);
     const CARD_HEIGHT = Math.min(windowHeight * 0.7, 600);
     const SLIDER_WIDTH = CARD_WIDTH - 60;
     const SLIDE_RANGE = SLIDER_WIDTH - KNOB_SIZE;
-    
+
     const styles = getStyles(theme, CARD_WIDTH, CARD_HEIGHT, SLIDER_WIDTH);
     const [hasPeeked, setHasPeeked] = useState(false);
     const [showOriginal, setShowOriginal] = useState(false);
@@ -75,12 +75,12 @@ export default function RoleCard({ player, category, hintsEnabled, onNext, langu
     const hasPeekedRef = useRef(false);
     const lastPlayerIndexRef = useRef(playerIndex);
     const [buttonClicked, setButtonClicked] = useState(false);
-    
+
     // Keep refs in sync
     useEffect(() => {
         slideRangeRef.current = SLIDE_RANGE;
     }, [SLIDE_RANGE]);
-    
+
     useEffect(() => {
         hasPeekedRef.current = hasPeeked;
     }, [hasPeeked]);
@@ -93,10 +93,10 @@ export default function RoleCard({ player, category, hintsEnabled, onNext, langu
             setButtonClicked(false);
             hasPeekedRef.current = false;
             lastPlayerIndexRef.current = playerIndex;
-            
+
             // Reset pan position for new player
             pan.setValue({ x: 0, y: 0 });
-            
+
             // Update cover to match playerIndex (sequential non-repeating)
             const covers = THEME_COVER_IMAGES[theme.id] || THEME_COVER_IMAGES['default'];
             setCoverIndex(playerIndex % covers.length);

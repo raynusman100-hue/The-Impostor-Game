@@ -15,8 +15,9 @@ This project is configured to build an Android Preview APK using Codemagic.
     -   Add Application -> Connect Repository (GitHub) -> Select `raynusman100-hue/The-Impostor-Game`.
 
 3.  **Configuration**:
-    -   Codemagic should automatically detect `codemagic.yaml` in the root.
-    -   If not, go to App Settings -> Workflow Editor -> Switch to `codemagic.yaml` mode.
+    -   Go to App Settings -> Workflow Editor.
+    -   Switch to "YAML configuration" mode.
+    -   **IMPORTANT**: Set the "Configuration file" path to `codemagic_build.yaml`.
 
 ## Triggering a Build
 1.  Go to your App in Codemagic.
