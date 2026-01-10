@@ -12,11 +12,12 @@ import { database } from '../utils/firebase';
 import { ref, onValue, off, update, set, get, serverTimestamp, remove } from 'firebase/database';
 import { safeFirebaseUpdate, verifyRoomAccess } from '../utils/connectionUtils';
 import ChatSystem from '../components/ChatSystem';
+import VoiceControl from '../components/VoiceControl';
 
 // Film perforation component for Kodak aesthetic (same as SetupScreen)
 const FilmPerforations = ({ side, theme }) => {
     const perforationColor = theme.colors.primary + '40';
-    
+
     return (
         <View style={[filmPerforationStyles.perforationStrip, side === 'left' ? filmPerforationStyles.leftStrip : filmPerforationStyles.rightStrip]}>
             {[...Array(12)].map((_, i) => (
@@ -87,7 +88,7 @@ export default function DiscussionScreen({ route, navigation }) {
     // Back button shows confirmation in WiFi mode
     useEffect(() => {
         if (!isWifi) return;
-        
+
         const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
             setShowLeaveConfirm(true);
             return true;
@@ -130,7 +131,7 @@ export default function DiscussionScreen({ route, navigation }) {
         const verifyInterval = setInterval(async () => {
             // Skip verification if component is unmounting or navigation is happening
             if (!verificationActive) return;
-            
+
             try {
                 const { exists, data } = await verifyRoomAccess(roomCode);
 
@@ -246,7 +247,7 @@ export default function DiscussionScreen({ route, navigation }) {
                 // CRITICAL: Prevent double navigation with debouncing
                 if (data.status !== 'discussion' && !navigationInProgress && navigation.isFocused()) {
                     navigationInProgress = true;
-                    
+
                     // Status Check: Voting
                     if (data.status === 'voting') {
                         console.log("DISCUSSION: Main listener - navigating to voting");
@@ -263,7 +264,7 @@ export default function DiscussionScreen({ route, navigation }) {
                         });
                         return;
                     }
-                    
+
                     // Reset navigation flag after a delay
                     setTimeout(() => {
                         navigationInProgress = false;
@@ -301,24 +302,24 @@ export default function DiscussionScreen({ route, navigation }) {
                         // For end discussion: ALL players (including impostors) must vote to end
                         // But majority can start 20s countdown
                         setNeededToEnd(playersList.length); // All players needed to end immediately
-                        
+
                         // UNPLAYABLE GAME CHECK: If impostors >= citizens, game is unplayable
                         const currentImposterCount = gameState.imposterCount || 1;
                         const citizenCount = playersList.length - currentImposterCount;
-                        
+
                         if (citizenCount <= currentImposterCount && playersList.length > 0) {
                             console.log(`⚠️ GAME UNPLAYABLE: ${currentImposterCount} impostors vs ${citizenCount} citizens`);
-                            
+
                             // Check if current player is still in the game
                             const isStillInGame = playersList.some(p => p.id === playerId);
-                            
+
                             if (!isStillInGame) {
                                 // Player already left - just go home silently
                                 console.log("Player already left, navigating home silently");
                                 navigation.navigate('Home');
                                 return;
                             }
-                            
+
                             Alert.alert(
                                 'Game Unplayable',
                                 'Too many players have left. The game cannot continue with equal or more impostors than citizens.',
@@ -595,7 +596,7 @@ export default function DiscussionScreen({ route, navigation }) {
             {/* Film perforations - side strips */}
             <FilmPerforations side="left" theme={theme} />
             <FilmPerforations side="right" theme={theme} />
-            
+
             <SafeAreaView style={styles.safeArea}>
                 {/* Kodak Film Header - Both modes */}
                 <View style={styles.filmHeader}>
@@ -605,7 +606,10 @@ export default function DiscussionScreen({ route, navigation }) {
                         ))}
                     </View>
                 </View>
-                
+
+                {/* Voice Control for Wifi Mode */}
+                {isWifi && <VoiceControl />}
+
                 {/* Header / Room Code */}
                 <View style={styles.header}>
                     {isWifi ? (
@@ -703,7 +707,7 @@ export default function DiscussionScreen({ route, navigation }) {
                         </>
                     )}
                 </View>
-                
+
                 {/* Kodak Film Footer - Both modes */}
                 <View style={styles.filmFooter}>
                     <View style={styles.filmStrip}>
@@ -713,7 +717,7 @@ export default function DiscussionScreen({ route, navigation }) {
                     </View>
                 </View>
             </SafeAreaView>
-            
+
             {/* Leave Room Confirmation Modal */}
             <ConfirmModal
                 visible={showLeaveConfirm}
@@ -939,9 +943,9 @@ const getStyles = (theme) => StyleSheet.create({
         top: 55,
         zIndex: 1,
     },
-    timeTextContainer: { 
-        alignItems: 'center', 
-        justifyContent: 'center', 
+    timeTextContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
         zIndex: 10,
         position: 'absolute',
         top: 25,

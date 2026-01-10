@@ -14,11 +14,13 @@ import LanguageSelectorModal from '../components/LanguageSelectorModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ChatSystem from '../components/ChatSystem';
 import { CustomAvatar } from '../utils/AvatarGenerator';
+import VoiceControl from '../components/VoiceControl';
+import { useVoiceChat } from '../utils/VoiceChatContext';
 
 // Film perforation component for Kodak aesthetic
 const FilmPerforations = ({ side, theme }) => {
     const perforationColor = theme.colors.primary + '40';
-    
+
     return (
         <View style={[filmPerforationStyles.perforationStrip, side === 'left' ? filmPerforationStyles.leftStrip : filmPerforationStyles.rightStrip]}>
             {[...Array(12)].map((_, i) => (
@@ -57,6 +59,9 @@ export default function HostScreen({ navigation, route }) {
 
     const [roomCode, setRoomCode] = useState(existingRoomCode || '');
     const [players, setPlayers] = useState([]);
+
+    // Voice Chat Integration
+    const { joinChannel, leaveChannel } = useVoiceChat();
 
     // Game Settings
     const [impostorCount, setImpostorCount] = useState(1);
@@ -101,12 +106,44 @@ export default function HostScreen({ navigation, route }) {
     // Initialize room code once
     useEffect(() => {
         if (!playerData) return;
-        
+
         if (!roomCode) {
             const code = existingRoomCode || Math.floor(100000 + Math.random() * 900000).toString();
             setRoomCode(code);
         }
     }, [playerData, existingRoomCode, roomCode]);
+
+    // Auto-join Voice Channel when room is created/ready
+    useEffect(() => {
+        if (roomCode && playerData?.uid) {
+            console.log("🔊 HOST: Joining voice channel", roomCode);
+            // Use numeric ID for Agora if possible, or hash string. 
+            // For simplicity in this demo, passing 0 lets Agora assign one, 
+            // but for tracking who is talking we usually want a consistent ID.
+            // Since we don't have integer IDs easily effectively here without mapping, 
+            // we'll pass 0 for now or a simple hash.
+            joinChannel(roomCode, 0);
+        }
+        return () => {
+            // Optional: Don't leave if navigating to game screens (handled by context/navigation persistence), 
+            // but usually we want to stay connected.
+            // If we strictly leave on unmount, audio cuts during transition.
+            // Strategy: Only leave if we are actually destroying the session (like going back home).
+            // Handled by beforeRemove listener below?
+        }
+    }, [roomCode, playerData]);
+
+    // Cleanup voice on total exit
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+            // If going back to Home (not game), leave channel
+            const targetRoute = e.data?.action?.payload?.name;
+            if (targetRoute === 'Home') {
+                leaveChannel();
+            }
+        });
+        return unsubscribe;
+    }, [navigation]);
 
     // Track if listener is set up
     const listenerSetupRef = React.useRef(false);
@@ -122,7 +159,7 @@ export default function HostScreen({ navigation, route }) {
         ).start();
 
         if (!playerData || !roomCode) return;
-        
+
         // Skip if listener already set up for this room
         if (listenerSetupRef.current && currentRoomCodeRef.current === roomCode) {
             console.log("🔄 HOST: Listener already set up for room:", roomCode);
@@ -131,19 +168,19 @@ export default function HostScreen({ navigation, route }) {
 
         const roomRef = ref(database, `rooms/${roomCode}`);
         const playersRef = ref(database, `rooms/${roomCode}/players`);
-        
+
         const setupRoom = async () => {
             if (existingRoomCode) {
                 // RETURNING TO EXISTING ROOM - just update status, don't recreate
                 console.log("🔄 HOST: Returning to existing room:", roomCode);
-                
+
                 // First cancel any existing onDisconnect handlers
                 try {
                     await onDisconnect(roomRef).cancel();
                 } catch (e) {
                     // Ignore if no handler exists
                 }
-                
+
                 await update(roomRef, {
                     status: 'lobby',
                     gameStarted: false,
@@ -162,17 +199,17 @@ export default function HostScreen({ navigation, route }) {
                     hostAvatar: playerData.avatarId
                 });
             }
-            
+
             // Set up disconnect handler AFTER room is ready
             onDisconnect(roomRef).remove();
         };
-        
+
         setupRoom();
 
         console.log("🔄 HOST: Setting up players listener for room:", roomCode);
         listenerSetupRef.current = true;
         currentRoomCodeRef.current = roomCode;
-        
+
         // Use the unsubscribe function returned by onValue
         const unsubscribePlayers = onValue(playersRef, (snapshot) => {
             const data = snapshot.val();
@@ -307,9 +344,10 @@ export default function HostScreen({ navigation, route }) {
             {/* Film perforations - side strips */}
             <FilmPerforations side="left" theme={theme} />
             <FilmPerforations side="right" theme={theme} />
-            
+
             {/* Header with room code */}
             <View style={styles.header}>
+                <VoiceControl />
                 <Text style={styles.title}>ROOM CODE</Text>
                 <Animated.Text style={[styles.codeText, { transform: [{ scale: pulseAnim }] }]}>
                     {roomCode}
@@ -354,7 +392,7 @@ export default function HostScreen({ navigation, route }) {
                     />
                 </View>
             ) : (
-                <ScrollView 
+                <ScrollView
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                 >
@@ -401,7 +439,7 @@ export default function HostScreen({ navigation, route }) {
                         </View>
 
                         <View style={styles.settingButtons}>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={styles.settingBtn}
                                 onPress={() => setIsLanguageModalVisible(true)}
                             >
@@ -411,7 +449,7 @@ export default function HostScreen({ navigation, route }) {
                                 </Text>
                             </TouchableOpacity>
 
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={styles.settingBtn}
                                 onPress={() => {
                                     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -480,30 +518,30 @@ export default function HostScreen({ navigation, route }) {
 
 const getStyles = (theme) => StyleSheet.create({
     container: { flex: 1 },
-    scrollContent: { 
+    scrollContent: {
         paddingHorizontal: 28,
         paddingTop: 10,
         paddingBottom: 30,
     },
-    
-    header: { 
+
+    header: {
         marginTop: Platform.OS === 'ios' ? 50 : 35,
-        alignItems: 'center', 
+        alignItems: 'center',
         marginBottom: 10,
     },
-    title: { 
-        fontSize: 12, 
-        color: theme.colors.tertiary, 
-        fontFamily: theme.fonts.bold, 
+    title: {
+        fontSize: 12,
+        color: theme.colors.tertiary,
+        fontFamily: theme.fonts.bold,
         letterSpacing: 4,
     },
-    codeText: { 
-        fontSize: 48, 
-        color: theme.colors.text, 
-        fontFamily: theme.fonts.header, 
+    codeText: {
+        fontSize: 48,
+        color: theme.colors.text,
+        fontFamily: theme.fonts.header,
         letterSpacing: 8,
     },
-    
+
     tabContainer: {
         flexDirection: 'row',
         marginBottom: 12,
@@ -546,17 +584,17 @@ const getStyles = (theme) => StyleSheet.create({
         borderWidth: 2,
         borderColor: theme.colors.background,
     },
-    
-    qrContainer: { 
-        padding: 16, 
-        backgroundColor: theme.colors.surface, 
-        borderRadius: 16, 
+
+    qrContainer: {
+        padding: 16,
+        backgroundColor: theme.colors.surface,
+        borderRadius: 16,
         marginBottom: 12,
         borderWidth: 2,
         borderColor: theme.colors.primary,
         alignSelf: 'center',
     },
-    
+
     // Host Card - Compact horizontal layout
     hostCard: {
         flexDirection: 'row',
@@ -578,7 +616,7 @@ const getStyles = (theme) => StyleSheet.create({
         color: theme.colors.text,
         letterSpacing: 1,
     },
-    hostBadge: { 
+    hostBadge: {
         marginTop: 4,
         backgroundColor: theme.colors.primary,
         paddingHorizontal: 10,
@@ -592,7 +630,7 @@ const getStyles = (theme) => StyleSheet.create({
         fontFamily: theme.fonts.bold,
         letterSpacing: 2,
     },
-    
+
     // Settings Card - Compact
     settingsCard: {
         padding: 14,
@@ -602,36 +640,36 @@ const getStyles = (theme) => StyleSheet.create({
         backgroundColor: theme.colors.surface,
         marginBottom: 12,
     },
-    settingRow: { 
-        flexDirection: 'row', 
-        justifyContent: 'space-between', 
+    settingRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 12,
     },
-    settingLabel: { 
-        color: theme.colors.tertiary, 
-        fontSize: 12, 
-        fontFamily: theme.fonts.bold, 
+    settingLabel: {
+        color: theme.colors.tertiary,
+        fontSize: 12,
+        fontFamily: theme.fonts.bold,
         letterSpacing: 2,
     },
-    counterControls: { 
-        flexDirection: 'row', 
+    counterControls: {
+        flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
     },
-    countBtn: { 
-        width: 36, 
-        height: 36, 
-        borderRadius: 18, 
-        backgroundColor: theme.colors.surface, 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        borderWidth: 2, 
+    countBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: theme.colors.surface,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
         borderColor: theme.colors.primary,
     },
-    countBtnText: { 
-        color: theme.colors.text, 
-        fontSize: 20, 
+    countBtnText: {
+        color: theme.colors.text,
+        fontSize: 20,
         fontFamily: theme.fonts.bold,
         lineHeight: 22,
     },
@@ -667,63 +705,63 @@ const getStyles = (theme) => StyleSheet.create({
         fontFamily: theme.fonts.bold,
         letterSpacing: 1,
     },
-    
-    categoryGrid: { 
-        flexDirection: 'row', 
-        flexWrap: 'wrap', 
-        gap: 8, 
+
+    categoryGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
         marginTop: 12,
     },
-    catItem: { 
-        paddingHorizontal: 12, 
-        paddingVertical: 8, 
-        borderRadius: 16, 
-        borderWidth: 1, 
+    catItem: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 16,
+        borderWidth: 1,
         borderColor: theme.colors.textMuted,
         backgroundColor: theme.colors.surface,
     },
-    catItemSelected: { 
-        backgroundColor: theme.colors.primary, 
+    catItemSelected: {
+        backgroundColor: theme.colors.primary,
         borderColor: theme.colors.primary,
     },
-    catText: { 
-        color: theme.colors.textSecondary, 
-        fontSize: 11, 
-        fontFamily: theme.fonts.bold, 
+    catText: {
+        color: theme.colors.textSecondary,
+        fontSize: 11,
+        fontFamily: theme.fonts.bold,
         letterSpacing: 1,
     },
-    catTextSelected: { 
+    catTextSelected: {
         color: theme.colors.secondary,
     },
-    
+
     // Players Card
-    playersCard: { 
-        padding: 14, 
-        borderRadius: 12, 
-        marginBottom: 16, 
-        borderWidth: 2, 
+    playersCard: {
+        padding: 14,
+        borderRadius: 12,
+        marginBottom: 16,
+        borderWidth: 2,
         borderColor: theme.colors.primary,
         backgroundColor: theme.colors.surface,
     },
-    playerCount: { 
-        fontSize: 11, 
-        color: theme.colors.tertiary, 
-        fontFamily: theme.fonts.bold, 
-        marginBottom: 10, 
+    playerCount: {
+        fontSize: 11,
+        color: theme.colors.tertiary,
+        fontFamily: theme.fonts.bold,
+        marginBottom: 10,
         letterSpacing: 2,
     },
-    playerList: { 
+    playerList: {
         gap: 8,
     },
-    playerRow: { 
-        flexDirection: 'row', 
-        alignItems: 'center', 
+    playerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
         gap: 10,
     },
-    playerName: { 
-        fontSize: 16, 
-        color: theme.colors.text, 
-        fontFamily: theme.fonts.medium, 
+    playerName: {
+        fontSize: 16,
+        color: theme.colors.text,
+        fontFamily: theme.fonts.medium,
         letterSpacing: 1,
     },
     youTag: {
@@ -731,8 +769,8 @@ const getStyles = (theme) => StyleSheet.create({
         color: theme.colors.textMuted,
         fontFamily: theme.fonts.medium,
     },
-    
-    footer: { 
+
+    footer: {
         gap: 12,
     },
 });

@@ -10,11 +10,16 @@ import { retryFirebaseOperation, safeFirebaseUpdate, verifyRoomAccess } from '..
 import ChatSystem from '../components/ChatSystem';
 import { CustomAvatar } from '../utils/AvatarGenerator';
 import { CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
+import VoiceControl from '../components/VoiceControl';
 
 export default function WifiVotingScreen({ route, navigation }) {
     const { theme } = useTheme();
     const styles = getStyles(theme);
     const { roomCode, userId } = route.params;
+
+    // ... existing strict mode lines or standard React logic if any ...
+
+
 
     const [players, setPlayers] = useState([]);
     const [myVotes, setMyVotes] = useState([]);
@@ -55,17 +60,17 @@ export default function WifiVotingScreen({ route, navigation }) {
 
         console.log("📊 CLIENT: Setting up real-time voting status tracking for", players.length, "players");
         console.log("📊 CLIENT: Players list:", players.map(p => `${p.name} (${p.id})`));
-        
+
         const votesRef = ref(database, `rooms/${roomCode}/gameState/votes`);
-        
+
         const unsub = onValue(votesRef, (snapshot) => {
             const votes = snapshot.val() || {};
             const votedPlayerIds = Object.keys(votes);
-            
+
             console.log(`📊 CLIENT: Raw Firebase votes data:`, votes);
             console.log(`📊 CLIENT: Vote status update - received votes from:`, votedPlayerIds);
             console.log(`📊 CLIENT: Total votes: ${votedPlayerIds.length}/${players.length}`);
-            
+
             // Update voting status for all players
             const newVotingStatus = {};
             players.forEach(player => {
@@ -73,7 +78,7 @@ export default function WifiVotingScreen({ route, navigation }) {
                 newVotingStatus[player.id] = hasVoted;
                 console.log(`📊 CLIENT: Player ${player.name} (${player.id}): ${hasVoted ? 'VOTED' : 'NOT VOTED'}`);
             });
-            
+
             console.log(`📊 CLIENT: Final voting status:`, newVotingStatus);
             setVotingStatus(newVotingStatus);
 
@@ -304,7 +309,7 @@ export default function WifiVotingScreen({ route, navigation }) {
 
                     // Force UI update to show "PROCESSING..." state immediately
                     setIsSubmitted(true);
-                    
+
                     console.log("CLIENT: UI updated to show processing state");
                 }
             }
@@ -381,7 +386,7 @@ export default function WifiVotingScreen({ route, navigation }) {
                     // IMMEDIATE Firebase update with PRECOMPUTED results
                     try {
                         const roomRef = ref(database, `rooms/${roomCode}`);
-                        
+
                         if (maxVotes === 0 || topCandidates.length > 1) {
                             // TIE OR NO VOTES - Back to discussion
                             console.log("🔄 HOST: Tie/No votes - immediate return to discussion");
@@ -429,9 +434,9 @@ export default function WifiVotingScreen({ route, navigation }) {
                                 'gameState/lastActionAt': Date.now()
                             });
                         }
-                        
+
                         console.log("🚀 HOST: IMMEDIATE TRANSITION COMPLETE - NO DELAYS");
-                        
+
                     } catch (error) {
                         console.error("🚨 HOST: Immediate result processing failed:", error);
                         processingResults = false;
@@ -470,7 +475,7 @@ export default function WifiVotingScreen({ route, navigation }) {
                         const votes = votesSnapshot.val() || {};
 
                         console.log("🏁 HOST: Timer expiry - immediate vote processing");
-                        
+
                         // PRECOMPUTE RESULTS IMMEDIATELY
                         const tally = {};
                         Object.values(votes).forEach(voteList => {
@@ -531,9 +536,9 @@ export default function WifiVotingScreen({ route, navigation }) {
                                 'gameState/lastActionAt': Date.now()
                             });
                         }
-                        
+
                         console.log("🚀 HOST: Timer expiry processing complete - IMMEDIATE");
-                        
+
                     } catch (error) {
                         console.error("HOST: Timer expiry processing error:", error);
                         // Fallback navigation
@@ -703,7 +708,7 @@ export default function WifiVotingScreen({ route, navigation }) {
         if (!roomCode) return;
 
         let hasNavigated = false;
-        
+
         const navigateToResult = (data) => {
             if (hasNavigated) return;
             hasNavigated = true;
@@ -821,11 +826,11 @@ export default function WifiVotingScreen({ route, navigation }) {
                 clearInterval(checkInterval);
                 return;
             }
-            
+
             try {
                 const snapshot = await get(roomRef);
                 const data = snapshot.val();
-                
+
                 if (data && data.status === 'result' && !hasNavigated) {
                     console.log("VOTING: [PERIODIC CHECK] Status is RESULT - navigating!");
                     clearInterval(checkInterval);
@@ -857,24 +862,24 @@ export default function WifiVotingScreen({ route, navigation }) {
                         if (JSON.stringify(prev) === JSON.stringify(playerList)) return prev;
                         return playerList;
                     });
-                    
+
                     // UNPLAYABLE GAME CHECK: If impostors >= citizens, game is unplayable
                     const currentImposterCount = data.imposterCount || 1;
                     const citizenCount = playerList.length - currentImposterCount;
-                    
+
                     if (citizenCount <= currentImposterCount && playerList.length > 0) {
                         console.log(`⚠️ VOTING UNPLAYABLE: ${currentImposterCount} impostors vs ${citizenCount} citizens`);
-                        
+
                         // Check if current player is still in the game
                         const isStillInGame = playerList.some(p => p.id === userId);
-                        
+
                         if (!isStillInGame) {
                             // Player already left - just go home silently
                             console.log("Player already left, navigating home silently");
                             navigation.navigate('Home');
                             return;
                         }
-                        
+
                         Alert.alert(
                             'Game Unplayable',
                             'Too many players have left. The game cannot continue with equal or more impostors than citizens.',
@@ -949,17 +954,17 @@ export default function WifiVotingScreen({ route, navigation }) {
             // Direct Firebase update - more reliable than safeFirebaseUpdate for votes
             const votesRef = ref(database, `rooms/${roomCode}/gameState/votes/${userId}`);
             const lastActionRef = ref(database, `rooms/${roomCode}/gameState/lastActionAt`);
-            
+
             // Submit vote directly
             await set(votesRef, myVotes);
             await set(lastActionRef, Date.now());
-            
+
             console.log("✅ VOTE SUBMIT: Vote submission successful for player", userId);
-            
+
         } catch (error) {
             console.error("🚨 VOTE SUBMIT: Vote submission error:", error);
             setIsSubmitted(false);
-            
+
             // More specific error handling
             if (error.code === 'PERMISSION_DENIED') {
                 Alert.alert("Error", "You don't have permission to vote in this room.");
@@ -973,6 +978,9 @@ export default function WifiVotingScreen({ route, navigation }) {
 
     return (
         <LinearGradient style={styles.container} colors={theme.colors.backgroundGradient || [theme.colors.background, theme.colors.background, theme.colors.background]}>
+            {/* Voice Control */}
+            <VoiceControl />
+
             {/* Kodak Film Header */}
             <View style={styles.filmHeader}>
                 <View style={styles.filmStrip}>
@@ -981,7 +989,7 @@ export default function WifiVotingScreen({ route, navigation }) {
                     ))}
                 </View>
             </View>
-            
+
             <View style={styles.header}>
                 <View style={styles.timerBadge}>
                     <Text style={[
@@ -1166,36 +1174,36 @@ const getStyles = (theme) => StyleSheet.create({
         opacity: 0.8,
     },
     header: { marginTop: 10, alignItems: 'center', marginBottom: 10, width: '100%' },
-    title: { 
-        fontSize: 40, 
-        color: theme.colors.text, 
-        fontFamily: theme.fonts.header, 
+    title: {
+        fontSize: 40,
+        color: theme.colors.text,
+        fontFamily: theme.fonts.header,
         letterSpacing: 4,
         ...theme.textShadows.depth,
     },
-    subtitle: { 
-        fontSize: 14, 
-        color: theme.colors.tertiary, 
-        fontFamily: theme.fonts.medium, 
-        letterSpacing: 3, 
-        marginBottom: 5, 
-        textAlign: 'center' 
+    subtitle: {
+        fontSize: 14,
+        color: theme.colors.tertiary,
+        fontFamily: theme.fonts.medium,
+        letterSpacing: 3,
+        marginBottom: 5,
+        textAlign: 'center'
     },
     scrollContent: { padding: 20, width: '100%' },
     playerGrid: { gap: 10, width: '100%' },
-    playerCard: { 
-        padding: 18, 
-        borderRadius: 10, 
-        borderWidth: 2, 
-        borderColor: theme.colors.textMuted, 
-        flexDirection: 'row', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
+    playerCard: {
+        padding: 18,
+        borderRadius: 10,
+        borderWidth: 2,
+        borderColor: theme.colors.textMuted,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         width: '100%',
         backgroundColor: theme.colors.surface,
     },
-    selectedCard: { 
-        borderColor: theme.colors.primary, 
+    selectedCard: {
+        borderColor: theme.colors.primary,
         backgroundColor: theme.colors.surface,
         ...theme.shadows.medium,
     },
@@ -1203,12 +1211,12 @@ const getStyles = (theme) => StyleSheet.create({
     playerName: { fontSize: 18, fontFamily: theme.fonts.header, letterSpacing: 2, color: theme.colors.text },
     voteMarker: { color: theme.colors.text, fontFamily: theme.fonts.bold, fontSize: 13, letterSpacing: 2 },
     footer: { padding: 20, gap: 10, marginBottom: 20, width: '100%' },
-    statusText: { 
-        textAlign: 'center', 
-        color: theme.colors.tertiary, 
-        fontFamily: theme.fonts.medium, 
-        fontSize: 14, 
-        letterSpacing: 3 
+    statusText: {
+        textAlign: 'center',
+        color: theme.colors.tertiary,
+        fontFamily: theme.fonts.medium,
+        fontSize: 14,
+        letterSpacing: 3
     },
     submitBtn: { width: '100%' },
     timerBadge: {

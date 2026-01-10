@@ -22,6 +22,7 @@ import PrivacyPolicyScreen from './src/screens/PrivacyPolicyScreen';
 import TermsOfServiceScreen from './src/screens/TermsOfServiceScreen';
 import { ThemeProvider, useTheme } from './src/utils/ThemeContext';
 import { SettingsProvider } from './src/utils/SettingsContext';
+import { VoiceChatProvider } from './src/utils/VoiceChatContext';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -128,7 +129,7 @@ export default function App() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [splashAnimationComplete, setSplashAnimationComplete] = useState(false);
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(null); // null = loading, true/false = checked
-  
+
   const [fontsLoaded] = useFonts({
     'Teko-Medium': require('./assets/Teko_Complete/Fonts/OTF/Teko-Medium.otf'),
     'Sharpie-Black': require('./assets/Sharpie-Black.otf'),
@@ -151,7 +152,7 @@ export default function App() {
         } catch (e) {
           setHasAcceptedTerms(false);
         }
-        
+
         // Hide native splash immediately - we'll show our animated overlay
         try {
           await SplashScreen.hideAsync();
@@ -183,25 +184,27 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#0a0a0a' }}>
       <ThemeProvider>
-        <SettingsProvider>
-          {/* Show consent screen if not accepted, otherwise show main app */}
-          {hasAcceptedTerms === false ? (
-            <ConsentScreen onAccept={handleAcceptTerms} />
-          ) : hasAcceptedTerms === true ? (
-            <AppNavigator />
-          ) : null}
-          
-          {/* Smooth fade overlay - fades out to reveal content */}
-          {appIsReady && !splashAnimationComplete && hasAcceptedTerms !== null && (
-            <SmoothFadeOverlay 
-              onAnimationComplete={() => setSplashAnimationComplete(true)} 
-            />
-          )}
-          {/* Static overlay while fonts are loading */}
-          {!appIsReady && (
-            <View style={splashStyles.overlay} />
-          )}
-        </SettingsProvider>
+        <VoiceChatProvider>
+          <SettingsProvider>
+            {/* Show consent screen if not accepted, otherwise show main app */}
+            {hasAcceptedTerms === false ? (
+              <ConsentScreen onAccept={handleAcceptTerms} />
+            ) : hasAcceptedTerms === true ? (
+              <AppNavigator />
+            ) : null}
+
+            {/* Smooth fade overlay - fades out to reveal content */}
+            {appIsReady && !splashAnimationComplete && hasAcceptedTerms !== null && (
+              <SmoothFadeOverlay
+                onAnimationComplete={() => setSplashAnimationComplete(true)}
+              />
+            )}
+            {/* Static overlay while fonts are loading */}
+            {!appIsReady && (
+              <View style={splashStyles.overlay} />
+            )}
+          </SettingsProvider>
+        </VoiceChatProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
   );

@@ -10,12 +10,14 @@ import { ref, onValue, off, remove, get } from 'firebase/database';
 import { CustomAvatar } from '../utils/AvatarGenerator';
 
 import ChatSystem from '../components/ChatSystem';
+import VoiceControl from '../components/VoiceControl';
+import { useVoiceChat } from '../utils/VoiceChatContext';
 // ... existing imports
 
 // Film perforation component for Kodak aesthetic (same as SetupScreen)
 const FilmPerforations = ({ side, theme }) => {
     const perforationColor = theme.colors.primary + '40';
-    
+
     return (
         <View style={[filmPerforationStyles.perforationStrip, side === 'left' ? filmPerforationStyles.leftStrip : filmPerforationStyles.rightStrip]}>
             {[...Array(12)].map((_, i) => (
@@ -54,6 +56,9 @@ export default function WifiLobbyScreen({ route, navigation }) {
     const [players, setPlayers] = useState([]);
     const [roomStatus, setRoomStatus] = useState('lobby');
 
+    // Voice Chat
+    const { joinChannel, leaveChannel } = useVoiceChat();
+
     // Host Data
     const [hostName, setHostName] = useState('Waiting...');
     const [hostAvatar, setHostAvatar] = useState(1);
@@ -75,8 +80,8 @@ export default function WifiLobbyScreen({ route, navigation }) {
             'Are you sure you want to leave the room?',
             [
                 { text: 'Stay', style: 'cancel' },
-                { 
-                    text: 'Leave', 
+                {
+                    text: 'Leave',
                     style: 'destructive',
                     onPress: async () => {
                         if (roomCode && playerId) {
@@ -111,6 +116,25 @@ export default function WifiLobbyScreen({ route, navigation }) {
     }, [showChat]);
     const pulseAnim = React.useRef(new Animated.Value(1)).current;
 
+    // Join Voice Channel
+    useEffect(() => {
+        if (roomCode && playerId) {
+            console.log("🔊 PLAYER: Joining voice channel", roomCode);
+            joinChannel(roomCode, 0);
+        }
+    }, [roomCode, playerId]);
+
+    // Leave voice on exit to Home
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+            const targetRoute = e.data?.action?.payload?.name;
+            if (targetRoute === 'Home') {
+                leaveChannel();
+            }
+        });
+        return unsubscribe;
+    }, [navigation]);
+
     useEffect(() => {
         Animated.loop(
             Animated.sequence([
@@ -120,13 +144,13 @@ export default function WifiLobbyScreen({ route, navigation }) {
         ).start();
 
         let hasNavigated = false;
-        
+
         const navigateToGame = (status) => {
             if (hasNavigated) return;
             hasNavigated = true;
-            
+
             console.log(`🎯 LOBBY: Navigating to ${status} for player ${playerId}`);
-            
+
             if (status === 'voting') {
                 navigation.replace('WifiVoting', { roomCode, userId: playerId });
             } else if (status === 'game' || status === 'roles' || status === 'reveal') {
@@ -158,7 +182,7 @@ export default function WifiLobbyScreen({ route, navigation }) {
                 // (prevents false positives during play again transitions)
                 setTimeout(async () => {
                     if (hasNavigated) return;
-                    
+
                     // Double-check the room is really gone
                     const recheck = await get(roomRef);
                     if (!recheck.exists() && !hasNavigated) {
@@ -194,11 +218,11 @@ export default function WifiLobbyScreen({ route, navigation }) {
                 clearInterval(checkInterval);
                 return;
             }
-            
+
             try {
                 const snapshot = await get(roomRef);
                 const data = snapshot.val();
-                
+
                 if (data && !hasNavigated) {
                     const status = data.status;
                     if (status === 'voting' || status === 'game' || status === 'roles' || status === 'reveal') {
@@ -227,7 +251,7 @@ export default function WifiLobbyScreen({ route, navigation }) {
             {/* Film perforations - side strips */}
             <FilmPerforations side="left" theme={theme} />
             <FilmPerforations side="right" theme={theme} />
-            
+
             {/* Kodak Film Header */}
             <View style={styles.filmHeader}>
                 <View style={styles.filmStrip}>
@@ -236,8 +260,9 @@ export default function WifiLobbyScreen({ route, navigation }) {
                     ))}
                 </View>
             </View>
-            
+
             <View style={styles.header}>
+                <VoiceControl />
                 <Text style={styles.roomLabel}>WAITING IN ROOM</Text>
                 <Animated.Text style={[styles.roomCode, { transform: [{ scale: pulseAnim }] }]}>
                     {roomCode}
@@ -323,7 +348,7 @@ export default function WifiLobbyScreen({ route, navigation }) {
                     style={styles.leaveBtn}
                 />
             )}
-            
+
             {/* Kodak Film Footer */}
             <View style={styles.filmFooter}>
                 <View style={styles.filmStrip}>
@@ -342,7 +367,7 @@ const getStyles = (theme) => StyleSheet.create({
         padding: theme.spacing.xl,
         alignItems: 'center',
     },
-    
+
     // Kodak Film Strip Decorations
     filmHeader: {
         width: '100%',
@@ -370,7 +395,7 @@ const getStyles = (theme) => StyleSheet.create({
         borderRadius: 2,
         opacity: 0.8,
     },
-    
+
     header: {
         marginTop: 60,
         alignItems: 'center',
@@ -391,7 +416,7 @@ const getStyles = (theme) => StyleSheet.create({
         letterSpacing: 10,
         ...theme.textShadows.depth,
     },
-    
+
     tabContainer: {
         flexDirection: 'row',
         marginBottom: 15,
@@ -435,7 +460,7 @@ const getStyles = (theme) => StyleSheet.create({
         borderWidth: 2,
         borderColor: theme.colors.background,
     },
-    
+
     content: {
         flex: 1,
         width: '100%',
@@ -457,7 +482,7 @@ const getStyles = (theme) => StyleSheet.create({
         letterSpacing: 3,
         ...theme.textShadows.softDepth,
     },
-    
+
     playerBox: {
         width: '100%',
         padding: 20,
@@ -487,7 +512,7 @@ const getStyles = (theme) => StyleSheet.create({
         gap: 12,
         marginBottom: 8
     },
-    
+
     leaveBtn: {
         width: '100%',
         marginBottom: 50,
