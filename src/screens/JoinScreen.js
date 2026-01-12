@@ -9,6 +9,9 @@ import { playHaptic } from '../utils/haptics';
 import { database } from '../utils/firebase';
 import { ref, get, set, push, onDisconnect } from 'firebase/database';
 import { CustomAvatar } from '../utils/AvatarGenerator';
+import { CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
+import VoiceControl from '../components/VoiceControl';
+import { useVoiceChat } from '../utils/VoiceChatContext';
 
 export default function JoinScreen({ navigation, route }) {
     const { theme } = useTheme();
@@ -85,6 +88,7 @@ export default function JoinScreen({ navigation, route }) {
                     avatarId: playerData.avatarId,
                     uid: playerData.uid,
                     status: 'waiting',
+                    customAvatarConfig: playerData.customAvatarConfig || null // SAVE CONFIG
                 });
 
                 // Navigate to lobby
@@ -151,7 +155,7 @@ export default function JoinScreen({ navigation, route }) {
 
     return (
         <LinearGradient
-            colors={['#0a0a0a', '#121212', '#0a0a0a']}
+            colors={theme.colors.backgroundGradient || [theme.colors.background, theme.colors.background, theme.colors.background]}
             style={styles.container}
         >
             {/* Kodak Film Header */}
@@ -162,14 +166,20 @@ export default function JoinScreen({ navigation, route }) {
                     ))}
                 </View>
             </View>
-            
+
+            <VoiceControl />
+
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <Text style={styles.title}>JOIN GAME</Text>
 
                 <View style={styles.inputSection}>
                     {/* User Profile Display */}
                     <View style={styles.profileCard}>
-                        <CustomAvatar id={playerData.avatarId} size={80} />
+                        {playerData.customAvatarConfig ? (
+                            <CustomBuiltAvatar config={playerData.customAvatarConfig} size={80} />
+                        ) : (
+                            <CustomAvatar id={playerData.avatarId} size={80} />
+                        )}
                         <Text style={styles.profileName}>{playerData.name.toUpperCase()}</Text>
                         <View style={styles.loggedInBadge}>
                             <Text style={styles.loggedInText}>LOGGED IN</Text>
@@ -181,7 +191,7 @@ export default function JoinScreen({ navigation, route }) {
                     <TextInput
                         style={styles.input}
                         placeholder="6-Digit Code"
-                        placeholderTextColor="rgba(212, 160, 0, 0.4)"
+                        placeholderTextColor={theme.colors.textMuted}
                         keyboardType="numeric"
                         value={roomCode}
                         onChangeText={setRoomCode}
@@ -205,7 +215,7 @@ export default function JoinScreen({ navigation, route }) {
                 </View>
 
             </ScrollView>
-            
+
             {/* Kodak Film Footer */}
             <View style={styles.filmFooter}>
                 <View style={styles.filmStrip}>
@@ -222,7 +232,7 @@ const getStyles = (theme) => StyleSheet.create({
     container: {
         flex: 1,
     },
-    
+
     // Kodak Film Strip Decorations
     filmHeader: {
         width: '100%',
@@ -240,11 +250,11 @@ const getStyles = (theme) => StyleSheet.create({
     filmHole: {
         width: 12,
         height: 8,
-        backgroundColor: '#D4A000',
+        backgroundColor: theme.colors.primary,
         borderRadius: 2,
         opacity: 0.8,
     },
-    
+
     scrollContent: {
         padding: theme.spacing.xl,
         alignItems: 'center',
@@ -253,20 +263,18 @@ const getStyles = (theme) => StyleSheet.create({
     title: {
         fontSize: 44,
         fontFamily: theme.fonts.header,
-        color: '#FFD54F',
+        color: theme.colors.text,
         letterSpacing: 6,
         marginBottom: 30,
-        textShadowColor: '#D4A000',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 30,
+        ...theme.textShadows.depth,
     },
-    
+
     inputSection: {
         width: '100%',
         marginBottom: 30,
     },
     label: {
-        color: '#D4A000',
+        color: theme.colors.tertiary,
         fontFamily: theme.fonts.bold,
         fontSize: 14,
         letterSpacing: 4,
@@ -274,20 +282,20 @@ const getStyles = (theme) => StyleSheet.create({
         marginLeft: 4,
     },
     input: {
-        backgroundColor: 'rgba(212, 160, 0, 0.08)',
+        backgroundColor: theme.colors.surface,
         height: 65,
         borderRadius: 16,
         paddingHorizontal: 24,
         fontSize: 28,
         fontFamily: theme.fonts.header,
         borderWidth: 2,
-        borderColor: '#D4A000',
-        color: '#FFD54F',
+        borderColor: theme.colors.primary,
+        color: theme.colors.text,
         marginBottom: 20,
         letterSpacing: 8,
         textAlign: 'center',
     },
-    
+
     buttonRow: {
         flexDirection: 'row',
         width: '100%',
@@ -297,7 +305,7 @@ const getStyles = (theme) => StyleSheet.create({
     modeButton: {
         flex: 1,
     },
-    
+
     scannerContainer: {
         flex: 1,
         backgroundColor: 'black',
@@ -310,44 +318,40 @@ const getStyles = (theme) => StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.6)',
     },
     scannerText: {
-        color: '#FFD54F',
+        color: theme.colors.text,
         fontSize: 24,
         fontFamily: theme.fonts.header,
         letterSpacing: 4,
         marginTop: 100,
-        textShadowColor: '#D4A000',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 20,
+        ...theme.textShadows.depth,
     },
-    
+
     profileCard: {
         alignItems: 'center',
         marginBottom: 30,
-        backgroundColor: 'rgba(212, 160, 0, 0.08)',
+        backgroundColor: theme.colors.surface,
         padding: 25,
         borderRadius: 20,
         borderWidth: 2,
-        borderColor: '#D4A000',
+        borderColor: theme.colors.primary,
     },
     profileName: {
-        color: '#FFD54F',
+        color: theme.colors.text,
         fontSize: 24,
         fontFamily: theme.fonts.bold,
         marginTop: 12,
         marginBottom: 8,
         letterSpacing: 2,
-        textShadowColor: '#D4A000',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 10,
+        ...theme.textShadows.softDepth,
     },
     loggedInBadge: {
-        backgroundColor: '#D4A000',
+        backgroundColor: theme.colors.primary,
         paddingHorizontal: 14,
         paddingVertical: 5,
         borderRadius: 10,
     },
     loggedInText: {
-        color: '#0a0a0a',
+        color: theme.colors.secondary,
         fontSize: 11,
         fontFamily: theme.fonts.bold,
         letterSpacing: 3,

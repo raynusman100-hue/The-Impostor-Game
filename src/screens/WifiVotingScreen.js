@@ -8,11 +8,19 @@ import { database } from '../utils/firebase';
 import { ref, onValue, off, set, get, update, onDisconnect } from 'firebase/database';
 import { retryFirebaseOperation, safeFirebaseUpdate, verifyRoomAccess } from '../utils/connectionUtils';
 import ChatSystem from '../components/ChatSystem';
+import { CustomAvatar } from '../utils/AvatarGenerator';
+import { CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
+import VoiceControl from '../components/VoiceControl';
+import AdComponent from '../components/AdComponent';
 
 export default function WifiVotingScreen({ route, navigation }) {
     const { theme } = useTheme();
     const styles = getStyles(theme);
     const { roomCode, userId } = route.params;
+
+    // ... existing strict mode lines or standard React logic if any ...
+
+
 
     const [players, setPlayers] = useState([]);
     const [myVotes, setMyVotes] = useState([]);
@@ -53,17 +61,17 @@ export default function WifiVotingScreen({ route, navigation }) {
 
         console.log("📊 CLIENT: Setting up real-time voting status tracking for", players.length, "players");
         console.log("📊 CLIENT: Players list:", players.map(p => `${p.name} (${p.id})`));
-        
+
         const votesRef = ref(database, `rooms/${roomCode}/gameState/votes`);
-        
+
         const unsub = onValue(votesRef, (snapshot) => {
             const votes = snapshot.val() || {};
             const votedPlayerIds = Object.keys(votes);
-            
+
             console.log(`📊 CLIENT: Raw Firebase votes data:`, votes);
             console.log(`📊 CLIENT: Vote status update - received votes from:`, votedPlayerIds);
             console.log(`📊 CLIENT: Total votes: ${votedPlayerIds.length}/${players.length}`);
-            
+
             // Update voting status for all players
             const newVotingStatus = {};
             players.forEach(player => {
@@ -71,7 +79,7 @@ export default function WifiVotingScreen({ route, navigation }) {
                 newVotingStatus[player.id] = hasVoted;
                 console.log(`📊 CLIENT: Player ${player.name} (${player.id}): ${hasVoted ? 'VOTED' : 'NOT VOTED'}`);
             });
-            
+
             console.log(`📊 CLIENT: Final voting status:`, newVotingStatus);
             setVotingStatus(newVotingStatus);
 
@@ -302,7 +310,7 @@ export default function WifiVotingScreen({ route, navigation }) {
 
                     // Force UI update to show "PROCESSING..." state immediately
                     setIsSubmitted(true);
-                    
+
                     console.log("CLIENT: UI updated to show processing state");
                 }
             }
@@ -379,7 +387,7 @@ export default function WifiVotingScreen({ route, navigation }) {
                     // IMMEDIATE Firebase update with PRECOMPUTED results
                     try {
                         const roomRef = ref(database, `rooms/${roomCode}`);
-                        
+
                         if (maxVotes === 0 || topCandidates.length > 1) {
                             // TIE OR NO VOTES - Back to discussion
                             console.log("🔄 HOST: Tie/No votes - immediate return to discussion");
@@ -427,9 +435,9 @@ export default function WifiVotingScreen({ route, navigation }) {
                                 'gameState/lastActionAt': Date.now()
                             });
                         }
-                        
+
                         console.log("🚀 HOST: IMMEDIATE TRANSITION COMPLETE - NO DELAYS");
-                        
+
                     } catch (error) {
                         console.error("🚨 HOST: Immediate result processing failed:", error);
                         processingResults = false;
@@ -468,7 +476,7 @@ export default function WifiVotingScreen({ route, navigation }) {
                         const votes = votesSnapshot.val() || {};
 
                         console.log("🏁 HOST: Timer expiry - immediate vote processing");
-                        
+
                         // PRECOMPUTE RESULTS IMMEDIATELY
                         const tally = {};
                         Object.values(votes).forEach(voteList => {
@@ -529,9 +537,9 @@ export default function WifiVotingScreen({ route, navigation }) {
                                 'gameState/lastActionAt': Date.now()
                             });
                         }
-                        
+
                         console.log("🚀 HOST: Timer expiry processing complete - IMMEDIATE");
-                        
+
                     } catch (error) {
                         console.error("HOST: Timer expiry processing error:", error);
                         // Fallback navigation
@@ -701,7 +709,7 @@ export default function WifiVotingScreen({ route, navigation }) {
         if (!roomCode) return;
 
         let hasNavigated = false;
-        
+
         const navigateToResult = (data) => {
             if (hasNavigated) return;
             hasNavigated = true;
@@ -819,11 +827,11 @@ export default function WifiVotingScreen({ route, navigation }) {
                 clearInterval(checkInterval);
                 return;
             }
-            
+
             try {
                 const snapshot = await get(roomRef);
                 const data = snapshot.val();
-                
+
                 if (data && data.status === 'result' && !hasNavigated) {
                     console.log("VOTING: [PERIODIC CHECK] Status is RESULT - navigating!");
                     clearInterval(checkInterval);
@@ -855,6 +863,50 @@ export default function WifiVotingScreen({ route, navigation }) {
                         if (JSON.stringify(prev) === JSON.stringify(playerList)) return prev;
                         return playerList;
                     });
+
+                    // UNPLAYABLE GAME CHECK: If impostors >= citizens, game is unplayable
+                    const currentImposterCount = data.imposterCount || 1;
+                    const citizenCount = playerList.length - currentImposterCount;
+
+                    if (citizenCount <= currentImposterCount && playerList.length > 0) {
+                        console.log(`⚠️ VOTING UNPLAYABLE: ${currentImposterCount} impostors vs ${citizenCount} citizens`);
+
+                        // Check if current player is still in the game
+                        const isStillInGame = playerList.some(p => p.id === userId);
+
+                        if (!isStillInGame) {
+                            // Player already left - just go home silently
+                            console.log("Player already left, navigating home silently");
+                            navigation.navigate('Home');
+                            return;
+                        }
+
+                        Alert.alert(
+                            'Game Unplayable',
+                            'Too many players have left. The game cannot continue with equal or more impostors than citizens.',
+                            [{
+                                text: 'OK',
+                                onPress: async () => {
+                                    // Host resets the room, others just go home
+                                    if (userId === 'host-id') {
+                                        try {
+                                            const roomRef = ref(database, `rooms/${roomCode}`);
+                                            await update(roomRef, {
+                                                status: 'lobby',
+                                                'gameState': null,
+                                                gameStarted: false,
+                                                gameInProgress: false
+                                            });
+                                        } catch (err) {
+                                            console.error("Error resetting room:", err);
+                                        }
+                                    }
+                                    navigation.navigate('Home');
+                                }
+                            }]
+                        );
+                        return;
+                    }
                 }
                 if (data.imposterCount) {
                     setImposterCount(prev => {
@@ -903,17 +955,17 @@ export default function WifiVotingScreen({ route, navigation }) {
             // Direct Firebase update - more reliable than safeFirebaseUpdate for votes
             const votesRef = ref(database, `rooms/${roomCode}/gameState/votes/${userId}`);
             const lastActionRef = ref(database, `rooms/${roomCode}/gameState/lastActionAt`);
-            
+
             // Submit vote directly
             await set(votesRef, myVotes);
             await set(lastActionRef, Date.now());
-            
+
             console.log("✅ VOTE SUBMIT: Vote submission successful for player", userId);
-            
+
         } catch (error) {
             console.error("🚨 VOTE SUBMIT: Vote submission error:", error);
             setIsSubmitted(false);
-            
+
             // More specific error handling
             if (error.code === 'PERMISSION_DENIED') {
                 Alert.alert("Error", "You don't have permission to vote in this room.");
@@ -926,7 +978,10 @@ export default function WifiVotingScreen({ route, navigation }) {
     };
 
     return (
-        <LinearGradient style={styles.container} colors={['#0a0a0a', '#121212', '#0a0a0a']}>
+        <LinearGradient style={styles.container} colors={theme.colors.backgroundGradient || [theme.colors.background, theme.colors.background, theme.colors.background]}>
+            {/* Voice Control */}
+            <VoiceControl />
+
             {/* Kodak Film Header */}
             <View style={styles.filmHeader}>
                 <View style={styles.filmStrip}>
@@ -935,7 +990,7 @@ export default function WifiVotingScreen({ route, navigation }) {
                     ))}
                 </View>
             </View>
-            
+
             <View style={styles.header}>
                 <View style={styles.timerBadge}>
                     <Text style={[
@@ -1013,10 +1068,16 @@ export default function WifiVotingScreen({ route, navigation }) {
                                                 styles.playerAvatarCircle,
                                                 hasVoted ? styles.avatarVoted : styles.avatarActive
                                             ]}>
-                                                {/* Use first letter of name for avatar if no image */}
-                                                <Text style={styles.avatarText}>
-                                                    {player.name.charAt(0).toUpperCase()}
-                                                </Text>
+                                                {/* Show custom avatar or pre-made avatar or fallback to initial */}
+                                                {player.customAvatarConfig ? (
+                                                    <CustomBuiltAvatar config={player.customAvatarConfig} size={36} />
+                                                ) : player.avatarId ? (
+                                                    <CustomAvatar id={player.avatarId} size={36} />
+                                                ) : (
+                                                    <Text style={styles.avatarText}>
+                                                        {player.name.charAt(0).toUpperCase()}
+                                                    </Text>
+                                                )}
                                             </View>
 
                                             {/* Status Badge */}
@@ -1109,75 +1170,69 @@ const getStyles = (theme) => StyleSheet.create({
     filmHole: {
         width: 12,
         height: 8,
-        backgroundColor: '#D4A000',
+        backgroundColor: theme.colors.primary,
         borderRadius: 2,
         opacity: 0.8,
     },
     header: { marginTop: 10, alignItems: 'center', marginBottom: 10, width: '100%' },
-    title: { 
-        fontSize: 40, 
-        color: '#FFD54F', 
-        fontFamily: theme.fonts.header, 
+    title: {
+        fontSize: 40,
+        color: theme.colors.text,
+        fontFamily: theme.fonts.header,
         letterSpacing: 4,
-        textShadowColor: '#D4A000',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 25,
+        ...theme.textShadows.depth,
     },
-    subtitle: { 
-        fontSize: 14, 
-        color: '#D4A000', 
-        fontFamily: theme.fonts.medium, 
-        letterSpacing: 3, 
-        marginBottom: 5, 
-        textAlign: 'center' 
+    subtitle: {
+        fontSize: 14,
+        color: theme.colors.tertiary,
+        fontFamily: theme.fonts.medium,
+        letterSpacing: 3,
+        marginBottom: 5,
+        textAlign: 'center'
     },
     scrollContent: { padding: 20, width: '100%' },
     playerGrid: { gap: 10, width: '100%' },
-    playerCard: { 
-        padding: 18, 
-        borderRadius: 10, 
-        borderWidth: 2, 
-        borderColor: 'rgba(212, 160, 0, 0.3)', 
-        flexDirection: 'row', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
+    playerCard: {
+        padding: 18,
+        borderRadius: 10,
+        borderWidth: 2,
+        borderColor: theme.colors.textMuted,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         width: '100%',
-        backgroundColor: 'rgba(26, 26, 26, 0.9)',
+        backgroundColor: theme.colors.surface,
     },
-    selectedCard: { 
-        borderColor: '#FFD54F', 
-        backgroundColor: 'rgba(212, 160, 0, 0.15)',
-        shadowColor: '#FFB800',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.5,
-        shadowRadius: 12,
-        elevation: 8,
+    selectedCard: {
+        borderColor: theme.colors.primary,
+        backgroundColor: theme.colors.surface,
+        ...theme.shadows.medium,
     },
     selfCard: { opacity: 0.5 },
-    playerName: { fontSize: 18, fontFamily: theme.fonts.header, letterSpacing: 2, color: '#FFD54F' },
-    voteMarker: { color: '#FFD54F', fontFamily: theme.fonts.bold, fontSize: 13, letterSpacing: 2 },
+    playerName: { fontSize: 18, fontFamily: theme.fonts.header, letterSpacing: 2, color: theme.colors.text },
+    voteMarker: { color: theme.colors.text, fontFamily: theme.fonts.bold, fontSize: 13, letterSpacing: 2 },
     footer: { padding: 20, gap: 10, marginBottom: 20, width: '100%' },
-    statusText: { 
-        textAlign: 'center', 
-        color: '#D4A000', 
-        fontFamily: theme.fonts.medium, 
-        fontSize: 14, 
-        letterSpacing: 3 
+    statusText: {
+        textAlign: 'center',
+        color: theme.colors.tertiary,
+        fontFamily: theme.fonts.medium,
+        fontSize: 14,
+        letterSpacing: 3
     },
     submitBtn: { width: '100%' },
     timerBadge: {
         position: 'absolute',
         top: -30,
         right: 20,
-        backgroundColor: 'rgba(212, 160, 0, 0.2)',
+        backgroundColor: theme.colors.surface,
         paddingHorizontal: 16,
         paddingVertical: 6,
         borderRadius: 20,
         borderWidth: 2,
-        borderColor: '#D4A000'
+        borderColor: theme.colors.primary
     },
     timerText: {
-        color: '#FFD54F',
+        color: theme.colors.text,
         fontFamily: theme.fonts.bold,
         fontSize: 18,
         letterSpacing: 2
@@ -1202,25 +1257,25 @@ const getStyles = (theme) => StyleSheet.create({
     votingStatusContainer: {
         width: '100%',
         marginBottom: 20,
-        backgroundColor: 'rgba(212, 160, 0, 0.1)',
+        backgroundColor: theme.colors.surface,
         borderRadius: 12,
         padding: 15,
         borderWidth: 2,
-        borderColor: 'rgba(212, 160, 0, 0.3)'
+        borderColor: theme.colors.textMuted
     },
-    // NEW PLAYER STATUS STYLES - KODAK CINEMATIC
+    // NEW PLAYER STATUS STYLES
     playerStatusContainer: {
         width: '100%',
         alignItems: 'center',
         marginBottom: 25,
-        backgroundColor: 'rgba(212, 160, 0, 0.08)',
+        backgroundColor: theme.colors.surface,
         borderRadius: 12,
         padding: 15,
         borderWidth: 2,
-        borderColor: 'rgba(212, 160, 0, 0.25)',
+        borderColor: theme.colors.textMuted,
     },
     playerStatusTitle: {
-        color: '#D4A000',
+        color: theme.colors.tertiary,
         fontFamily: theme.fonts.header,
         fontSize: 14,
         marginBottom: 12,
@@ -1246,20 +1301,17 @@ const getStyles = (theme) => StyleSheet.create({
         borderWidth: 3,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'rgba(212, 160, 0, 0.1)'
+        backgroundColor: theme.colors.surface
     },
     avatarActive: {
-        borderColor: 'rgba(212, 160, 0, 0.4)'
+        borderColor: theme.colors.textMuted
     },
     avatarVoted: {
-        borderColor: '#FFD54F',
-        shadowColor: '#FFB800',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.6,
-        shadowRadius: 10,
+        borderColor: theme.colors.primary,
+        ...theme.shadows.soft,
     },
     avatarText: {
-        color: '#FFD54F',
+        color: theme.colors.text,
         fontFamily: theme.fonts.bold,
         fontSize: 22
     },
@@ -1273,20 +1325,20 @@ const getStyles = (theme) => StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 2,
-        borderColor: '#0a0a0a'
+        borderColor: theme.colors.background
     },
     statusBadgeVoted: {
-        backgroundColor: '#FFD54F'
+        backgroundColor: theme.colors.primary
     },
     statusBadgePending: {
-        backgroundColor: 'rgba(212, 160, 0, 0.5)',
+        backgroundColor: theme.colors.textMuted,
         width: 18,
         height: 18,
         bottom: 0,
         right: -2
     },
     checkmarkIcon: {
-        color: '#0a0a0a',
+        color: theme.colors.secondary,
         fontSize: 12,
         fontWeight: 'bold'
     },
@@ -1294,26 +1346,24 @@ const getStyles = (theme) => StyleSheet.create({
         width: 6,
         height: 6,
         borderRadius: 3,
-        backgroundColor: '#0a0a0a'
+        backgroundColor: theme.colors.secondary
     },
     readyText: {
-        color: '#FFD54F',
+        color: theme.colors.text,
         fontFamily: theme.fonts.header,
         fontSize: 20,
         letterSpacing: 3,
-        textShadowColor: '#D4A000',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 10,
+        ...theme.textShadows.softDepth,
     },
-    // TAB STYLES - KODAK CINEMATIC
+    // TAB STYLES
     tabContainer: {
         flexDirection: 'row',
         marginTop: 10,
-        backgroundColor: 'rgba(26, 26, 26, 0.9)',
+        backgroundColor: theme.colors.surface,
         borderRadius: 25,
         padding: 4,
         borderWidth: 2,
-        borderColor: '#D4A000',
+        borderColor: theme.colors.primary,
         alignSelf: 'center',
     },
     tab: {
@@ -1322,32 +1372,32 @@ const getStyles = (theme) => StyleSheet.create({
         borderRadius: 20,
     },
     activeTab: {
-        backgroundColor: '#D4A000',
+        backgroundColor: theme.colors.primary,
     },
     tabContent: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     tabText: {
-        color: 'rgba(212, 160, 0, 0.6)',
+        color: theme.colors.textMuted,
         fontFamily: theme.fonts.bold,
         fontSize: 13,
         letterSpacing: 2,
     },
     activeTabText: {
-        color: '#0a0a0a',
+        color: theme.colors.secondary,
         fontFamily: theme.fonts.bold,
     },
     notificationBadge: {
         position: 'absolute',
         top: -12,
         right: -25,
-        backgroundColor: '#ff3b30',
+        backgroundColor: theme.colors.error,
         paddingHorizontal: 6,
         paddingVertical: 2,
         borderRadius: 10,
         borderWidth: 2,
-        borderColor: '#0a0a0a'
+        borderColor: theme.colors.background
     },
     notificationText: {
         color: '#fff',

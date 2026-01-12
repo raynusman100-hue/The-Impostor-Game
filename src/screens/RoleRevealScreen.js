@@ -9,8 +9,11 @@ import { setPlayerReady } from '../utils/multiplayerLogic';
 import { database } from '../utils/firebase';
 import { ref, onValue, off, get, update } from 'firebase/database';
 import { CustomAvatar } from '../utils/AvatarGenerator';
+import { CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SUPPORTED_LANGUAGES } from '../utils/translationService';
+import VoiceControl from '../components/VoiceControl';
+import { useVoiceChat } from '../utils/VoiceChatContext';
 
 export default function RoleRevealScreen({ route, navigation }) {
     const { theme } = useTheme();
@@ -29,27 +32,34 @@ export default function RoleRevealScreen({ route, navigation }) {
     const [isRoomClosed, setIsRoomClosed] = useState(false);
     const [gameLanguage, setGameLanguage] = useState(params.language || 'en');
 
-    // Load language from AsyncStorage for WiFi mode
+    // Load language from Firebase gameState for WiFi mode (synced from host)
     useEffect(() => {
-        if (isWifi) {
-            const loadLanguage = async () => {
-                try {
-                    const savedLanguage = await AsyncStorage.getItem('player_language_pref');
-                    if (savedLanguage && SUPPORTED_LANGUAGES.some(l => l.code === savedLanguage)) {
-                        setGameLanguage(savedLanguage);
-                    }
-                } catch (error) {
-                    console.log('Failed to load language', error);
+        if (isWifi && params.roomCode) {
+            const languageRef = ref(database, `rooms/${params.roomCode}/gameState/language`);
+            const unsub = onValue(languageRef, (snapshot) => {
+                const lang = snapshot.val();
+                if (lang && SUPPORTED_LANGUAGES.some(l => l.code === lang)) {
+                    console.log("[Language] Loaded from Firebase:", lang);
+                    setGameLanguage(lang);
                 }
-            };
-            loadLanguage();
+            });
+
+            return () => off(languageRef);
         }
-    }, [isWifi]);
+    }, [isWifi, params.roomCode]);
+
+    // Voice Chat
+    const { joinChannel } = useVoiceChat();
+    useEffect(() => {
+        if (isWifi && params.roomCode) {
+            joinChannel(params.roomCode, 0);
+        }
+    }, [isWifi, params.roomCode]);
 
     // Disable Android back button in WiFi mode
     useEffect(() => {
         if (!isWifi) return;
-        
+
         const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
             // Simply block back button - no confirmation needed during game
             return true;
@@ -72,18 +82,19 @@ export default function RoleRevealScreen({ route, navigation }) {
 
         // Track if we've already navigated to prevent double navigation
         let hasNavigated = false;
-        
+
         const navigateToDiscussion = (playerCount) => {
             if (hasNavigated) {
                 console.log("[Sync] Already navigated, skipping");
                 return;
             }
             hasNavigated = true;
-            console.log("[Sync] Navigating to discussion with", playerCount, "players");
+            console.log("[Sync] Navigating to WifiWhoStarts with", playerCount, "players");
             playHaptic('success');
-            
-            navigation.replace('Discussion', {
-                timeLeft: playerCount * 60,
+
+            // Navigate to WifiWhoStarts screen first (shows who starts the discussion)
+            navigation.replace('WifiWhoStarts', {
+                playerCount: playerCount,
                 mode: 'wifi',
                 roomCode,
                 playerId
@@ -92,13 +103,13 @@ export default function RoleRevealScreen({ route, navigation }) {
 
         // Listener 1: Game Status (Navigation) - SIMPLIFIED
         const statusRef = ref(database, `rooms/${roomCode}/status`);
-        
+
         const unsubStatus = onValue(statusRef, (snapshot) => {
             const status = snapshot.val();
             console.log("=== ROLE REVEAL STATUS LISTENER ===");
             console.log("Status received:", status);
             console.log("Has navigated:", hasNavigated);
-            
+
             if (status === 'discussion' && !hasNavigated) {
                 console.log("[Sync] Status is DISCUSSION - navigating");
                 // Get player count then navigate
@@ -115,7 +126,7 @@ export default function RoleRevealScreen({ route, navigation }) {
                 console.log("[Sync] Status Listener: Returning to role reveal (play again)");
                 hasNavigated = false; // Reset navigation flag
                 setReadyStatus(false); // Reset local ready status
-                
+
                 // Reset all players' ready status in Firebase (only host should do this)
                 if (playerId === 'host-id') {
                     console.log("[Sync] Host resetting all ready states for play again");
@@ -124,18 +135,18 @@ export default function RoleRevealScreen({ route, navigation }) {
                         if (snap.exists()) {
                             const gameState = snap.val();
                             const assignments = gameState.assignments || {};
-                            
+
                             const updates = {};
                             Object.keys(assignments).forEach(pid => {
                                 updates[`assignments/${pid}/ready`] = false;
                                 updates[`assignments/${pid}/readyAt`] = null;
                             });
-                            
+
                             updates['allPlayersReady'] = null;
                             updates['forceDiscussion'] = null;
                             updates['phase'] = 'reveal';
                             updates['lastActionAt'] = Date.now();
-                            
+
                             update(gameStateRef, updates).then(() => {
                                 console.log("[Sync] Ready states reset complete");
                             });
@@ -179,12 +190,13 @@ export default function RoleRevealScreen({ route, navigation }) {
                     name: p.name,
                     ready: p.ready || false, // Ensure boolean
                     avatarId: p.avatarId,
+                    customAvatarConfig: p.customAvatarConfig,
                     order: p.order || 0
                 })).sort((a, b) => a.order - b.order);
 
                 console.log("[Sync] Status list updated:", statusList.map(p => `${p.name}: ${p.ready}`));
                 setAllPlayersStatus(statusList);
-                
+
                 // Force re-render by updating state
                 setAllPlayersStatus(prev => [...statusList]);
             } else {
@@ -207,25 +219,27 @@ export default function RoleRevealScreen({ route, navigation }) {
             if (data.hostDisconnected || data.hostLeft) {
                 console.log('ROLE REVEAL: Host disconnected/left, forcing back to lobby');
                 Alert.alert(
-                    'Host Disconnected', 
-                    'The host has disconnected. Returning to lobby...', 
-                    [{ text: 'OK', onPress: () => {
-                        if (playerId === 'host-id') {
-                            navigation.navigate('Host', {
-                                playerData: {
-                                    name: data.host || 'Host',
-                                    avatarId: data.hostAvatar || 1,
-                                    uid: data.hostId || 'host-id'
-                                }
-                            });
-                        } else {
-                            navigation.navigate('WifiLobby', {
-                                roomCode,
-                                playerId: playerId,
-                                playerName: assignedPlayers[0]?.name || 'Player'
-                            });
+                    'Host Disconnected',
+                    'The host has disconnected. Returning to lobby...',
+                    [{
+                        text: 'OK', onPress: () => {
+                            if (playerId === 'host-id') {
+                                navigation.navigate('Host', {
+                                    playerData: {
+                                        name: data.host || 'Host',
+                                        avatarId: data.hostAvatar || 1,
+                                        uid: data.hostId || 'host-id'
+                                    }
+                                });
+                            } else {
+                                navigation.navigate('WifiLobby', {
+                                    roomCode,
+                                    playerId: playerId,
+                                    playerName: assignedPlayers[0]?.name || 'Player'
+                                });
+                            }
                         }
-                    }}]
+                    }]
                 );
             }
         });
@@ -236,7 +250,7 @@ export default function RoleRevealScreen({ route, navigation }) {
                 // First check if we should have navigated to discussion
                 const statusSnap = await get(ref(database, `rooms/${roomCode}/status`));
                 const currentStatus = statusSnap.val();
-                
+
                 if (currentStatus === 'discussion' && !hasNavigated) {
                     console.log("[PERIODIC SYNC] Detected we should be in discussion but haven't navigated!");
                     const assignSnap = await get(ref(database, `rooms/${roomCode}/gameState/assignments`));
@@ -245,14 +259,14 @@ export default function RoleRevealScreen({ route, navigation }) {
                     navigateToDiscussion(count);
                     return;
                 }
-                
+
                 // Check ready status sync
                 const snapshot = await get(ref(database, `rooms/${roomCode}/gameState/assignments`));
                 if (snapshot.exists()) {
                     const assignments = snapshot.val();
                     const readyCount = Object.values(assignments).filter(p => p.ready).length;
                     const totalCount = Object.values(assignments).length;
-                    
+
                     // Check if our local state is out of sync
                     const localReadyCount = allPlayersStatus.filter(p => p.ready).length;
                     if (localReadyCount !== readyCount) {
@@ -293,10 +307,10 @@ export default function RoleRevealScreen({ route, navigation }) {
                 console.log("Player already ready, ignoring click");
                 return; // Prevent double-clicks
             }
-            
+
             setReadyStatus(true); // Optimistic UI update
             console.log(`Player ${params.playerId} clicking ready...`);
-            
+
             try {
                 await setPlayerReady(params.roomCode, params.playerId);
                 console.log(`Player ${params.playerId} ready status sent to Firebase`);
@@ -338,7 +352,7 @@ export default function RoleRevealScreen({ route, navigation }) {
     }
 
     return (
-        <LinearGradient style={styles.container} colors={isWifi ? ['#0a0a0a', '#121212', '#0a0a0a'] : theme.colors.backgroundGradient}>
+        <LinearGradient style={styles.container} colors={theme.colors.backgroundGradient || [theme.colors.background, theme.colors.background, theme.colors.background]}>
             {/* Kodak Film Header for WiFi */}
             {isWifi && (
                 <View style={styles.filmHeader}>
@@ -349,7 +363,10 @@ export default function RoleRevealScreen({ route, navigation }) {
                     </View>
                 </View>
             )}
-            
+
+            {/* Voice Control for Wifi Mode */}
+            {isWifi && <VoiceControl />}
+
             <Text
                 style={[styles.header, isWifi && styles.kodakHeader]}
                 numberOfLines={1}
@@ -360,6 +377,7 @@ export default function RoleRevealScreen({ route, navigation }) {
             </Text>
 
             <RoleCard
+                key={`player-${currentIndex}`}
                 player={currentPlayer}
                 category={params.category || params.crewCategory}
                 hintsEnabled={params.hintsEnabled}
@@ -368,6 +386,7 @@ export default function RoleRevealScreen({ route, navigation }) {
                 buttonTitle={buttonTitle}
                 disabled={readyStatus}
                 isWifi={isWifi}
+                playerIndex={currentIndex}
             />
 
             {/* Ready Status List for WiFi Mode */}
@@ -380,16 +399,24 @@ export default function RoleRevealScreen({ route, navigation }) {
                         contentContainerStyle={styles.statusListContent}
                     >
                         {allPlayersStatus.map((p) => (
-                            <View key={p.id} style={[styles.statusItem, styles.kodakStatusItem, p.ready && styles.statusItemReady, p.ready && styles.kodakStatusItemReady]}>
-                                <CustomAvatar id={p.avatarId} size={30} />
+                            <TouchableOpacity
+                                key={p.id}
+                                style={[styles.statusItem, styles.kodakStatusItem, p.ready && styles.statusItemReady, p.ready && styles.kodakStatusItemReady]}
+                                onPress={() => { playHaptic('light'); Alert.alert('Player', p.name); }}
+                            >
+                                {p.customAvatarConfig ? (
+                                    <CustomBuiltAvatar config={p.customAvatarConfig} size={30} />
+                                ) : (
+                                    <CustomAvatar id={p.avatarId} size={30} />
+                                )}
                                 <View style={[styles.statusBadge, styles.kodakStatusBadge]}>
                                     {p.ready ? (
                                         <Text style={styles.checkMark}>✓</Text>
                                     ) : (
-                                        <ActivityIndicator size={10} color="#0a0a0a" />
+                                        <ActivityIndicator size={10} color={theme.colors.secondary} />
                                     )}
                                 </View>
-                            </View>
+                            </TouchableOpacity>
                         ))}
                     </ScrollView>
                     <Text style={[styles.statusCount, styles.kodakStatusCount]}>
@@ -417,7 +444,7 @@ export default function RoleRevealScreen({ route, navigation }) {
                     </View>
                 </View>
             )}
-            
+
             {/* Kodak Film Footer for WiFi */}
             {isWifi && (
                 <View style={styles.filmFooter}>
@@ -440,7 +467,7 @@ const getStyles = (theme) => StyleSheet.create({
         justifyContent: 'center',
         padding: theme.spacing.m,
     },
-    
+
     // Kodak Film Strip Decorations
     filmHeader: {
         width: '100%',
@@ -464,11 +491,11 @@ const getStyles = (theme) => StyleSheet.create({
     filmHole: {
         width: 12,
         height: 8,
-        backgroundColor: '#D4A000',
+        backgroundColor: theme.colors.primary,
         borderRadius: 2,
         opacity: 0.8,
     },
-    
+
     header: {
         fontSize: 28,
         color: theme.colors.tertiary,
@@ -479,10 +506,8 @@ const getStyles = (theme) => StyleSheet.create({
         textTransform: 'uppercase',
     },
     kodakHeader: {
-        color: '#FFD54F',
-        textShadowColor: '#D4A000',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 20,
+        color: theme.colors.text,
+        ...theme.textShadows.depth,
         letterSpacing: 4,
     },
     loading: {
@@ -539,7 +564,7 @@ const getStyles = (theme) => StyleSheet.create({
         marginBottom: 8,
     },
     kodakStatusHeader: {
-        color: '#D4A000',
+        color: theme.colors.tertiary,
         letterSpacing: 3,
     },
     statusListContent: {
@@ -552,19 +577,19 @@ const getStyles = (theme) => StyleSheet.create({
         height: 40,
         borderRadius: 20,
         borderWidth: 2,
-        borderColor: 'rgba(255,255,255,0.2)',
+        borderColor: theme.colors.textMuted,
         justifyContent: 'center',
         alignItems: 'center',
         position: 'relative'
     },
     kodakStatusItem: {
-        borderColor: 'rgba(212, 160, 0, 0.4)',
+        borderColor: theme.colors.textMuted,
     },
     statusItemReady: {
         borderColor: theme.colors.success
     },
     kodakStatusItemReady: {
-        borderColor: '#D4A000',
+        borderColor: theme.colors.primary,
     },
     statusBadge: {
         position: 'absolute',
@@ -580,8 +605,8 @@ const getStyles = (theme) => StyleSheet.create({
         borderColor: theme.colors.background
     },
     kodakStatusBadge: {
-        backgroundColor: '#D4A000',
-        borderColor: '#0a0a0a',
+        backgroundColor: theme.colors.primary,
+        borderColor: theme.colors.background,
     },
     checkMark: {
         color: theme.colors.background,
@@ -594,7 +619,7 @@ const getStyles = (theme) => StyleSheet.create({
         fontFamily: theme.fonts.bold
     },
     kodakStatusCount: {
-        color: '#FFD54F',
+        color: theme.colors.text,
         letterSpacing: 2,
     }
 });

@@ -3,34 +3,84 @@
     "name": "Imposter Game",
     "slug": "imposter-game",
     "version": "1.0.0",
-    "owner": "rayn100",
     "scheme": "imposter-game",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "icon": "./assets/the imposter logo 3.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0a0a0a",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/the imposter logo 3.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0a0a0a"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.rayn100.impostergame",
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "backgroundColor": "#0a0a0a",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Imposter Game uses your camera to scan QR codes for quickly joining multiplayer game rooms.",
+        "NSMicrophoneUsageDescription": "Imposter Game uses your microphone to record voice messages during multiplayer game chat.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
+      "package": "com.rayn100.impostergame",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/the imposter logo 3.png",
+        "backgroundColor": "#0a0a0a"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "backgroundColor": "#0a0a0a",
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA"
+      ],
+      "config": {
+        "googleServicesFile": "./google-services.json"
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-font",
-      "expo-web-browser"
-    ]
+      "expo-web-browser",
+      "expo-splash-screen",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 24,
+            "packagingOptions": {
+              "pickFirst": [
+                "lib/x86/libc++_shared.so",
+                "lib/x86_64/libc++_shared.so",
+                "lib/armeabi-v7a/libc++_shared.so",
+                "lib/arm64-v8a/libc++_shared.so"
+              ]
+            }
+          },
+          "ios": {
+            "deploymentTarget": "15.1"
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "c49fcb0a-1434-4154-b66e-469b1050a674"
+      }
+    }
   }
 }

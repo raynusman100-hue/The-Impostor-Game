@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Vibration, Alert, BackHandler, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Animated, Vibration, Alert, BackHandler, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../utils/ThemeContext';
@@ -8,21 +8,39 @@ import KodakButton from '../components/KodakButton';
 import { database } from '../utils/firebase';
 import { ref, onValue, off, update, remove, get } from 'firebase/database';
 import { playHaptic } from '../utils/haptics';
+import AdManager from '../utils/AdManager';
+import AdComponent from '../components/AdComponent';
+
+import { CustomAvatar } from '../utils/AvatarGenerator';
+import { CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
+import VoiceControl from '../components/VoiceControl';
+import { useVoiceChat } from '../utils/VoiceChatContext';
 
 export default function ResultScreen({ route, navigation }) {
     const { theme } = useTheme();
     const styles = getStyles(theme);
     const { players, winners, mode } = route.params;
     const [isRevealed, setIsRevealed] = useState(false);
-    
+
     const isWifi = mode === 'wifi';
     const roomCode = route.params.roomCode;
     const playerId = route.params.playerId;
 
+    // Room Data for Avatar Lookup
+    const [roomData, setRoomData] = useState(null);
+
+    // Voice Chat
+    const { joinChannel } = useVoiceChat();
+    useEffect(() => {
+        if (isWifi && roomCode) {
+            joinChannel(roomCode, 0);
+        }
+    }, [isWifi, roomCode]);
+
     // Disable Android back button in WiFi mode
     useEffect(() => {
         if (!isWifi) return;
-        
+
         const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
             // Simply block back button on result screen
             return true;
@@ -30,16 +48,35 @@ export default function ResultScreen({ route, navigation }) {
 
         return () => backHandler.remove();
     }, [isWifi]);
-    
+
     const [gameStateData, setGameStateData] = useState(null);
     const [hasNavigated, setHasNavigated] = useState(false);
     const fadeAnim = useRef(new Animated.Value(0)).current;
-    
+
     // For WiFi mode, get data from Firebase game state, for local mode use route params
-    const impostors = isWifi && gameStateData?.impostors 
-        ? gameStateData.impostors 
+    const impostors = isWifi && gameStateData?.impostors
+        ? gameStateData.impostors
         : players.filter(p => p.role === 'Impostor' || p.isImposter);
-    
+
+    // Helper to get avatar config for an impostor
+    const getImpostorAvatar = (imp) => {
+        if (isWifi) {
+            // Try to find in roomData.players
+            if (roomData?.players) {
+                // First try by ID if available
+                if (imp.id && roomData.players[imp.id]) return roomData.players[imp.id];
+                // Fallback to name match
+                const found = Object.values(roomData.players).find(p => p.name === imp.name);
+                if (found) return found;
+            }
+            // If not found (or data not loaded), return imp as fallback (might have avatarId)
+            return imp;
+        } else {
+            // Local mode - imp is the player object
+            return imp;
+        }
+    };
+
     // FIX: Better secret word extraction - prioritize Firebase data
     const secretWord = (() => {
         // First try from gameStateData (WiFi mode) - this is the most reliable source
@@ -47,13 +84,13 @@ export default function ResultScreen({ route, navigation }) {
             console.log("🎯 RESULT: Using secretWord from gameStateData:", gameStateData.secretWord);
             return gameStateData.secretWord;
         }
-        
+
         // Then try from route params
         if (route.params.secretWord) {
             console.log("🎯 RESULT: Using secretWord from route params:", route.params.secretWord);
             return route.params.secretWord;
         }
-        
+
         // Then try from players array - find a citizen with a real word (not "Imposter")
         const citizenPlayer = players.find(p => {
             const isCitizen = p.role === 'Citizen' || !p.isImposter;
@@ -61,13 +98,13 @@ export default function ResultScreen({ route, navigation }) {
             const hasOriginalWord = p.originalWord && p.originalWord !== 'Imposter';
             return isCitizen && (hasValidWord || hasOriginalWord);
         });
-        
+
         if (citizenPlayer) {
             const word = citizenPlayer.originalWord || citizenPlayer.word;
             console.log("🎯 RESULT: Using secretWord from citizen player:", word);
             return word;
         }
-        
+
         console.log("🎯 RESULT: Could not find secretWord, using Unknown");
         return "Unknown";
     })();
@@ -85,10 +122,10 @@ export default function ResultScreen({ route, navigation }) {
     // LOAD GAME STATE DATA FOR WIFI MODE - Use listener for real-time updates
     useEffect(() => {
         if (!isWifi || !roomCode) return;
-        
+
         console.log("🎯 RESULT: Setting up game state listener");
         const gameStateRef = ref(database, `rooms/${roomCode}/gameState`);
-        
+
         const unsubscribe = onValue(gameStateRef, (snapshot) => {
             if (snapshot.exists()) {
                 const data = snapshot.val();
@@ -102,25 +139,30 @@ export default function ResultScreen({ route, navigation }) {
         }, (error) => {
             console.error("🎯 RESULT: Game state listener error:", error);
         });
-        
+
         return () => {
             off(gameStateRef);
         };
     }, [isWifi, roomCode]);
 
+    // Load Interstitial on Mount
+    useEffect(() => {
+        AdManager.loadInterstitial();
+    }, []);
+
     // SIMPLE AND STABLE NAVIGATION LISTENER + PERIODIC CHECK
     useEffect(() => {
         if (!isWifi || !roomCode) return;
-        
+
         let hasNavigatedLocal = false;
-        
+
         const navigateToLobby = (data) => {
             if (hasNavigatedLocal) return;
             hasNavigatedLocal = true;
             setHasNavigated(true);
-            
+
             const isHost = playerId === 'host-id' || data.hostId === playerId;
-            
+
             if (isHost) {
                 console.log("🔄 RESULT: Navigating HOST to host screen with existing room:", roomCode);
                 navigation.replace('Host', {
@@ -132,9 +174,20 @@ export default function ResultScreen({ route, navigation }) {
                     existingRoomCode: roomCode
                 });
             } else {
+                // Check if player still exists in the room before navigating to lobby
+                const playerStillInRoom = data.players && data.players[playerId];
+
+                if (!playerStillInRoom) {
+                    // Player already left - don't navigate them anywhere, just ignore
+                    // They're already on their way home or already there
+                    console.log("🔄 RESULT: Player no longer in room, ignoring lobby navigation");
+                    hasNavigatedLocal = true; // Prevent further navigation attempts
+                    return;
+                }
+
                 console.log("🔄 RESULT: Navigating PLAYER to lobby, room:", roomCode);
-                const playerName = data.players?.[playerId]?.name || 
-                                 players.find(p => p.id === playerId)?.name || 'Player';
+                const playerName = data.players?.[playerId]?.name ||
+                    players.find(p => p.id === playerId)?.name || 'Player';
                 navigation.replace('WifiLobby', {
                     roomCode,
                     playerId: playerId,
@@ -142,13 +195,13 @@ export default function ResultScreen({ route, navigation }) {
                 });
             }
         };
-        
+
         console.log("🎯 RESULT: Setting up room listener for player:", playerId);
         const roomRef = ref(database, `rooms/${roomCode}`);
-        
+
         const handleRoomUpdate = (snapshot) => {
             const data = snapshot.val();
-            
+
             if (!data) {
                 console.log("🚨 RESULT: Room deleted");
                 if (!hasNavigatedLocal) {
@@ -159,9 +212,12 @@ export default function ResultScreen({ route, navigation }) {
                 }
                 return;
             }
-            
+
+            // Save room Data for Avatar lookup
+            setRoomData(data);
+
             console.log(`🎯 RESULT: [${playerId}] Room status = ${data.status}`);
-            
+
             if (data.status === 'lobby' && !hasNavigatedLocal) {
                 console.log("🔄 RESULT: Status is LOBBY - navigating!");
                 navigateToLobby(data);
@@ -177,22 +233,22 @@ export default function ResultScreen({ route, navigation }) {
                 });
             }
         };
-        
+
         const unsubscribe = onValue(roomRef, handleRoomUpdate, (error) => {
             console.error("🚨 RESULT: Listener error:", error);
         });
-        
+
         // BACKUP: Periodic check every 2 seconds in case listener misses update
         const checkInterval = setInterval(async () => {
             if (hasNavigatedLocal) {
                 clearInterval(checkInterval);
                 return;
             }
-            
+
             try {
                 const snapshot = await get(roomRef);
                 const data = snapshot.val();
-                
+
                 if (data && data.status === 'lobby' && !hasNavigatedLocal) {
                     console.log("🔄 RESULT: [PERIODIC CHECK] Status is LOBBY - navigating!");
                     clearInterval(checkInterval);
@@ -202,7 +258,7 @@ export default function ResultScreen({ route, navigation }) {
                 console.error("🚨 RESULT: Periodic check error:", err);
             }
         }, 2000);
-        
+
         return () => {
             console.log("🎯 RESULT: Cleaning up listener");
             off(roomRef);
@@ -219,34 +275,34 @@ export default function ResultScreen({ route, navigation }) {
 
     const handlePlayAgain = async () => {
         playHaptic('medium');
-        
+
         if (isWifi) {
             console.log("🔄 PLAY AGAIN: Starting process for room:", roomCode);
-            
+
             try {
                 const roomRef = ref(database, `rooms/${roomCode}`);
                 const roomSnapshot = await get(roomRef);
-                
+
                 if (!roomSnapshot.exists()) {
                     Alert.alert('Error', 'Room no longer exists.');
                     navigation.navigate('Home');
                     return;
                 }
-                
+
                 const roomData = roomSnapshot.val();
-                
+
                 // Verify host
                 const isHost = playerId === 'host-id' || roomData.hostId === playerId;
                 if (!isHost) {
                     Alert.alert('Not Authorized', 'Only the host can return to lobby.');
                     return;
                 }
-                
+
                 console.log("🔄 PLAY AGAIN: Host verified, resetting room to lobby");
-                
+
                 // Clear game state first
                 await remove(ref(database, `rooms/${roomCode}/gameState`));
-                
+
                 // Update room to lobby status - keep the same room!
                 await update(roomRef, {
                     status: 'lobby',
@@ -256,64 +312,80 @@ export default function ResultScreen({ route, navigation }) {
                     hostDisconnected: false,
                     hostLeft: false
                 });
-                
+
                 console.log("✅ PLAY AGAIN: Room reset complete, navigating host to lobby with SAME room code:", roomCode);
-                
-                // DIRECT NAVIGATION for host - pass the EXISTING room code
-                setHasNavigated(true);
-                navigation.replace('Host', {
-                    playerData: {
-                        name: roomData.host || 'Host',
-                        avatarId: roomData.hostAvatar || 1,
-                        uid: playerId
-                    },
-                    existingRoomCode: roomCode  // PASS THE EXISTING ROOM CODE
+
+                console.log("✅ PLAY AGAIN: Room reset complete, navigating host to lobby with SAME room code:", roomCode);
+
+                // Show Ad before navigating
+                AdManager.showInterstitial(() => {
+                    // DIRECT NAVIGATION for host - pass the EXISTING room code
+                    setHasNavigated(true);
+                    navigation.replace('Host', {
+                        playerData: {
+                            name: roomData.host || 'Host',
+                            avatarId: roomData.hostAvatar || 1,
+                            uid: playerId
+                        },
+                        existingRoomCode: roomCode  // PASS THE EXISTING ROOM CODE
+                    });
                 });
-                
+
             } catch (error) {
                 console.error("🚨 PLAY AGAIN: Error:", error);
                 Alert.alert('Error', 'Failed to return to lobby. Please try again.');
             }
         } else {
             // Local mode
-            navigation.reset({
-                index: 1,
-                routes: [
-                    { name: 'Home' },
-                    { name: 'Setup', params: { players, impostorCount: impostors.length } }
-                ]
+            // Local mode
+            AdManager.showInterstitial(() => {
+                navigation.reset({
+                    index: 1,
+                    routes: [
+                        { name: 'Home' },
+                        { name: 'Setup', params: { players, impostorCount: impostors.length } }
+                    ]
+                });
             });
         }
     };
 
     const handleLeaveRoom = async () => {
         playHaptic('medium');
-        
+
         if (isWifi) {
             const roomCode = route.params.roomCode;
             const playerId = route.params.playerId;
-            
+
             try {
                 // Remove player from room
                 if (playerId !== 'host-id') {
                     const playerRef = ref(database, `rooms/${roomCode}/players/${playerId}`);
                     await remove(playerRef);
                 }
-                
+
                 // Navigate to home
-                navigation.navigate('Home');
-                
+                AdManager.showInterstitial(() => {
+                    navigation.navigate('Home');
+                });
+
             } catch (error) {
                 console.error("Leave Room Error:", error);
-                navigation.navigate('Home');
+                // Even on error, try to show ad then go home
+                AdManager.showInterstitial(() => {
+                    navigation.navigate('Home');
+                });
             }
         } else {
-            navigation.navigate('Home');
+            AdManager.showInterstitial(() => {
+                navigation.navigate('Home');
+            });
         }
     };
 
     return (
-        <LinearGradient style={styles.container} colors={isWifi ? ['#0a0a0a', '#121212', '#0a0a0a'] : theme.colors.backgroundGradient}>
+        <LinearGradient style={styles.container} colors={theme.colors.backgroundGradient || [theme.colors.background, theme.colors.background, theme.colors.background]}>
+            {isWifi && <VoiceControl />}
             <SafeAreaView style={styles.safeArea}>
                 {/* Kodak Film Header */}
                 {isWifi && (
@@ -325,7 +397,7 @@ export default function ResultScreen({ route, navigation }) {
                         </View>
                     </View>
                 )}
-                
+
                 {!isRevealed ? (
                     <View style={styles.hiddenContainer}>
                         <Text style={[styles.title, isWifi && styles.kodakTitle]}>ROUND OVER</Text>
@@ -354,98 +426,113 @@ export default function ResultScreen({ route, navigation }) {
                         )}
                     </View>
                 ) : (
-                <Animated.View
-                    style={[
-                        styles.revealedContainer,
-                        { opacity: fadeAnim }
-                    ]}
-                >
-                    <ScrollView 
-                        contentContainerStyle={styles.scrollContent}
-                        showsVerticalScrollIndicator={false}
+                    <Animated.View
+                        style={[
+                            styles.revealedContainer,
+                            { opacity: fadeAnim }
+                        ]}
                     >
-                        <Text style={[styles.revealTitle, isWifi && styles.kodakRevealTitle]}>TRUTH REVEALED</Text>
+                        <ScrollView
+                            contentContainerStyle={styles.scrollContent}
+                            showsVerticalScrollIndicator={false}
+                        >
+                            <Text style={[styles.revealTitle, isWifi && styles.kodakRevealTitle]}>TRUTH REVEALED</Text>
 
-                        <View style={[styles.resultCard, isWifi && styles.kodakCard]}>
-                            <View style={styles.cardContent}>
-                                <Text style={[styles.label, isWifi && styles.kodakLabel]}>SECRET WORD</Text>
-                                <Text style={[styles.word, isWifi && styles.kodakWord]}>{secretWord}</Text>
-                            </View>
-                            {/* Film perforation decoration */}
-                            {isWifi && (
-                                <View style={styles.cardFilmStrip}>
-                                    {[...Array(8)].map((_, i) => (
-                                        <View key={i} style={styles.cardFilmHole} />
-                                    ))}
+                            <View style={[styles.resultCard, isWifi && styles.kodakCard]}>
+                                <View style={styles.cardContent}>
+                                    <Text style={[styles.label, isWifi && styles.kodakLabel]}>SECRET WORD</Text>
+                                    <Text style={[styles.word, isWifi && styles.kodakWord]}>{secretWord}</Text>
                                 </View>
-                            )}
-                        </View>
-
-                        <View style={[styles.resultCard, styles.impostorCard, isWifi && styles.kodakImpostorCard]}>
-                            <View style={styles.cardContent}>
-                                <Text style={[styles.labelInverted, isWifi && styles.kodakImpostorLabel]}>
-                                    {impostors.length > 1 ? 'IMPOSTORS' : 'IMPOSTOR'}
-                                </Text>
-                                {impostors.map((imp, index) => (
-                                    <Text key={index} style={[styles.impostorName, isWifi && styles.kodakImpostorName]}>
-                                        {imp.name || imp.name}
-                                    </Text>
-                                ))}
-                            </View>
-                        </View>
-
-                        {/* COMPLETELY REWRITTEN PLAY AGAIN LOGIC */}
-                        {isWifi ? (
-                            <View style={styles.buttonContainer}>
-                                {route.params.playerId === 'host-id' ? (
-                                    // HOST BUTTONS
-                                    <>
-                                        <KodakButton
-                                            title="RETURN TO LOBBY"
-                                            onPress={handlePlayAgain}
-                                            variant="primary"
-                                            style={styles.playAgainBtn}
-                                            size="large"
-                                        />
-                                        <KodakButton
-                                            title="LEAVE ROOM"
-                                            onPress={handleLeaveRoom}
-                                            variant="secondary"
-                                            style={styles.leaveBtn}
-                                            size="medium"
-                                        />
-                                    </>
-                                ) : (
-                                    // NON-HOST BUTTONS
-                                    <>
-                                        <View style={[styles.waitingContainer, styles.kodakWaiting]}>
-                                            <Text style={styles.waitingText}>
-                                                WAITING FOR HOST TO RETURN TO LOBBY...
-                                            </Text>
-                                        </View>
-                                        <KodakButton
-                                            title="LEAVE ROOM"
-                                            onPress={handleLeaveRoom}
-                                            variant="secondary"
-                                            style={styles.leaveBtn}
-                                            size="medium"
-                                        />
-                                    </>
+                                {/* Film perforation decoration */}
+                                {isWifi && (
+                                    <View style={styles.cardFilmStrip}>
+                                        {[...Array(8)].map((_, i) => (
+                                            <View key={i} style={styles.cardFilmHole} />
+                                        ))}
+                                    </View>
                                 )}
                             </View>
-                        ) : (
-                            // LOCAL MODE
-                            <Button
-                                title="PLAY AGAIN"
-                                onPress={handlePlayAgain}
-                                style={styles.playAgainBtn}
-                                variant="primary"
-                            />
-                        )}
-                    </ScrollView>
-                </Animated.View>
-            )}
-                
+
+                            <View style={[styles.resultCard, styles.impostorCard, isWifi && styles.kodakImpostorCard]}>
+                                <View style={[styles.cardContent, { gap: 10 }]}>
+                                    <Text style={[styles.labelInverted, isWifi && styles.kodakImpostorLabel]}>
+                                        {impostors.length > 1 ? 'IMPOSTORS' : 'IMPOSTOR'}
+                                    </Text>
+                                    {impostors.map((imp, index) => {
+                                        const pData = getImpostorAvatar(imp);
+                                        return (
+                                            <TouchableOpacity
+                                                key={index}
+                                                activeOpacity={0.8}
+                                                onPress={() => { playHaptic('light'); Alert.alert('Impostor', pData.name); }}
+                                                style={{ alignItems: 'center' }}
+                                            >
+                                                {pData.customAvatarConfig ? (
+                                                    <CustomBuiltAvatar config={pData.customAvatarConfig} size={60} />
+                                                ) : (
+                                                    <CustomAvatar id={pData.avatarId || 1} size={60} />
+                                                )}
+                                                <Text style={[styles.impostorName, isWifi && styles.kodakImpostorName]}>
+                                                    {pData.name || imp.name}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            </View>
+
+                            {/* COMPLETELY REWRITTEN PLAY AGAIN LOGIC */}
+                            {isWifi ? (
+                                <View style={styles.buttonContainer}>
+                                    {route.params.playerId === 'host-id' ? (
+                                        // HOST BUTTONS
+                                        <>
+                                            <KodakButton
+                                                title="RETURN TO LOBBY"
+                                                onPress={handlePlayAgain}
+                                                variant="primary"
+                                                style={styles.playAgainBtn}
+                                                size="large"
+                                            />
+                                            <KodakButton
+                                                title="LEAVE ROOM"
+                                                onPress={handleLeaveRoom}
+                                                variant="secondary"
+                                                style={styles.leaveBtn}
+                                                size="medium"
+                                            />
+                                        </>
+                                    ) : (
+                                        // NON-HOST BUTTONS
+                                        <>
+                                            <View style={[styles.waitingContainer, styles.kodakWaiting]}>
+                                                <Text style={styles.waitingText}>
+                                                    WAITING FOR HOST TO RETURN TO LOBBY...
+                                                </Text>
+                                            </View>
+                                            <KodakButton
+                                                title="LEAVE ROOM"
+                                                onPress={handleLeaveRoom}
+                                                variant="secondary"
+                                                style={styles.leaveBtn}
+                                                size="medium"
+                                            />
+                                        </>
+                                    )}
+                                </View>
+                            ) : (
+                                // LOCAL MODE
+                                <Button
+                                    title="PLAY AGAIN"
+                                    onPress={handlePlayAgain}
+                                    style={styles.playAgainBtn}
+                                    variant="primary"
+                                />
+                            )}
+                        </ScrollView>
+                    </Animated.View>
+                )}
+
                 {/* Kodak Film Footer */}
                 {isWifi && (
                     <View style={styles.filmFooter}>
@@ -464,7 +551,7 @@ export default function ResultScreen({ route, navigation }) {
 const getStyles = (theme) => StyleSheet.create({
     container: { flex: 1 },
     safeArea: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: theme.spacing.m },
-    
+
     // Kodak Film Strip Decorations
     filmHeader: {
         width: '100%',
@@ -490,7 +577,7 @@ const getStyles = (theme) => StyleSheet.create({
     filmHole: {
         width: 12,
         height: 8,
-        backgroundColor: '#D4A000',
+        backgroundColor: theme.colors.primary,
         borderRadius: 2,
         opacity: 0.8,
     },
@@ -506,115 +593,96 @@ const getStyles = (theme) => StyleSheet.create({
     cardFilmHole: {
         width: 8,
         height: 5,
-        backgroundColor: '#D4A000',
+        backgroundColor: theme.colors.primary,
         borderRadius: 1,
         opacity: 0.4,
     },
-    
+
     hiddenContainer: { alignItems: 'center', width: '100%', flex: 1, justifyContent: 'center' },
     revealedContainer: { flex: 1, width: '100%' },
     scrollContent: { alignItems: 'center', paddingTop: theme.spacing.l, paddingBottom: theme.spacing.xl },
-    
+
     title: { fontSize: 48, fontFamily: theme.fonts.header, color: theme.colors.tertiary, marginBottom: theme.spacing.s, textAlign: 'center', letterSpacing: 4, ...theme.textShadows.depth },
     kodakTitle: {
-        color: '#FFD54F',
-        textShadowColor: '#D4A000',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 35,
+        color: theme.colors.text,
+        ...theme.textShadows.depth,
     },
-    
+
     subtitle: { fontSize: theme.fontSize.large, color: theme.colors.textSecondary, marginBottom: theme.spacing.xl, fontFamily: theme.fonts.medium, letterSpacing: 2 },
     kodakSubtitle: {
-        color: 'rgba(212, 160, 0, 0.8)',
+        color: theme.colors.textMuted,
         letterSpacing: 4,
     },
-    
+
     winnerContainer: {
         marginBottom: 15,
     },
     winnerBanner: { fontSize: 28, fontFamily: theme.fonts.header, marginBottom: 10, letterSpacing: 4, textTransform: 'uppercase' },
     kodakWinner: {
-        color: '#FFD54F',
-        textShadowColor: '#D4A000',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 25,
+        color: theme.colors.text,
+        ...theme.textShadows.depth,
     },
-    
+
     revealBtn: { paddingVertical: theme.spacing.l, paddingHorizontal: theme.spacing.xl, width: '100%' },
-    
+
     revealTitle: { fontSize: 28, fontFamily: theme.fonts.header, color: theme.colors.tertiary, marginBottom: theme.spacing.m, textAlign: 'center', letterSpacing: 4, lineHeight: 40, ...theme.textShadows.depth },
     kodakRevealTitle: {
-        color: '#FFD54F',
-        textShadowColor: '#D4A000',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 30,
+        color: theme.colors.text,
+        ...theme.textShadows.depth,
     },
-    
+
     resultCard: { width: '100%', marginBottom: theme.spacing.m, borderRadius: theme.borderRadius.l, overflow: 'hidden', borderWidth: 1, borderColor: theme.colors.textSecondary, backgroundColor: theme.colors.surface },
     kodakCard: {
         borderWidth: 2,
-        borderColor: '#D4A000',
-        backgroundColor: 'rgba(212, 160, 0, 0.08)',
-        shadowColor: '#FFB800',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.4,
-        shadowRadius: 20,
-        elevation: 8,
+        borderColor: theme.colors.primary,
+        backgroundColor: theme.colors.surface,
+        ...theme.shadows.medium,
     },
-    
+
     impostorCard: { borderColor: theme.colors.error, backgroundColor: 'rgba(205, 92, 92, 0.1)' },
     kodakImpostorCard: {
         borderWidth: 2,
-        borderColor: '#ff3b30',
+        borderColor: theme.colors.error,
         backgroundColor: 'rgba(255, 59, 48, 0.1)',
-        shadowColor: '#ff3b30',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.4,
-        shadowRadius: 20,
     },
-    
+
     cardContent: { padding: theme.spacing.l, alignItems: 'center', justifyContent: 'center' },
-    
+
     label: { fontSize: theme.fontSize.medium, color: theme.colors.textSecondary, marginBottom: theme.spacing.s, fontFamily: theme.fonts.medium, letterSpacing: 3, textTransform: 'uppercase' },
     kodakLabel: {
-        color: '#D4A000',
+        color: theme.colors.tertiary,
         letterSpacing: 5,
     },
-    
+
     labelInverted: { fontSize: theme.fontSize.medium, color: theme.colors.text, marginBottom: theme.spacing.s, fontFamily: theme.fonts.medium, letterSpacing: 3, textTransform: 'uppercase' },
     kodakImpostorLabel: {
         color: '#ff6b6b',
         letterSpacing: 5,
     },
-    
+
     word: { fontSize: 42, color: theme.colors.text, fontFamily: theme.fonts.header, letterSpacing: 2, textAlign: 'center' },
     kodakWord: {
-        color: '#FFD54F',
-        textShadowColor: '#D4A000',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 15,
+        color: theme.colors.text,
+        ...theme.textShadows.softDepth,
     },
-    
+
     impostorName: { fontSize: 32, color: theme.colors.error, fontFamily: theme.fonts.header, marginVertical: theme.spacing.xs, letterSpacing: 2, textTransform: 'uppercase' },
     kodakImpostorName: {
         color: '#ff6b6b',
-        textShadowColor: '#ff3b30',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 15,
     },
-    
+
     homeBtn: { marginTop: theme.spacing.m, width: '100%', paddingVertical: theme.spacing.m },
-    buttonContainer: { 
-        width: '100%', 
+    buttonContainer: {
+        width: '100%',
         marginTop: theme.spacing.m,
-        gap: theme.spacing.m 
+        gap: theme.spacing.m
     },
-    playAgainBtn: { 
-        width: '100%', 
-        paddingVertical: theme.spacing.m 
+    playAgainBtn: {
+        width: '100%',
+        paddingVertical: theme.spacing.m
     },
-    leaveBtn: { 
-        width: '100%', 
+    leaveBtn: {
+        width: '100%',
         paddingVertical: theme.spacing.s,
     },
     waitingContainer: {
@@ -629,11 +697,11 @@ const getStyles = (theme) => StyleSheet.create({
     },
     kodakWaiting: {
         borderWidth: 2,
-        borderColor: '#D4A000',
-        backgroundColor: 'rgba(212, 160, 0, 0.08)',
+        borderColor: theme.colors.primary,
+        backgroundColor: theme.colors.surface,
     },
     waitingText: {
-        color: '#D4A000',
+        color: theme.colors.tertiary,
         fontFamily: theme.fonts.bold,
         fontSize: 14,
         letterSpacing: 3,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, Animated, ActivityIndicator, TouchableOpacity, Alert, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, Animated, ActivityIndicator, TouchableOpacity, Alert, BackHandler, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../utils/ThemeContext';
 import Button from '../components/Button';
@@ -8,14 +8,16 @@ import { playHaptic } from '../utils/haptics';
 import { database } from '../utils/firebase';
 import { ref, onValue, off, remove, get } from 'firebase/database';
 import { CustomAvatar } from '../utils/AvatarGenerator';
+import { CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
 
 import ChatSystem from '../components/ChatSystem';
-// ... existing imports
+import VoiceControl from '../components/VoiceControl';
+import { useVoiceChat } from '../utils/VoiceChatContext';
 
 // Film perforation component for Kodak aesthetic (same as SetupScreen)
 const FilmPerforations = ({ side, theme }) => {
     const perforationColor = theme.colors.primary + '40';
-    
+
     return (
         <View style={[filmPerforationStyles.perforationStrip, side === 'left' ? filmPerforationStyles.leftStrip : filmPerforationStyles.rightStrip]}>
             {[...Array(12)].map((_, i) => (
@@ -54,39 +56,55 @@ export default function WifiLobbyScreen({ route, navigation }) {
     const [players, setPlayers] = useState([]);
     const [roomStatus, setRoomStatus] = useState('lobby');
 
+    // Voice Chat
+    const { joinChannel, leaveChannel } = useVoiceChat();
+
     // Host Data
     const [hostName, setHostName] = useState('Waiting...');
     const [hostAvatar, setHostAvatar] = useState(1);
+    const [hostAvatarConfig, setHostAvatarConfig] = useState(null);
 
     const [showChat, setShowChat] = useState(false);
     const [unreadMessages, setUnreadMessages] = useState(0);
 
+    // Disable iOS swipe back gesture
+    useEffect(() => {
+        navigation.setOptions({
+            gestureEnabled: false,
+        });
+    }, [navigation]);
+
+    // Handle leaving room with confirmation
+    const handleLeaveRoom = useCallback(() => {
+        Alert.alert(
+            'Leave Room?',
+            'Are you sure you want to leave the room?',
+            [
+                { text: 'Stay', style: 'cancel' },
+                {
+                    text: 'Leave',
+                    style: 'destructive',
+                    onPress: async () => {
+                        if (roomCode && playerId) {
+                            const playerRef = ref(database, `rooms/${roomCode}/players/${playerId}`);
+                            await remove(playerRef);
+                        }
+                        navigation.navigate('Home');
+                    }
+                }
+            ]
+        );
+    }, [roomCode, playerId, navigation]);
+
     // Disable Android back button
     useEffect(() => {
         const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-            Alert.alert(
-                'Leave Room?',
-                'Are you sure you want to leave the room?',
-                [
-                    { text: 'Stay', style: 'cancel' },
-                    { 
-                        text: 'Leave', 
-                        style: 'destructive',
-                        onPress: async () => {
-                            if (roomCode && playerId) {
-                                const playerRef = ref(database, `rooms/${roomCode}/players/${playerId}`);
-                                await remove(playerRef);
-                            }
-                            navigation.navigate('Home');
-                        }
-                    }
-                ]
-            );
+            handleLeaveRoom();
             return true; // Prevent default back behavior
         });
 
         return () => backHandler.remove();
-    }, [roomCode, playerId, navigation]);
+    }, [handleLeaveRoom]);
 
     // Enhanced unread message handler
     const handleUnreadChange = useCallback((count) => {
@@ -99,6 +117,25 @@ export default function WifiLobbyScreen({ route, navigation }) {
     }, [showChat]);
     const pulseAnim = React.useRef(new Animated.Value(1)).current;
 
+    // Join Voice Channel
+    useEffect(() => {
+        if (roomCode && playerId) {
+            console.log("🔊 PLAYER: Joining voice channel", roomCode);
+            joinChannel(roomCode, 0);
+        }
+    }, [roomCode, playerId]);
+
+    // Leave voice on exit to Home
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+            const targetRoute = e.data?.action?.payload?.name;
+            if (targetRoute === 'Home') {
+                leaveChannel();
+            }
+        });
+        return unsubscribe;
+    }, [navigation]);
+
     useEffect(() => {
         Animated.loop(
             Animated.sequence([
@@ -108,13 +145,13 @@ export default function WifiLobbyScreen({ route, navigation }) {
         ).start();
 
         let hasNavigated = false;
-        
+
         const navigateToGame = (status) => {
             if (hasNavigated) return;
             hasNavigated = true;
-            
+
             console.log(`🎯 LOBBY: Navigating to ${status} for player ${playerId}`);
-            
+
             if (status === 'voting') {
                 navigation.replace('WifiVoting', { roomCode, userId: playerId });
             } else if (status === 'game' || status === 'roles' || status === 'reveal') {
@@ -137,28 +174,40 @@ export default function WifiLobbyScreen({ route, navigation }) {
                 setRoomStatus(data.status);
                 setHostName(data.host || 'Unknown Host');
                 setHostAvatar(data.hostAvatar || 1);
+                setHostAvatarConfig(data.hostAvatarConfig || null); // Load host custom config
 
                 if (!hasNavigated && (data.status === 'voting' || data.status === 'game' || data.status === 'roles' || data.status === 'reveal')) {
                     navigateToGame(data.status);
                 }
             } else {
-                // Room deleted
-                if (!hasNavigated) {
-                    hasNavigated = true;
-                    Alert.alert('Room Closed', 'The host has ended the game.');
-                    navigation.navigate('Home');
-                }
+                // Room deleted - but wait a moment to confirm it's really gone
+                // (prevents false positives during play again transitions)
+                setTimeout(async () => {
+                    if (hasNavigated) return;
+
+                    // Double-check the room is really gone
+                    const recheck = await get(roomRef);
+                    if (!recheck.exists() && !hasNavigated) {
+                        hasNavigated = true;
+                        Alert.alert('Room Closed', 'The host has ended the game.');
+                        navigation.navigate('Home');
+                    }
+                }, 500);
             }
         });
 
-        // Listener for Players
+        // Listener for Players - with immediate state update
         const playersUnsubscribe = onValue(playersRef, (snapshot) => {
             const data = snapshot.val();
             if (data) {
-                const playerList = Object.entries(data).map(([id, info]) => ({
-                    id,
-                    ...info
-                }));
+                // Filter out any null/undefined entries and create fresh array
+                const playerList = Object.entries(data)
+                    .filter(([id, info]) => info && info.name) // Only include valid players
+                    .map(([id, info]) => ({
+                        id,
+                        ...info
+                    }));
+                // Replace entire state with new array
                 setPlayers(playerList);
             } else {
                 setPlayers([]);
@@ -171,11 +220,11 @@ export default function WifiLobbyScreen({ route, navigation }) {
                 clearInterval(checkInterval);
                 return;
             }
-            
+
             try {
                 const snapshot = await get(roomRef);
                 const data = snapshot.val();
-                
+
                 if (data && !hasNavigated) {
                     const status = data.status;
                     if (status === 'voting' || status === 'game' || status === 'roles' || status === 'reveal') {
@@ -196,15 +245,20 @@ export default function WifiLobbyScreen({ route, navigation }) {
         };
     }, [roomCode, playerId, navigation]);
 
+    const handlePlayerTap = (name) => {
+        playHaptic('light');
+        Alert.alert('Player', name);
+    };
+
     return (
         <LinearGradient
-            colors={['#0a0a0a', '#121212', '#0a0a0a']}
+            colors={theme.colors.backgroundGradient || [theme.colors.background, theme.colors.background, theme.colors.background]}
             style={styles.container}
         >
             {/* Film perforations - side strips */}
             <FilmPerforations side="left" theme={theme} />
             <FilmPerforations side="right" theme={theme} />
-            
+
             {/* Kodak Film Header */}
             <View style={styles.filmHeader}>
                 <View style={styles.filmStrip}>
@@ -213,8 +267,9 @@ export default function WifiLobbyScreen({ route, navigation }) {
                     ))}
                 </View>
             </View>
-            
+
             <View style={styles.header}>
+                <VoiceControl />
                 <Text style={styles.roomLabel}>WAITING IN ROOM</Text>
                 <Animated.Text style={[styles.roomCode, { transform: [{ scale: pulseAnim }] }]}>
                     {roomCode}
@@ -260,7 +315,7 @@ export default function WifiLobbyScreen({ route, navigation }) {
                 ) : (
                     <>
                         <View style={styles.loaderContainer}>
-                            <ActivityIndicator size="large" color="#D4A000" style={styles.loader} />
+                            <ActivityIndicator size="large" color={theme.colors.tertiary} style={styles.loader} />
                             <Text style={styles.statusText}>WAITING FOR HOST TO START...</Text>
                         </View>
 
@@ -268,21 +323,29 @@ export default function WifiLobbyScreen({ route, navigation }) {
                             <Text style={styles.playerCount}>PLAYERS JOINED: {players.length + 1}</Text>
 
                             {/* Host Row */}
-                            <View style={styles.playerRow}>
-                                <CustomAvatar id={hostAvatar} size={32} />
+                            <TouchableOpacity onPress={() => handlePlayerTap(hostName)} style={styles.playerRow}>
+                                {hostAvatarConfig ? (
+                                    <CustomBuiltAvatar config={hostAvatarConfig} size={32} />
+                                ) : (
+                                    <CustomAvatar id={hostAvatar} size={32} />
+                                )}
                                 <Text style={styles.playerName} numberOfLines={1} ellipsizeMode="tail">
                                     {hostName.toUpperCase()} (HOST)
                                 </Text>
-                            </View>
+                            </TouchableOpacity>
 
                             {/* Players Rows */}
                             {players.map(p => (
-                                <View key={p.id} style={styles.playerRow}>
-                                    <CustomAvatar id={p.avatarId || 1} size={32} />
+                                <TouchableOpacity key={p.id} onPress={() => handlePlayerTap(p.name)} style={styles.playerRow}>
+                                    {p.customAvatarConfig ? (
+                                        <CustomBuiltAvatar config={p.customAvatarConfig} size={32} />
+                                    ) : (
+                                        <CustomAvatar id={p.avatarId || 1} size={32} />
+                                    )}
                                     <Text style={styles.playerName} numberOfLines={1} ellipsizeMode="tail">
                                         {p.name}
                                     </Text>
-                                </View>
+                                </TouchableOpacity>
                             ))}
                         </View>
                     </>
@@ -292,19 +355,15 @@ export default function WifiLobbyScreen({ route, navigation }) {
             {!showChat && (
                 <KodakButton
                     title="LEAVE ROOM"
-                    onPress={async () => {
+                    onPress={() => {
                         playHaptic('medium');
-                        if (roomCode && playerId) {
-                            const playerRef = ref(database, `rooms/${roomCode}/players/${playerId}`);
-                            await remove(playerRef);
-                        }
-                        navigation.navigate('Home');
+                        handleLeaveRoom();
                     }}
                     variant="secondary"
                     style={styles.leaveBtn}
                 />
             )}
-            
+
             {/* Kodak Film Footer */}
             <View style={styles.filmFooter}>
                 <View style={styles.filmStrip}>
@@ -323,7 +382,7 @@ const getStyles = (theme) => StyleSheet.create({
         padding: theme.spacing.xl,
         alignItems: 'center',
     },
-    
+
     // Kodak Film Strip Decorations
     filmHeader: {
         width: '100%',
@@ -347,11 +406,11 @@ const getStyles = (theme) => StyleSheet.create({
     filmHole: {
         width: 12,
         height: 8,
-        backgroundColor: '#D4A000',
+        backgroundColor: theme.colors.primary,
         borderRadius: 2,
         opacity: 0.8,
     },
-    
+
     header: {
         marginTop: 60,
         alignItems: 'center',
@@ -361,28 +420,26 @@ const getStyles = (theme) => StyleSheet.create({
     },
     roomLabel: {
         fontSize: 14,
-        color: '#D4A000',
+        color: theme.colors.tertiary,
         fontFamily: theme.fonts.bold,
         letterSpacing: 6,
     },
     roomCode: {
         fontSize: 52,
-        color: '#FFD54F',
+        color: theme.colors.text,
         fontFamily: theme.fonts.header,
         letterSpacing: 10,
-        textShadowColor: '#D4A000',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 30,
+        ...theme.textShadows.depth,
     },
-    
+
     tabContainer: {
         flexDirection: 'row',
         marginBottom: 15,
-        backgroundColor: 'rgba(26, 26, 26, 0.9)',
+        backgroundColor: theme.colors.surface,
         borderRadius: 25,
         padding: 4,
         borderWidth: 2,
-        borderColor: '#D4A000',
+        borderColor: theme.colors.primary,
     },
     tab: {
         paddingVertical: 10,
@@ -390,16 +447,16 @@ const getStyles = (theme) => StyleSheet.create({
         borderRadius: 20,
     },
     activeTab: {
-        backgroundColor: '#D4A000',
+        backgroundColor: theme.colors.primary,
     },
     tabText: {
-        color: 'rgba(255, 213, 79, 0.6)',
+        color: theme.colors.textMuted,
         fontFamily: theme.fonts.bold,
         fontSize: 14,
         letterSpacing: 2,
     },
     activeTabText: {
-        color: '#0a0a0a',
+        color: theme.colors.secondary,
         fontFamily: theme.fonts.bold,
     },
     tabContent: {
@@ -411,14 +468,14 @@ const getStyles = (theme) => StyleSheet.create({
         position: 'absolute',
         top: -6,
         right: -8,
-        backgroundColor: '#ff3b30',
+        backgroundColor: theme.colors.error,
         borderRadius: 6,
         width: 12,
         height: 12,
         borderWidth: 2,
-        borderColor: '#0a0a0a',
+        borderColor: theme.colors.background,
     },
-    
+
     content: {
         flex: 1,
         width: '100%',
@@ -434,33 +491,31 @@ const getStyles = (theme) => StyleSheet.create({
     },
     statusText: {
         fontSize: 18,
-        color: '#FFD54F',
+        color: theme.colors.text,
         fontFamily: theme.fonts.bold,
         textAlign: 'center',
         letterSpacing: 3,
-        textShadowColor: '#D4A000',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 15,
+        ...theme.textShadows.softDepth,
     },
-    
+
     playerBox: {
         width: '100%',
         padding: 20,
         borderRadius: 16,
         borderWidth: 2,
-        borderColor: '#D4A000',
-        backgroundColor: 'rgba(212, 160, 0, 0.08)',
+        borderColor: theme.colors.primary,
+        backgroundColor: theme.colors.surface,
     },
     playerCount: {
         fontSize: 14,
-        color: '#D4A000',
+        color: theme.colors.tertiary,
         fontFamily: theme.fonts.bold,
         marginBottom: 15,
         letterSpacing: 3,
     },
     playerName: {
         fontSize: 18,
-        color: '#FFD54F',
+        color: theme.colors.text,
         fontFamily: theme.fonts.medium,
         marginBottom: 4,
         flex: 1,
@@ -472,7 +527,7 @@ const getStyles = (theme) => StyleSheet.create({
         gap: 12,
         marginBottom: 8
     },
-    
+
     leaveBtn: {
         width: '100%',
         marginBottom: 50,

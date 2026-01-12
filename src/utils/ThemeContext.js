@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getThemeById } from './themes';
 
 // Default to Kodak Daylight (light theme)
-const DEFAULT_THEME_ID = 'kodak-daylight';
+const DEFAULT_THEME_ID = 'kodak-cinema';
 
 const ThemeContext = createContext();
 const THEME_STORAGE_KEY = '@imposter_game_theme';

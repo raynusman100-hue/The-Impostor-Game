@@ -1,80 +1,120 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions, PanResponder, TouchableOpacity, Image } from 'react-native';
+import { useRef, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Animated, PanResponder, TouchableOpacity, Image, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../utils/ThemeContext';
-import Button from './Button';
 
 import { playHaptic } from '../utils/haptics';
 
-const { width, height } = Dimensions.get('window');
-// Scale card size responsively - use more screen space on larger devices
-const CARD_WIDTH = Math.min(width * 0.9, 450); // Up to 90% width, max 450px
-const CARD_HEIGHT = Math.min(height * 0.7, 600); // Up to 70% height, max 600px
-const SLIDER_WIDTH = CARD_WIDTH - 60;
 const KNOB_SIZE = 60;
-const SLIDE_RANGE = SLIDER_WIDTH - KNOB_SIZE;
 
 // Theme-Specific Cover Images - Each theme can have its own set of covers
 const THEME_COVER_IMAGES = {
-    // Kodak Daylight covers - will be populated with new images
+    // White/Light themed covers - for bright themes
     'default': [
-        // TODO: Add new Kodak Daylight cover images here
+        require('../../assets/White/ChatGPT Image Dec 31, 2025, 11_08_31 PM.png'),
+        require('../../assets/White/ChatGPT Image Dec 31, 2025, 11_08_42 PM.png'),
+        require('../../assets/White/ChatGPT Image Dec 31, 2025, 11_08_45 PM.png'),
+        require('../../assets/White/ChatGPT Image Dec 31, 2025, 11_16_45 PM.png'),
+        require('../../assets/White/ChatGPT Image Dec 31, 2025, 11_16_50 PM.png'),
+        require('../../assets/White/ChatGPT Image Dec 31, 2025, 11_16_52 PM.png'),
+        require('../../assets/White/White.1.png'),
+        require('../../assets/White/White.2.png'),
+        require('../../assets/White/White.3.png'),
+    ],
+    'kodak-daylight': [
+        require('../../assets/White/ChatGPT Image Dec 31, 2025, 11_08_31 PM.png'),
+        require('../../assets/White/ChatGPT Image Dec 31, 2025, 11_08_42 PM.png'),
+        require('../../assets/White/ChatGPT Image Dec 31, 2025, 11_08_45 PM.png'),
+        require('../../assets/White/ChatGPT Image Dec 31, 2025, 11_16_45 PM.png'),
+        require('../../assets/White/ChatGPT Image Dec 31, 2025, 11_16_50 PM.png'),
+        require('../../assets/White/ChatGPT Image Dec 31, 2025, 11_16_52 PM.png'),
+        require('../../assets/White/White.1.png'),
+        require('../../assets/White/White.2.png'),
+        require('../../assets/White/White.3.png'),
+    ],
+    // Black/Dark themed covers - for dark themes
+    'kodak-cinema': [
+        require('../../assets/Black/Black1.png'),
+        require('../../assets/Black/Black2.png'),
+        require('../../assets/Black/Black3.png'),
+        require('../../assets/Black/Black4.png'),
+        require('../../assets/Black/Black5.png'),
+        require('../../assets/Black/Black6.png'),
+        require('../../assets/Black/ChatGPT Image Jan 12, 2026, 05_16_37 PM.png'),
+        require('../../assets/Black/ChatGPT Image Jan 12, 2026, 05_35_46 PM.png'),
+        require('../../assets/Black/ChatGPT Image Jan 12, 2026, 05_38_46 PM.png'),
     ],
     'retro-pop': [
-        require('../../assets/cover_midnight_1.png'),
-        require('../../assets/cover_midnight_2.png'),
-        require('../../assets/cover_midnight_3.png'),
-        require('../../assets/cover_midnight_4.png'),
-        require('../../assets/cover_midnight_5.png'),
-        require('../../assets/assetscover_dark_vampire.png'),
-        require('../../assets/assetscover_dark_artist.png'),
-        require('../../assets/assetscover_dark_soldier..png'),
-        require('../../assets/assetscover_dark_meditation.png'),
+        require('../../assets/Black/Black1.png'),
+        require('../../assets/Black/Black2.png'),
+        require('../../assets/Black/Black3.png'),
+        require('../../assets/Black/Black4.png'),
+        require('../../assets/Black/Black5.png'),
+        require('../../assets/Black/Black6.png'),
+        require('../../assets/Black/ChatGPT Image Jan 12, 2026, 05_16_37 PM.png'),
+        require('../../assets/Black/ChatGPT Image Jan 12, 2026, 05_35_46 PM.png'),
+        require('../../assets/Black/ChatGPT Image Jan 12, 2026, 05_38_46 PM.png'),
     ]
 };
 
 
-export default function RoleCard({ player, category, hintsEnabled, onNext, language, buttonTitle = "NEXT PLAYER", disabled = false, isWifi = false }) {
+export default function RoleCard({ player, category, hintsEnabled, onNext, language, buttonTitle = "NEXT PLAYER", disabled = false, isWifi = false, playerIndex = 0 }) {
     const { theme } = useTheme();
-    const styles = getStyles(theme);
+
+    // Use dynamic dimensions hook to handle orientation changes and get accurate sizes
+    const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+
+    // Calculate card dimensions dynamically
+    const CARD_WIDTH = Math.min(windowWidth * 0.9, 450);
+    const CARD_HEIGHT = Math.min(windowHeight * 0.7, 600);
+    const SLIDER_WIDTH = CARD_WIDTH - 60;
+    const SLIDE_RANGE = SLIDER_WIDTH - KNOB_SIZE;
+
+    const styles = getStyles(theme, CARD_WIDTH, CARD_HEIGHT, SLIDER_WIDTH);
     const [hasPeeked, setHasPeeked] = useState(false);
     const [showOriginal, setShowOriginal] = useState(false);
 
     // Get the appropriate cover images for the current theme
     const currentThemeCovers = THEME_COVER_IMAGES[theme.id] || THEME_COVER_IMAGES['default'];
 
-    // Use player.coverIndex if provided for sequential/non-repeating covers
+    // Use playerIndex for sequential non-repeating covers (cycles through all covers in order)
     const [coverIndex, setCoverIndex] = useState(() => {
-        if (player.coverIndex !== undefined) {
-            return player.coverIndex % currentThemeCovers.length;
-        }
-        return Math.floor(Math.random() * currentThemeCovers.length);
+        // Use playerIndex to get sequential covers (0, 1, 2, 3, 4, 5, 0, 1, ...)
+        return playerIndex % currentThemeCovers.length;
     });
 
     const pan = useRef(new Animated.ValueXY()).current;
+    const slideRangeRef = useRef(SLIDE_RANGE);
+    const hasPeekedRef = useRef(false);
+    const lastPlayerIndexRef = useRef(playerIndex);
+    const [buttonClicked, setButtonClicked] = useState(false);
 
-    // Reset hasPeeked and update cover when player or theme changes
+    // Keep refs in sync
     useEffect(() => {
-        setHasPeeked(false);
-        const covers = THEME_COVER_IMAGES[theme.id] || THEME_COVER_IMAGES['default'];
+        slideRangeRef.current = SLIDE_RANGE;
+    }, [SLIDE_RANGE]);
 
-        if (player.coverIndex !== undefined) {
-            // Priority: Use the assigned sequence index
-            setCoverIndex(player.coverIndex % covers.length);
-        } else if (covers.length > 1) {
-            // Fallback: Randomize but ensure it's different (shuffle effect)
-            let newIndex;
-            do {
-                newIndex = Math.floor(Math.random() * covers.length);
-            } while (newIndex === coverIndex);
-            setCoverIndex(newIndex);
-        } else {
-            setCoverIndex(0);
+    useEffect(() => {
+        hasPeekedRef.current = hasPeeked;
+    }, [hasPeeked]);
+
+    // Reset ALL state when playerIndex changes (new player in pass n play)
+    useEffect(() => {
+        if (lastPlayerIndexRef.current !== playerIndex) {
+            // Reset all interaction state for new player
+            setHasPeeked(false);
+            setButtonClicked(false);
+            hasPeekedRef.current = false;
+            lastPlayerIndexRef.current = playerIndex;
+
+            // Reset pan position for new player
+            pan.setValue({ x: 0, y: 0 });
+
+            // Update cover to match playerIndex (sequential non-repeating)
+            const covers = THEME_COVER_IMAGES[theme.id] || THEME_COVER_IMAGES['default'];
+            setCoverIndex(playerIndex % covers.length);
         }
-
-        // Reset pan position as well
-        pan.setValue({ x: 0, y: 0 });
-    }, [player, theme.id]);
+    }, [playerIndex, theme.id]);
 
     // Clamped pan.x for visual movement of the knob and cover
     const clampedPanX = pan.x.interpolate({
@@ -91,9 +131,10 @@ export default function RoleCard({ player, category, hintsEnabled, onNext, langu
         extrapolate: 'clamp',
     });
 
-    // Button disappears only when cover is at least 25% open
+    // Button is fully visible when slider is at rest (0), fades out when sliding
+    // This ensures button is clickable only when cover is closed
     const nextButtonOpacity = clampedPanX.interpolate({
-        inputRange: [0, SLIDE_RANGE * 0.25],
+        inputRange: [0, SLIDE_RANGE * 0.15],
         outputRange: [1, 0],
         extrapolate: 'clamp',
     });
@@ -112,12 +153,12 @@ export default function RoleCard({ player, category, hintsEnabled, onNext, langu
                 [null, { dx: pan.x }],
                 { useNativeDriver: false }
             ),
-            onPanResponderRelease: (_, gestureState) => {
+            onPanResponderRelease: () => {
                 pan.flattenOffset();
 
-                // If dragged more than 60% (using raw pan.x value for threshold check)
-                if (pan.x._value > SLIDE_RANGE * 0.60) {
-                    if (!hasPeeked) {
+                // If dragged more than 60% (using ref for current value)
+                if (pan.x._value > slideRangeRef.current * 0.60) {
+                    if (!hasPeekedRef.current) {
                         playHaptic('heavy'); // Strong feedback on unlock
                         setHasPeeked(true);
                     }
@@ -200,20 +241,15 @@ export default function RoleCard({ player, category, hintsEnabled, onNext, langu
                     {/* Cover Image */}
                     <Image
                         source={currentThemeCovers[coverIndex]}
-                        style={theme.id === 'retro-pop' ? {
-                            width: '100%',
-                            height: '100%',
+                        style={{
+                            // Same styling for all themes - center character properly
+                            width: CARD_WIDTH,
+                            height: CARD_HEIGHT,
                             position: 'absolute',
                             top: 0,
                             left: 0,
-                        } : {
-                            width: CARD_WIDTH * 1.15,
-                            height: CARD_HEIGHT * 1.15,
-                            position: 'absolute',
-                            top: -45,
-                            left: -(CARD_WIDTH * 0.075),
                         }}
-                        resizeMode={theme.id === 'retro-pop' ? "contain" : "cover"}
+                        resizeMode="cover"
                     />
 
                     <View style={styles.coverHeader}>
@@ -227,10 +263,12 @@ export default function RoleCard({ player, category, hintsEnabled, onNext, langu
                     </View>
 
                     {/* Next Player Button - Positioned below avatar area */}
-                    {hasPeeked && (
+                    {hasPeeked && !buttonClicked && (
                         <Animated.View style={[styles.nextButtonContainer, { opacity: nextButtonOpacity }]}>
                             <TouchableOpacity
                                 onPress={() => {
+                                    if (buttonClicked) return; // Extra guard against spam
+                                    setButtonClicked(true);
                                     playHaptic('medium');
                                     onNext();
                                 }}
@@ -239,7 +277,7 @@ export default function RoleCard({ player, category, hintsEnabled, onNext, langu
                                     styles.nextBtnOuter,
                                     isWifi && styles.kodakNextBtnOuter
                                 ]}
-                                disabled={disabled}
+                                disabled={disabled || buttonClicked}
                             >
                                 <Text
                                     style={[
@@ -288,7 +326,7 @@ export default function RoleCard({ player, category, hintsEnabled, onNext, langu
     );
 }
 
-const getStyles = (theme) => StyleSheet.create({
+const getStyles = (theme, CARD_WIDTH, CARD_HEIGHT, SLIDER_WIDTH) => StyleSheet.create({
     wrapper: {
         alignItems: 'center',
         padding: theme.spacing.m,

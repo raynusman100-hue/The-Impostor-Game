@@ -6,13 +6,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../utils/ThemeContext';
 import { playHaptic } from '../utils/haptics';
 import { CustomAvatar } from '../utils/AvatarGenerator';
+import { CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // Film perforation component for Kodak aesthetic (same as SetupScreen)
 const FilmPerforations = ({ side, theme }) => {
     const perforationColor = theme.colors.primary + '40'; // 40 = 25% opacity
-    
+
     return (
         <View style={[filmStyles.perforationStrip, side === 'left' ? filmStyles.leftStrip : filmStyles.rightStrip]}>
             {[...Array(12)].map((_, i) => (
@@ -47,11 +48,11 @@ const filmStyles = StyleSheet.create({
 // Simple Menu Button - Clean and minimal
 const SimpleMenuButton = ({ title, onPress, isPrimary }) => {
     const scaleAnim = useRef(new Animated.Value(1)).current;
-    
+
     const handlePressIn = () => {
         Animated.spring(scaleAnim, { toValue: 0.95, friction: 8, useNativeDriver: true }).start();
     };
-    
+
     const handlePressOut = () => {
         Animated.spring(scaleAnim, { toValue: 1, friction: 4, useNativeDriver: true }).start();
     };
@@ -135,29 +136,34 @@ export default function HomeScreen({ navigation }) {
     );
 
     useEffect(() => {
-        // Entry animation
-        Animated.parallel([
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 800,
-                useNativeDriver: true,
-            }),
-            Animated.spring(slideAnim, {
-                toValue: 0,
-                friction: 8,
-                tension: 40,
-                useNativeDriver: true,
-            }),
-        ]).start();
+        // Delay entry animation slightly to sync with splash fade-out
+        const animationTimeout = setTimeout(() => {
+            // Entry animation - smooth fade and slide
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 500,
+                    useNativeDriver: true,
+                }),
+                Animated.spring(slideAnim, {
+                    toValue: 0,
+                    friction: 10,
+                    tension: 50,
+                    useNativeDriver: true,
+                }),
+            ]).start();
+        }, 100);
 
-        // Subtle title flicker effect (like old cinema)
-        const flicker = Animated.sequence([
-            Animated.timing(titleFlickerAnim, { toValue: 0.92, duration: 80, useNativeDriver: true }),
-            Animated.timing(titleFlickerAnim, { toValue: 1, duration: 80, useNativeDriver: true }),
-            Animated.delay(4000),
-        ]);
-        Animated.loop(flicker).start();
-        
+        // Subtle title flicker effect (like old cinema) - start after initial animation
+        const flickerTimeout = setTimeout(() => {
+            const flicker = Animated.sequence([
+                Animated.timing(titleFlickerAnim, { toValue: 0.92, duration: 80, useNativeDriver: true }),
+                Animated.timing(titleFlickerAnim, { toValue: 1, duration: 80, useNativeDriver: true }),
+                Animated.delay(4000),
+            ]);
+            Animated.loop(flicker).start();
+        }, 600);
+
         // Film grain animation
         const grain = Animated.loop(
             Animated.sequence([
@@ -166,6 +172,11 @@ export default function HomeScreen({ navigation }) {
             ])
         );
         grain.start();
+
+        return () => {
+            clearTimeout(animationTimeout);
+            clearTimeout(flickerTimeout);
+        };
     }, []);
 
     return (
@@ -177,13 +188,43 @@ export default function HomeScreen({ navigation }) {
             <FilmPerforations side="left" theme={theme} />
             <FilmPerforations side="right" theme={theme} />
 
-            {/* Profile button */}
+            {/* Settings button - top left */}
+            <TouchableOpacity
+                onPress={() => { playHaptic('light'); navigation.navigate('Settings'); }}
+                style={styles.settingsButton}
+            >
+                <View style={styles.gearIcon}>
+                    {/* Gear teeth */}
+                    {[0, 45, 90, 135].map((rotation) => (
+                        <View
+                            key={rotation}
+                            style={[
+                                styles.gearTooth,
+                                {
+                                    backgroundColor: theme.colors.primary,
+                                    transform: [{ rotate: `${rotation}deg` }]
+                                }
+                            ]}
+                        />
+                    ))}
+                    {/* Center circle */}
+                    <View style={[styles.gearCenter, { backgroundColor: theme.colors.surface, borderColor: theme.colors.primary }]}>
+                        <View style={[styles.gearDot, { backgroundColor: theme.colors.primary }]} />
+                    </View>
+                </View>
+            </TouchableOpacity>
+
+            {/* Profile button - top right */}
             <TouchableOpacity
                 onPress={() => { playHaptic('light'); navigation.navigate('Profile'); }}
                 style={styles.profileButton}
             >
                 {userProfile ? (
-                    <CustomAvatar id={userProfile.avatarId} size={34} />
+                    userProfile.useCustomAvatar && userProfile.customAvatarConfig ? (
+                        <CustomBuiltAvatar config={userProfile.customAvatarConfig} size={34} />
+                    ) : (
+                        <CustomAvatar id={userProfile.avatarId} size={34} />
+                    )
                 ) : (
                     <View style={styles.profilePlaceholder}>
                         <View style={[styles.placeholderHead, { backgroundColor: theme.colors.textMuted }]} />
@@ -293,7 +334,7 @@ function AnimatedCharacter({ theme }) {
 
     const characterSize = getCharacterSize();
     const characterTop = getCharacterTop();
-    const characterSource = require('../../assets/starboy imposter 3.png');
+    const characterSource = require('../../assets/sweat boy .png');
 
     return (
         <Animated.View
@@ -333,6 +374,45 @@ const characterStyles = StyleSheet.create({
 const getStyles = (theme) => StyleSheet.create({
     container: {
         flex: 1,
+    },
+    settingsButton: {
+        position: 'absolute',
+        top: Platform.OS === 'ios' ? 50 : 36,
+        left: 22,
+        zIndex: 10,
+        width: 42,
+        height: 42,
+        borderRadius: 21,
+        backgroundColor: theme.colors.surface,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: theme.colors.primary + '50',
+    },
+    gearIcon: {
+        width: 22,
+        height: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    gearTooth: {
+        position: 'absolute',
+        width: 4,
+        height: 22,
+        borderRadius: 2,
+    },
+    gearCenter: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        borderWidth: 2,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    gearDot: {
+        width: 4,
+        height: 4,
+        borderRadius: 2,
     },
     profileButton: {
         position: 'absolute',

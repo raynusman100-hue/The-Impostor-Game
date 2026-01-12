@@ -12,11 +12,13 @@ import { database } from '../utils/firebase';
 import { ref, onValue, off, update, set, get, serverTimestamp, remove } from 'firebase/database';
 import { safeFirebaseUpdate, verifyRoomAccess } from '../utils/connectionUtils';
 import ChatSystem from '../components/ChatSystem';
+import VoiceControl from '../components/VoiceControl';
+import { useVoiceChat } from '../utils/VoiceChatContext';
 
 // Film perforation component for Kodak aesthetic (same as SetupScreen)
 const FilmPerforations = ({ side, theme }) => {
     const perforationColor = theme.colors.primary + '40';
-    
+
     return (
         <View style={[filmPerforationStyles.perforationStrip, side === 'left' ? filmPerforationStyles.leftStrip : filmPerforationStyles.rightStrip]}>
             {[...Array(12)].map((_, i) => (
@@ -87,7 +89,7 @@ export default function DiscussionScreen({ route, navigation }) {
     // Back button shows confirmation in WiFi mode
     useEffect(() => {
         if (!isWifi) return;
-        
+
         const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
             setShowLeaveConfirm(true);
             return true;
@@ -130,7 +132,7 @@ export default function DiscussionScreen({ route, navigation }) {
         const verifyInterval = setInterval(async () => {
             // Skip verification if component is unmounting or navigation is happening
             if (!verificationActive) return;
-            
+
             try {
                 const { exists, data } = await verifyRoomAccess(roomCode);
 
@@ -198,6 +200,14 @@ export default function DiscussionScreen({ route, navigation }) {
         }
     }, [isWifi, roomCode, playerId]);
 
+    // Voice Chat Integration
+    const { joinChannel } = useVoiceChat();
+    useEffect(() => {
+        if (isWifi && roomCode) {
+            joinChannel(roomCode, 0);
+        }
+    }, [isWifi, roomCode]);
+
     // 2. Main Game Stream Listener + Room Monitoring - OPTIMIZED TO PREVENT DOUBLE LOADING
     useEffect(() => {
         if (isWifi && roomCode) {
@@ -246,7 +256,7 @@ export default function DiscussionScreen({ route, navigation }) {
                 // CRITICAL: Prevent double navigation with debouncing
                 if (data.status !== 'discussion' && !navigationInProgress && navigation.isFocused()) {
                     navigationInProgress = true;
-                    
+
                     // Status Check: Voting
                     if (data.status === 'voting') {
                         console.log("DISCUSSION: Main listener - navigating to voting");
@@ -263,7 +273,7 @@ export default function DiscussionScreen({ route, navigation }) {
                         });
                         return;
                     }
-                    
+
                     // Reset navigation flag after a delay
                     setTimeout(() => {
                         navigationInProgress = false;
@@ -301,6 +311,50 @@ export default function DiscussionScreen({ route, navigation }) {
                         // For end discussion: ALL players (including impostors) must vote to end
                         // But majority can start 20s countdown
                         setNeededToEnd(playersList.length); // All players needed to end immediately
+
+                        // UNPLAYABLE GAME CHECK: If impostors >= citizens, game is unplayable
+                        const currentImposterCount = gameState.imposterCount || 1;
+                        const citizenCount = playersList.length - currentImposterCount;
+
+                        if (citizenCount <= currentImposterCount && playersList.length > 0) {
+                            console.log(`⚠️ GAME UNPLAYABLE: ${currentImposterCount} impostors vs ${citizenCount} citizens`);
+
+                            // Check if current player is still in the game
+                            const isStillInGame = playersList.some(p => p.id === playerId);
+
+                            if (!isStillInGame) {
+                                // Player already left - just go home silently
+                                console.log("Player already left, navigating home silently");
+                                navigation.navigate('Home');
+                                return;
+                            }
+
+                            Alert.alert(
+                                'Game Unplayable',
+                                'Too many players have left. The game cannot continue with equal or more impostors than citizens.',
+                                [{
+                                    text: 'OK',
+                                    onPress: async () => {
+                                        // Host resets the room, others just go home
+                                        if (playerId === 'host-id') {
+                                            try {
+                                                const roomRef = ref(database, `rooms/${roomCode}`);
+                                                await update(roomRef, {
+                                                    status: 'lobby',
+                                                    'gameState': null,
+                                                    gameStarted: false,
+                                                    gameInProgress: false
+                                                });
+                                            } catch (err) {
+                                                console.error("Error resetting room:", err);
+                                            }
+                                        }
+                                        navigation.navigate('Home');
+                                    }
+                                }]
+                            );
+                            return;
+                        }
                     }
 
                     // Impostor Count Sync
@@ -547,11 +601,11 @@ export default function DiscussionScreen({ route, navigation }) {
     const isLowTime = timeLeft < 30;
 
     return (
-        <LinearGradient style={styles.container} colors={['#0a0a0a', '#121212', '#0a0a0a']}>
+        <LinearGradient style={styles.container} colors={theme.colors.backgroundGradient || [theme.colors.background, theme.colors.background, theme.colors.background]}>
             {/* Film perforations - side strips */}
             <FilmPerforations side="left" theme={theme} />
             <FilmPerforations side="right" theme={theme} />
-            
+
             <SafeAreaView style={styles.safeArea}>
                 {/* Kodak Film Header - Both modes */}
                 <View style={styles.filmHeader}>
@@ -561,7 +615,10 @@ export default function DiscussionScreen({ route, navigation }) {
                         ))}
                     </View>
                 </View>
-                
+
+                {/* Voice Control for Wifi Mode */}
+                {isWifi && <VoiceControl />}
+
                 {/* Header / Room Code */}
                 <View style={styles.header}>
                     {isWifi ? (
@@ -659,7 +716,7 @@ export default function DiscussionScreen({ route, navigation }) {
                         </>
                     )}
                 </View>
-                
+
                 {/* Kodak Film Footer - Both modes */}
                 <View style={styles.filmFooter}>
                     <View style={styles.filmStrip}>
@@ -669,7 +726,7 @@ export default function DiscussionScreen({ route, navigation }) {
                     </View>
                 </View>
             </SafeAreaView>
-            
+
             {/* Leave Room Confirmation Modal */}
             <ConfirmModal
                 visible={showLeaveConfirm}
@@ -744,7 +801,7 @@ const getStyles = (theme) => StyleSheet.create({
     filmHole: {
         width: 12,
         height: 8,
-        backgroundColor: '#D4A000',
+        backgroundColor: theme.colors.primary,
         borderRadius: 2,
         opacity: 0.8,
     },
@@ -760,22 +817,22 @@ const getStyles = (theme) => StyleSheet.create({
     roomCodeContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(212, 160, 0, 0.15)',
+        backgroundColor: theme.colors.surface,
         paddingHorizontal: 20,
         paddingVertical: 10,
         borderRadius: 25,
         borderWidth: 2,
-        borderColor: '#D4A000',
+        borderColor: theme.colors.primary,
     },
     roomCodeLabel: {
-        color: '#D4A000',
+        color: theme.colors.tertiary,
         fontSize: 12,
         fontFamily: theme.fonts.bold,
         marginRight: 10,
         letterSpacing: 3,
     },
     roomCodeSmall: {
-        color: '#FFD54F',
+        color: theme.colors.text,
         fontSize: 20,
         fontFamily: theme.fonts.header,
         letterSpacing: 6,
@@ -784,11 +841,11 @@ const getStyles = (theme) => StyleSheet.create({
     tabContainer: {
         flexDirection: 'row',
         marginBottom: 10,
-        backgroundColor: 'rgba(26, 26, 26, 0.9)',
+        backgroundColor: theme.colors.surface,
         borderRadius: 25,
         padding: 4,
         borderWidth: 2,
-        borderColor: '#D4A000',
+        borderColor: theme.colors.primary,
         alignSelf: 'center',
         zIndex: 50
     },
@@ -798,7 +855,7 @@ const getStyles = (theme) => StyleSheet.create({
         borderRadius: 20,
     },
     activeTab: {
-        backgroundColor: '#D4A000',
+        backgroundColor: theme.colors.primary,
     },
     tabContent: {
         flexDirection: 'row',
@@ -806,25 +863,25 @@ const getStyles = (theme) => StyleSheet.create({
         position: 'relative',
     },
     tabText: {
-        color: 'rgba(255, 213, 79, 0.6)',
+        color: theme.colors.textMuted,
         fontFamily: theme.fonts.bold,
         fontSize: 14,
         letterSpacing: 2,
     },
     activeTabText: {
-        color: '#0a0a0a',
+        color: theme.colors.secondary,
         fontFamily: theme.fonts.bold,
     },
     notificationDot: {
         position: 'absolute',
         top: -6,
         right: -8,
-        backgroundColor: '#ff3b30',
+        backgroundColor: theme.colors.error,
         borderRadius: 6,
         width: 12,
         height: 12,
         borderWidth: 2,
-        borderColor: '#0a0a0a',
+        borderColor: theme.colors.background,
     },
 
     contentContainer: {
@@ -840,7 +897,7 @@ const getStyles = (theme) => StyleSheet.create({
     titleContainer: { alignItems: 'center', marginTop: 5 },
     kodakTitle: {
         fontSize: 42,
-        color: '#FFD54F',
+        color: theme.colors.text,
         fontFamily: theme.fonts.header,
         letterSpacing: 3,
     },
@@ -854,13 +911,13 @@ const getStyles = (theme) => StyleSheet.create({
     },
     kodakSubtitle: {
         fontSize: 14,
-        color: 'rgba(212, 160, 0, 0.8)',
+        color: theme.colors.textMuted,
         letterSpacing: 5,
         marginTop: 4,
         fontFamily: theme.fonts.medium,
     },
     tiedText: {
-        color: '#ff3b30',
+        color: theme.colors.error,
         fontFamily: theme.fonts.bold,
     },
 
@@ -886,18 +943,18 @@ const getStyles = (theme) => StyleSheet.create({
         height: 260,
         borderRadius: 130,
         borderWidth: 3,
-        borderColor: '#D4A000',
+        borderColor: theme.colors.primary,
         backgroundColor: 'transparent',
     },
-    timerCircleAlert: { borderColor: '#ff3b30' },
+    timerCircleAlert: { borderColor: theme.colors.error },
     hourglassPosition: {
         position: 'absolute',
         top: 55,
         zIndex: 1,
     },
-    timeTextContainer: { 
-        alignItems: 'center', 
-        justifyContent: 'center', 
+    timeTextContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
         zIndex: 10,
         position: 'absolute',
         top: 25,
@@ -905,14 +962,14 @@ const getStyles = (theme) => StyleSheet.create({
     timer: { fontSize: 64, color: theme.colors.text, fontFamily: theme.fonts.header, letterSpacing: 4 },
     kodakTimer: {
         fontSize: 64,
-        color: '#FFD54F',
+        color: theme.colors.text,
         fontFamily: theme.fonts.header,
         letterSpacing: 4,
     },
     timerLabel: { fontSize: theme.fontSize.small, color: theme.colors.textMuted, fontFamily: theme.fonts.medium, letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 },
     kodakTimerLabel: {
         fontSize: 12,
-        color: '#D4A000',
+        color: theme.colors.tertiary,
         letterSpacing: 4,
         fontFamily: theme.fonts.medium,
         marginTop: 4,
@@ -930,27 +987,22 @@ const getStyles = (theme) => StyleSheet.create({
     kodakOverlay: {
         position: 'absolute',
         top: '30%',
-        backgroundColor: 'rgba(0,0,0,0.95)',
+        backgroundColor: theme.colors.surface,
         padding: 30,
         borderRadius: 20,
         alignItems: 'center',
         zIndex: 100,
         width: '90%',
         borderWidth: 3,
-        borderColor: '#D4A000',
-        shadowColor: '#FFB800',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.7,
-        shadowRadius: 30,
+        borderColor: theme.colors.primary,
+        ...theme.shadows.medium,
     },
-    countdownTitle: { color: 'rgba(255, 213, 79, 0.8)', fontSize: 16, fontFamily: theme.fonts.bold, letterSpacing: 4 },
+    countdownTitle: { color: theme.colors.textSecondary, fontSize: 16, fontFamily: theme.fonts.bold, letterSpacing: 4 },
     kodakCountdown: {
         fontSize: 80,
-        color: '#FFD54F',
+        color: theme.colors.text,
         fontFamily: theme.fonts.header,
-        textShadowColor: '#D4A000',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 25,
+        ...theme.textShadows.depth,
     },
-    countdownNote: { color: 'rgba(212, 160, 0, 0.6)', fontSize: 12, fontFamily: theme.fonts.medium, textAlign: 'center', letterSpacing: 2 }
+    countdownNote: { color: theme.colors.textMuted, fontSize: 12, fontFamily: theme.fonts.medium, textAlign: 'center', letterSpacing: 2 }
 });
