@@ -75,8 +75,7 @@
             "deploymentTarget": "15.1"
           }
         }
-      ],
-      "react-native-google-mobile-ads"
+      ]
     ],
     "extra": {
       "eas": {

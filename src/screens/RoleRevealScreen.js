@@ -399,28 +399,24 @@ export default function RoleRevealScreen({ route, navigation }) {
                         contentContainerStyle={styles.statusListContent}
                     >
                         {allPlayersStatus.map((p) => (
-                            {
-                                allPlayersStatus.map((p) => (
-                                    <TouchableOpacity
-                                        key={p.id}
-                                        style={[styles.statusItem, styles.kodakStatusItem, p.ready && styles.statusItemReady, p.ready && styles.kodakStatusItemReady]}
-                                        onPress={() => { playHaptic('light'); Alert.alert('Player', p.name); }}
-                                    >
-                                        {p.customAvatarConfig ? (
-                                            <CustomBuiltAvatar config={p.customAvatarConfig} size={30} />
-                                        ) : (
-                                            <CustomAvatar id={p.avatarId} size={30} />
-                                        )}
-                                        <View style={[styles.statusBadge, styles.kodakStatusBadge]}>
-                                            {p.ready ? (
-                                                <Text style={styles.checkMark}>✓</Text>
-                                            ) : (
-                                                <ActivityIndicator size={10} color={theme.colors.secondary} />
-                                            )}
-                                        </View>
-                                    </TouchableOpacity>
-                                ))
-                            }
+                            <TouchableOpacity
+                                key={p.id}
+                                style={[styles.statusItem, styles.kodakStatusItem, p.ready && styles.statusItemReady, p.ready && styles.kodakStatusItemReady]}
+                                onPress={() => { playHaptic('light'); Alert.alert('Player', p.name); }}
+                            >
+                                {p.customAvatarConfig ? (
+                                    <CustomBuiltAvatar config={p.customAvatarConfig} size={30} />
+                                ) : (
+                                    <CustomAvatar id={p.avatarId} size={30} />
+                                )}
+                                <View style={[styles.statusBadge, styles.kodakStatusBadge]}>
+                                    {p.ready ? (
+                                        <Text style={styles.checkMark}>✓</Text>
+                                    ) : (
+                                        <ActivityIndicator size={10} color={theme.colors.secondary} />
+                                    )}
+                                </View>
+                            </TouchableOpacity>
                         ))}
                     </ScrollView>
                     <Text style={[styles.statusCount, styles.kodakStatusCount]}>

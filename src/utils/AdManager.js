@@ -1,14 +1,13 @@
-import { InterstitialAd, AdEventType, TestIds } from 'react-native-google-mobile-ads';
 import { Platform } from 'react-native';
-import PurchaseManager from './PurchaseManager';
 
-// Test IDs for development
-const adUnitId = __DEV__
-    ? TestIds.INTERSTITIAL
-    : Platform.select({
-        ios: 'ca-app-pub-xxxxxxxxxxxxxxxx/xxxxxxxxxx',
-        android: 'ca-app-pub-xxxxxxxxxxxxxxxx/xxxxxxxxxx',
-    });
+// ============================================================
+// ADS DISABLED FOR EXPO GO TESTING
+// Set ADS_ENABLED = true to re-enable Google Mobile Ads
+// ============================================================
+const ADS_ENABLED = false;
+
+// Check if we're on web - ads not supported
+const isWeb = Platform.OS === 'web';
 
 class AdManager {
     static instance = null;
@@ -26,13 +25,38 @@ class AdManager {
     }
 
     loadInterstitial() {
-        // frequent checks to avoid loading if user is pro
+        if (!ADS_ENABLED || isWeb) {
+            console.log('AdManager: DISABLED - loadInterstitial called');
+            return;
+        }
+        this._loadInterstitialFull();
+    }
+
+    showInterstitial(onAdClosed) {
+        if (!ADS_ENABLED || isWeb) {
+            console.log('AdManager: DISABLED - showInterstitial called');
+            onAdClosed?.();
+            return;
+        }
+        this._showInterstitialFull(onAdClosed);
+    }
+
+    // Full implementations - only called when ADS_ENABLED = true and not on web
+    _loadInterstitialFull() {
+        // Dynamic import to avoid web bundling issues
+        const { InterstitialAd, AdEventType, TestIds } = require('react-native-google-mobile-ads');
+        const PurchaseManager = require('./PurchaseManager').default;
+
+        const adUnitId = __DEV__
+            ? TestIds.INTERSTITIAL
+            : Platform.select({
+                ios: 'ca-app-pub-xxxxxxxxxxxxxxxx/xxxxxxxxxx',
+                android: 'ca-app-pub-xxxxxxxxxxxxxxxx/xxxxxxxxxx',
+            });
+
         if (PurchaseManager.isPro) return;
 
         if (this.interstitial) {
-            // already loading or loaded? 
-            // We can just create a new one to be safe or reuse if not shown.
-            // For simplicity, let's create a new one if not loaded, or return if loaded.
             if (this.loaded) return;
         }
 
@@ -47,7 +71,6 @@ class AdManager {
         this.interstitial.addAdEventListener(AdEventType.CLOSED, () => {
             this.loaded = false;
             this.interstitial = null;
-            // Preload the next one
             this.loadInterstitial();
         });
 
@@ -59,7 +82,10 @@ class AdManager {
         this.interstitial.load();
     }
 
-    showInterstitial(onAdClosed) {
+    _showInterstitialFull(onAdClosed) {
+        const { AdEventType } = require('react-native-google-mobile-ads');
+        const PurchaseManager = require('./PurchaseManager').default;
+
         if (PurchaseManager.isPro) {
             console.log('User is Pro, skipping interstitial');
             onAdClosed?.();
@@ -67,17 +93,16 @@ class AdManager {
         }
 
         if (this.loaded && this.interstitial) {
-            // Add one-time listener for close event validation
             const unsubscribe = this.interstitial.addAdEventListener(AdEventType.CLOSED, () => {
                 onAdClosed?.();
                 unsubscribe();
             });
 
             this.interstitial.show();
-            this.loaded = false; // reset immediately
+            this.loaded = false;
         } else {
             console.log('Interstitial not ready, loading for next time');
-            onAdClosed?.(); // Proceed if ad fails to show
+            onAdClosed?.();
             this.loadInterstitial();
         }
     }
