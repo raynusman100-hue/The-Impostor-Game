@@ -9,8 +9,7 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 
 // Configure Google Sign-In for native builds
 GoogleSignin.configure({
-    webClientId: '831244408092-sj090u2e28l0ai7tuc6t5uvn0ea4o7ov.apps.googleusercontent.com',
-    iosClientId: '831244408092-oifo3c54on55brivq9kupic53ntbgrd2.apps.googleusercontent.com',
+    webClientId: '831244408092-mn4bhuvq6v4il0nippaiaf7q729o97bu.apps.googleusercontent.com',
     offlineAccess: true,
 });
 
