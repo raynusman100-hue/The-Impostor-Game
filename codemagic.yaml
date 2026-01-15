@@ -1,6 +1,6 @@
 workflows:
-  android-apk:
-    name: Android APK Build
+  android-release:
+    name: Android Play Store Build (AAB)
     max_build_duration: 60
     instance_type: mac_mini_m2
 
@@ -30,14 +30,23 @@ workflows:
           keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android 2>/dev/null | grep SHA1
           echo "========================================="
 
-      - name: Build Android APK
+      - name: Build Android AAB (App Bundle)
         script: |
           cd android
-          # Build ARM64 APK only (most modern devices) for smaller size
-          ./gradlew assembleRelease -Preact.enableAbiSplits=true
+          ./gradlew bundleRelease
+
+      - name: Print APK SHA-1 (for Firebase)
+        script: |
+          echo "=== BUILD COMPLETE ==="
+          echo "AAB location: android/app/build/outputs/bundle/release/"
+          echo ""
+          echo "IMPORTANT: For Google Sign-In to work, add the SHA-1 from"
+          echo "Google Play Console -> Setup -> App signing -> App signing key certificate"
+          echo "to Firebase Console -> Project Settings -> Your Android app -> Add fingerprint"
+          echo "========================================"
 
     artifacts:
-      - android/app/build/outputs/apk/**/*.apk
+      - android/app/build/outputs/bundle/**/*.aab
 
   ios-testflight:
     name: iOS TestFlight Build
