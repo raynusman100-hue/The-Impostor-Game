@@ -33,7 +33,8 @@ workflows:
       - name: Build Android APK
         script: |
           cd android
-          ./gradlew assembleRelease
+          # Build ARM64 APK only (most modern devices) for smaller size
+          ./gradlew assembleRelease -Preact.enableAbiSplits=true
 
     artifacts:
       - android/app/build/outputs/apk/**/*.apk
