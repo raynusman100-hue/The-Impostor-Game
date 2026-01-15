@@ -50,6 +50,7 @@
       "expo-font",
       "expo-web-browser",
       "expo-splash-screen",
+      "@react-native-google-signin/google-signin",
       [
         "react-native-google-mobile-ads",
         {
