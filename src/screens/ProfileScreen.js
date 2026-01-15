@@ -5,65 +5,20 @@ import { onAuthStateChanged, signOut, signInWithCredential, GoogleAuthProvider }
 import { auth } from '../utils/firebase';
 import { useTheme } from '../utils/ThemeContext';
 import { playHaptic } from '../utils/haptics';
-import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
-// Required for auth session to work properly
-WebBrowser.maybeCompleteAuthSession();
-
-// Google OAuth endpoints
-const discovery = {
-    authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-    tokenEndpoint: 'https://oauth2.googleapis.com/token',
-};
+// Configure Google Sign-In for native builds
+GoogleSignin.configure({
+    webClientId: '831244408092-sj090u2e28l0ai7tuc6t5uvn0ea4o7ov.apps.googleusercontent.com',
+    iosClientId: '831244408092-oifo3c54on55brivq9kupic53ntbgrd2.apps.googleusercontent.com',
+    offlineAccess: true,
+});
 
 export default function ProfileScreen({ navigation }) {
     const { theme } = useTheme();
     const [user, setUser] = useState(null);
     const [displayName, setDisplayName] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-
-    // Build redirect URI - for Expo Go this will be exp://...
-    const redirectUri = AuthSession.makeRedirectUri();
-    console.log('Redirect URI:', redirectUri);
-
-    const [request, response, promptAsync] = AuthSession.useAuthRequest(
-        {
-            clientId: '831244408092-sj090u2e28l0ai7tuc6t5uvn0ea4o7ov.apps.googleusercontent.com',
-            scopes: ['openid', 'profile', 'email'],
-            redirectUri,
-            responseType: 'id_token',
-            extraParams: {
-                nonce: Math.random().toString(36).substring(2),
-            },
-        },
-        discovery
-    );
-
-    // Handle auth response
-    useEffect(() => {
-        console.log('Auth response:', JSON.stringify(response, null, 2));
-        
-        if (response?.type === 'success') {
-            console.log('Success! Params:', JSON.stringify(response.params, null, 2));
-            const idToken = response.params?.id_token;
-            if (idToken) {
-                console.log('Got ID token, signing into Firebase...');
-                handleFirebaseSignIn(idToken);
-            } else {
-                console.log('No id_token in params');
-                setIsLoading(false);
-                Alert.alert('Auth Issue', 'No ID token received from Google');
-            }
-        } else if (response?.type === 'error') {
-            setIsLoading(false);
-            console.log('Auth error:', JSON.stringify(response.error, null, 2));
-            Alert.alert('Sign-In Error', response.error?.message || 'Something went wrong');
-        } else if (response?.type === 'dismiss') {
-            console.log('Auth dismissed');
-            setIsLoading(false);
-        }
-    }, [response]);
 
     // Listen for auth state changes
     useEffect(() => {
@@ -91,36 +46,57 @@ export default function ProfileScreen({ navigation }) {
         loadDisplayName();
     }, [user]);
 
-    const handleFirebaseSignIn = async (idToken) => {
-        try {
-            const credential = GoogleAuthProvider.credential(idToken);
-            const userCredential = await signInWithCredential(auth, credential);
-            console.log('Firebase Sign-In successful:', userCredential.user.email);
-            setUser(userCredential.user);
-            playHaptic('success');
-        } catch (error) {
-            console.error('Firebase sign-in error:', error);
-            Alert.alert('Sign-In Error', error.message || 'Failed to sign in with Firebase');
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
     const handleGoogleSignIn = async () => {
         playHaptic('medium');
         setIsLoading(true);
         try {
-            await promptAsync();
+            // Check if device supports Google Play Services
+            await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+            
+            // Sign in with Google
+            const userInfo = await GoogleSignin.signIn();
+            console.log('Google Sign-In userInfo:', userInfo);
+            
+            // Get the ID token
+            const idToken = userInfo.data?.idToken || userInfo.idToken;
+            
+            if (idToken) {
+                // Create Firebase credential and sign in
+                const credential = GoogleAuthProvider.credential(idToken);
+                const userCredential = await signInWithCredential(auth, credential);
+                console.log('Firebase Sign-In successful:', userCredential.user.email);
+                setUser(userCredential.user);
+                playHaptic('success');
+            } else {
+                throw new Error('No ID token received from Google');
+            }
         } catch (error) {
             console.error('Google Sign-In error:', error);
+            
+            if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+                console.log('User cancelled sign-in');
+            } else if (error.code === statusCodes.IN_PROGRESS) {
+                Alert.alert('Sign-In', 'Sign-in already in progress');
+            } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+                Alert.alert('Error', 'Google Play Services not available');
+            } else {
+                Alert.alert('Sign-In Error', error.message || 'Something went wrong');
+            }
+        } finally {
             setIsLoading(false);
-            Alert.alert('Sign-In Error', error.message || 'Something went wrong');
         }
     };
 
     const handleSignOut = async () => {
         playHaptic('medium');
         try {
+            // Sign out from Google
+            try {
+                await GoogleSignin.signOut();
+            } catch (e) {
+                console.log('Google signout error (may not be signed in):', e);
+            }
+            // Sign out from Firebase
             await signOut(auth);
             setUser(null);
             setDisplayName('');
@@ -174,10 +150,10 @@ export default function ProfileScreen({ navigation }) {
                             style={[styles.button, styles.googleButton, { 
                                 backgroundColor: theme.colors.surface,
                                 borderColor: theme.colors.primary,
-                                opacity: isLoading || !request ? 0.6 : 1
+                                opacity: isLoading ? 0.6 : 1
                             }]}
                             onPress={handleGoogleSignIn}
-                            disabled={isLoading || !request}
+                            disabled={isLoading}
                         >
                             <Text style={[styles.buttonText, { color: theme.colors.text }]}>
                                 {isLoading ? 'SIGNING IN...' : 'SIGN IN WITH GOOGLE'}

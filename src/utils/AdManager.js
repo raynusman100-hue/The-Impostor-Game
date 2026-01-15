@@ -1,10 +1,9 @@
 import { Platform } from 'react-native';
 
 // ============================================================
-// ADS DISABLED FOR EXPO GO TESTING
-// Set ADS_ENABLED = true to re-enable Google Mobile Ads
+// ADS ENABLED FOR PRODUCTION BUILD
 // ============================================================
-const ADS_ENABLED = false;
+const ADS_ENABLED = true;
 
 // Check if we're on web - ads not supported
 const isWeb = Platform.OS === 'web';
