@@ -15,6 +15,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "831244408092-iqro5t18mgktp3mg6lkb1m3270990o62.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rayn100.impostergame",
+            "certificate_hash": "81af3830d1fc6ec12b54c5819ca6401343614f6b"
+          }
+        },
+        {
           "client_id": "831244408092-mn4bhuvq6v4il0nippaiaf7q729o97bu.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -30,6 +38,13 @@
             {
               "client_id": "831244408092-mn4bhuvq6v4il0nippaiaf7q729o97bu.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "831244408092-oifo3c54on55brivq9kupic53ntbgrd2.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.rayn100.impostergame"
+              }
             }
           ]
         }
