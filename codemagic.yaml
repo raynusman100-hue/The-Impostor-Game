@@ -5,6 +5,8 @@ workflows:
     instance_type: mac_mini_m2
 
     environment:
+      groups:
+        - imposter
       node: 20
       java: 17
 
