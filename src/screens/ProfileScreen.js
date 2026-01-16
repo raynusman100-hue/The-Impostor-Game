@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Alert, Platform, Animated, PanResponder, Dimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { onAuthStateChanged, signOut, signInWithCredential, GoogleAuthProvider } from 'firebase/auth';
-import { auth } from '../utils/firebase';
+import { ref, get, set } from 'firebase/database';
+import { auth, database } from '../utils/firebase';
 import { useTheme } from '../utils/ThemeContext';
 import { playHaptic } from '../utils/haptics';
 import { CustomAvatar, TOTAL_AVATARS } from '../utils/AvatarGenerator';
@@ -410,13 +411,79 @@ export default function ProfileScreen({ navigation }) {
     };
     // ============ END GOOGLE SIGN-IN ============
 
+    // ============ USERNAME UNIQUENESS CHECK ============
+    const checkUsernameAvailable = async (name) => {
+        try {
+            const usernameRef = ref(database, `usernames/${name.toLowerCase()}`);
+            const snapshot = await get(usernameRef);
+            
+            if (!snapshot.exists()) {
+                return { available: true };
+            }
+            
+            const data = snapshot.val();
+            const ownerUid = typeof data === 'string' ? data : data.uid;
+            
+            // If current user owns this username, it's available for them
+            if (ownerUid === user.uid) {
+                return { available: true, ownedByCurrentUser: true };
+            }
+            
+            return { available: false };
+        } catch (error) {
+            console.log('Error checking username:', error);
+            // If we can't check, assume it's taken to be safe
+            return { available: false, error: true };
+        }
+    };
+
+    const releaseOldUsername = async (oldName) => {
+        if (!oldName || !user) return;
+        try {
+            const usernameRef = ref(database, `usernames/${oldName.toLowerCase()}`);
+            const snapshot = await get(usernameRef);
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                const ownerUid = typeof data === 'string' ? data : data.uid;
+                // Only release if current user owns it
+                if (ownerUid === user.uid) {
+                    await set(usernameRef, null);
+                }
+            }
+        } catch (error) {
+            console.log('Error releasing username:', error);
+        }
+    };
+
     const handleSaveProfile = async () => {
         const name = username.trim();
         if (!name) { Alert.alert('Error', 'Please enter a username'); return; }
         if (name.length > 12) { Alert.alert('Error', 'Username too long (max 12 characters)'); return; }
         
         playHaptic('medium');
+        setIsLoading(true);
+        
         try {
+            // Check if username is available
+            const { available, ownedByCurrentUser } = await checkUsernameAvailable(name);
+            
+            if (!available) {
+                playHaptic('error');
+                Alert.alert('Username Taken', 'This username is already in use. Please choose another one.');
+                setIsLoading(false);
+                return;
+            }
+            
+            // Release old username if changing to a new one
+            const oldUsername = existingProfile?.username;
+            if (oldUsername && oldUsername.toLowerCase() !== name.toLowerCase()) {
+                await releaseOldUsername(oldUsername);
+            }
+            
+            // Reserve the new username in Firebase
+            await set(ref(database, `usernames/${name.toLowerCase()}`), { uid: user.uid });
+            
+            // Save profile locally
             const userProfile = {
                 username: name,
                 avatarId: selectedAvatarId,
@@ -434,7 +501,10 @@ export default function ProfileScreen({ navigation }) {
                 { text: 'OK', onPress: () => setMode('profile_view') }
             ]);
         } catch (error) {
+            playHaptic('error');
             Alert.alert('Error', 'Failed to save profile: ' + error.message);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -539,7 +609,7 @@ export default function ProfileScreen({ navigation }) {
                         />
                     </View>
 
-                    <CinemaButton title="SAVE PROFILE" onPress={handleSaveProfile} theme={theme} style={{ marginTop: 8 }} />
+                    <CinemaButton title={isLoading ? "CHECKING..." : "SAVE PROFILE"} onPress={handleSaveProfile} theme={theme} style={{ marginTop: 8, opacity: isLoading ? 0.6 : 1 }} />
                 </View>
             </ScrollView>
         );
