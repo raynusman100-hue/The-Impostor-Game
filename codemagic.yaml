@@ -33,7 +33,15 @@ workflows:
       - name: Setup Signing Keystore
         script: |
           # Use Node.js for robust, cross-platform base64 decoding
-          node -e "require('fs').writeFileSync('/tmp/keystore.keystore', Buffer.from(process.env.CM_KEYSTORE, 'base64'))"
+          node -e "
+            const fs = require('fs');
+            const keystore = process.env.CM_KEYSTORE;
+            if (!keystore) {
+              console.error('ERROR: CM_KEYSTORE environment variable is NOT set!');
+              process.exit(1);
+            }
+            fs.writeFileSync('/tmp/keystore.keystore', Buffer.from(keystore, 'base64'));
+          "
 
       - name: Build Android AAB (App Bundle) with Signing
         script: |
