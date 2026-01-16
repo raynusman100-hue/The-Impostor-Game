@@ -32,7 +32,8 @@ workflows:
 
       - name: Setup Signing Keystore
         script: |
-          echo $CM_KEYSTORE | base64 --decode > /tmp/keystore.keystore
+          # Use base64 -D for macOS (BSD base64)
+          echo "$CM_KEYSTORE" | base64 -D -o /tmp/keystore.keystore
 
       - name: Build Android AAB (App Bundle) with Signing
         script: |
