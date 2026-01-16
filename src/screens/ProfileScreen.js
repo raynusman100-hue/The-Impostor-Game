@@ -19,12 +19,35 @@ export default function ProfileScreen({ navigation }) {
     const [displayName, setDisplayName] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
-    // Listen for auth state changes
+    // Listen for auth state changes and save profile to AsyncStorage
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             setUser(currentUser);
             if (currentUser) {
-                setDisplayName(currentUser.displayName || currentUser.email?.split('@')[0] || 'Player');
+                const name = currentUser.displayName || currentUser.email?.split('@')[0] || 'Player';
+                setDisplayName(name);
+                
+                // Save profile to AsyncStorage so WifiModeSelectorScreen can access it
+                try {
+                    const profileData = {
+                        username: name,
+                        avatarId: 1, // Default avatar
+                        uid: currentUser.uid,
+                        email: currentUser.email,
+                    };
+                    await AsyncStorage.setItem('user_profile', JSON.stringify(profileData));
+                    await AsyncStorage.setItem('displayName', name);
+                    console.log('Profile saved to AsyncStorage:', profileData);
+                } catch (e) {
+                    console.log('Error saving profile:', e);
+                }
+            } else {
+                // Clear profile when signed out
+                try {
+                    await AsyncStorage.removeItem('user_profile');
+                } catch (e) {
+                    console.log('Error clearing profile:', e);
+                }
             }
         });
         return unsubscribe;
@@ -97,6 +120,9 @@ export default function ProfileScreen({ navigation }) {
             }
             // Sign out from Firebase
             await signOut(auth);
+            // Clear profile from AsyncStorage
+            await AsyncStorage.removeItem('user_profile');
+            await AsyncStorage.removeItem('displayName');
             setUser(null);
             setDisplayName('');
             Alert.alert('Signed Out', 'You have been signed out successfully.');
