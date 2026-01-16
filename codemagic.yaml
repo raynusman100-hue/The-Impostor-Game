@@ -52,6 +52,9 @@ workflows:
 
       - name: Sign Android Release Bundle
         script: |
+          echo "Removing debug signature..."
+          zip -d android/app/build/outputs/bundle/release/app-release.aab META-INF/\*
+
           echo "Signing bundle manually..."
           jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
             -keystore /tmp/keystore.keystore \
@@ -88,7 +91,7 @@ workflows:
       # Add these in Codemagic UI -> App Settings -> Environment variables:
       # - APP_STORE_APP_ID (your App Store Connect App ID)
       vars:
-        BUNDLE_ID: "com.rayn100.impostergame"
+        BUNDLE_ID: "com.usman.impostergame"
 
     triggering:
       events:
