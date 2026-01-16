@@ -49,6 +49,42 @@
           ]
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:831244408092:android:18c709db8fe438a637d6d9",
+        "android_client_info": {
+          "package_name": "com.usman.impostergame"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "831244408092-mn4bhuvq6v4il0nippaiaf7q729o97bu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA8oJoBAHNbslcy-U4iQ_GpYNRuROhltx4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "831244408092-mn4bhuvq6v4il0nippaiaf7q729o97bu.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "831244408092-oifo3c54on55brivq9kupic53ntbgrd2.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.rayn100.impostergame"
+              }
+            }
+          ]
+        }
+      }
     }
   ],
   "configuration_version": "1"

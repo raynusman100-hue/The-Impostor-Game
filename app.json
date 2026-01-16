@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.rayn100.impostergame",
+      "bundleIdentifier": "com.usman.impostergame",
       "buildNumber": "1",
       "backgroundColor": "#0a0a0a",
       "infoPlist": {
@@ -25,7 +25,7 @@
       }
     },
     "android": {
-      "package": "com.rayn100.impostergame",
+      "package": "com.usman.impostergame",
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/the imposter logo 3.png",
@@ -63,6 +63,10 @@
         {
           "android": {
             "minSdkVersion": 24,
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "buildToolsVersion": "34.0.0",
+            "ndkVersion": "26.1.10909125",
             "packagingOptions": {
               "pickFirst": [
                 "lib/x86/libc++_shared.so",
