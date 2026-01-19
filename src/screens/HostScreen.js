@@ -70,6 +70,7 @@ export default function HostScreen({ navigation, route }) {
                             name: playerData.name,
                             avatarId: playerData.avatarId,
                             customAvatarConfig: playerData.customAvatarConfig || null,
+                            useCustomAvatar: !!playerData.customAvatarConfig,
                             isHost: true
                         }
                     },
@@ -121,6 +122,34 @@ export default function HostScreen({ navigation, route }) {
         });
         return () => off(roomRef);
     }, [roomCode, navigation, playerData, players, selectedCategory]);
+
+    // Load saved category persistence
+    useEffect(() => {
+        const loadSettings = async () => {
+            try {
+                const savedCategory = await AsyncStorage.getItem('host_category');
+                if (savedCategory) {
+                    // Verify if category still exists (in case it was 'general' which is now removed)
+                    const validCategories = CATEGORY_LABELS.map(c => c.key);
+                    if (validCategories.includes(savedCategory)) {
+                        setSelectedCategory(savedCategory);
+                    } else {
+                        setSelectedCategory('all');
+                    }
+                }
+            } catch (e) {
+                console.log('Failed to load host settings');
+            }
+        };
+        loadSettings();
+    }, []);
+
+    // Save category when changed
+    useEffect(() => {
+        if (selectedCategory) {
+            AsyncStorage.setItem('host_category', selectedCategory);
+        }
+    }, [selectedCategory]);
 
     // Cleanup Room on Unmount/Leave
     useEffect(() => {

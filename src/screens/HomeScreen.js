@@ -272,7 +272,7 @@ export default function HomeScreen({ navigation }) {
                                 isPrimary={true}
                             />
                             <SimpleMenuButton
-                                title="WI-FI MODE"
+                                title="ONLINE MODE"
                                 onPress={() => navigation.navigate('WifiModeSelector')}
                                 isPrimary={true}
                             />

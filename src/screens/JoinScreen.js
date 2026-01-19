@@ -88,14 +88,16 @@ export default function JoinScreen({ navigation, route }) {
                     avatarId: playerData.avatarId,
                     uid: playerData.uid,
                     status: 'waiting',
-                    customAvatarConfig: playerData.customAvatarConfig || null // SAVE CONFIG
+                    customAvatarConfig: playerData.customAvatarConfig || null,
+                    useCustomAvatar: !!playerData.customAvatarConfig
                 });
 
                 // Navigate to lobby
                 navigation.navigate('WifiLobby', {
                     roomCode: targetCode,
                     playerId: pId,
-                    playerName: playerData.name
+                    playerName: playerData.name,
+                    avatarConfig: playerData.customAvatarConfig // Pass locally for immediate render if needed
                 });
             } else {
                 Alert.alert('Not Found', 'Room code does not exist.');

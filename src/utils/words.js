@@ -3,44 +3,6 @@
  * Translations are handled automatically by the API.
  */
 export const wordCategories = {
-    general: [
-        { word: 'Pizza', hint: 'A popular Italian dish' },
-        { word: 'Guitar', hint: 'A string instrument' },
-        { word: 'Bicycle', hint: 'Two-wheeled transport' },
-        { word: 'Sun', hint: 'Star at the center of our system' },
-        { word: 'Water', hint: 'Essential for life' },
-        { word: 'Clock', hint: 'Tells time' },
-        { word: 'Book', hint: 'Pages with stories' },
-        { word: 'Doctor', hint: 'Treats patients' },
-        { word: 'Fire', hint: 'Hot and burning' },
-        { word: 'Tree', hint: 'Has leaves and a trunk' },
-        { word: 'Computer', hint: 'Electronic machine' },
-        { word: 'Music', hint: 'Sound and rhythm' },
-        { word: 'Money', hint: 'Used to buy things' },
-        { word: 'Sleep', hint: 'Rest at night' },
-        { word: 'Dream', hint: 'Thoughts while sleeping' },
-        { word: 'Happy', hint: 'Feeling of joy' },
-        { word: 'Crying', hint: 'Tears falling' },
-        { word: 'Friend', hint: 'A person you like' },
-        { word: 'Family', hint: 'Parents and children' },
-        { word: 'House', hint: 'Place to live' },
-        { word: 'Love', hint: 'Deep affection' },
-        { word: 'Time', hint: 'Measured in seconds' },
-        { word: 'Work', hint: 'Job or task' },
-        { word: 'Idea', hint: 'A thought or suggestion' },
-        { word: 'Light', hint: 'Opposite of dark' },
-        { word: 'Rain', hint: 'Water from clouds' },
-        { word: 'Snow', hint: 'Frozen precipitation' },
-        { word: 'Wind', hint: 'Moving air' },
-        { word: 'Thunder', hint: 'Loud sky sound' },
-        { word: 'Cloud', hint: 'White fluffy formation' },
-        { word: 'Night', hint: 'Dark time' },
-        { word: 'Day', hint: 'Light time' },
-        { word: 'Sea', hint: 'Large body of water' },
-        { word: 'Ocean', hint: 'Massive sea' },
-        { word: 'Mountain', hint: 'Very tall landform' },
-        { word: 'River', hint: 'Flowing water' },
-    ],
     places: [
         { word: 'Paris', hint: 'City of Lights' },
         { word: 'School', hint: 'Place for learning' },
@@ -528,9 +490,9 @@ export function getRandomWord(categoryKeys = ['all']) {
         });
     }
 
-    // Fallback
+    // Fallback - shouldn't happen if 'all' is always an option
     if (availableWords.length === 0) {
-        availableWords = addCategory(wordCategories.general, 'general');
+        availableWords = addCategory(wordCategories.food, 'food');
     }
 
     // Filter out recently used words if we have enough options
@@ -557,7 +519,6 @@ export function getRandomWord(categoryKeys = ['all']) {
 
 export const CATEGORY_LABELS = [
     { key: 'all', label: 'Random (All)' },
-    { key: 'general', label: 'General' },
     { key: 'entertainment', label: 'Entertainment' },
     { key: 'places', label: 'Places' },
     { key: 'food', label: 'Food' },

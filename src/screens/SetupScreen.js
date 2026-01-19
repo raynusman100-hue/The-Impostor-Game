@@ -18,7 +18,7 @@ import { playHaptic } from '../utils/haptics';
 const FilmPerforations = ({ side, theme }) => {
     // Use primary color with opacity for visibility on both light/dark themes
     const perforationColor = theme.colors.primary + '40'; // 40 = 25% opacity
-    
+
     return (
         <View style={[filmStyles.perforationStrip, side === 'left' ? filmStyles.leftStrip : filmStyles.rightStrip]}>
             {[...Array(12)].map((_, i) => (
@@ -90,6 +90,7 @@ export default function SetupScreen({ navigation, route }) {
     const [isLanguageModalVisible, setIsLanguageModalVisible] = useState(false);
     const [isStarting, setIsStarting] = useState(false);
     const [showOfflineWarning, setShowOfflineWarning] = useState(false);
+    const [settingsLoaded, setSettingsLoaded] = useState(false); // Flag to prevent save before load
 
     // Load saved players on mount
     useEffect(() => {
@@ -125,22 +126,67 @@ export default function SetupScreen({ navigation, route }) {
         return () => clearTimeout(timeoutId);
     }, [players]);
 
+    // Save Categories (only after settings are loaded to prevent overwriting)
+    useEffect(() => {
+        if (!settingsLoaded) return; // Don't save until initial load is complete
+
+        const saveCategories = async () => {
+            try {
+                console.log('Saving categories:', selectedCategories);
+                await AsyncStorage.setItem('player_categories', JSON.stringify(selectedCategories));
+            } catch (e) {
+                console.log('Failed to save categories');
+            }
+        };
+        saveCategories();
+    }, [selectedCategories, settingsLoaded]);
+
+    // Save Hints (only after settings are loaded)
+    useEffect(() => {
+        if (!settingsLoaded) return;
+
+        const saveHints = async () => {
+            try {
+                await AsyncStorage.setItem('player_hints', String(hintsEnabled));
+            } catch (e) {
+                console.log('Failed to save hints');
+            }
+        };
+        saveHints();
+    }, [hintsEnabled, settingsLoaded]);
+
 
     // Load saved settings
     useEffect(() => {
         const loadSettings = async () => {
             try {
-                const savedLanguage = await AsyncStorage.getItem('player_language_pref');
-                console.log('Attempting to load language. Found:', savedLanguage);
+                const [savedLanguage, savedCategories, savedHints] = await Promise.all([
+                    AsyncStorage.getItem('player_language_pref'),
+                    AsyncStorage.getItem('player_categories'),
+                    AsyncStorage.getItem('player_hints')
+                ]);
+
+                console.log('Loading settings - categories:', savedCategories);
 
                 if (savedLanguage && SUPPORTED_LANGUAGES.some(l => l.code === savedLanguage)) {
-                    console.log('Validation passed. Setting language to:', savedLanguage);
                     setLanguage(savedLanguage);
-                } else {
-                    console.log('No valid saved language found, keeping default (en).');
+                }
+
+                if (savedCategories) {
+                    const parsedCats = JSON.parse(savedCategories);
+                    if (Array.isArray(parsedCats) && parsedCats.length > 0) {
+                        setSelectedCategories(parsedCats);
+                    }
+                }
+
+                if (savedHints !== null) {
+                    setHintsEnabled(savedHints === 'true');
                 }
             } catch (e) {
                 console.error('Failed to load settings', e);
+            } finally {
+                // Mark settings as loaded so save effects can run
+                setSettingsLoaded(true);
             }
         };
         loadSettings();
@@ -367,7 +413,7 @@ export default function SetupScreen({ navigation, route }) {
             <FilmPerforations side="left" theme={theme} />
             <FilmPerforations side="right" theme={theme} />
 
-            <ScrollView 
+            <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
@@ -401,7 +447,7 @@ export default function SetupScreen({ navigation, route }) {
                     {/* Hints Toggle */}
                     <View style={styles.compactSection}>
                         <Text style={styles.compactLabel}>HINTS</Text>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={[styles.toggleBtn, hintsEnabled && styles.toggleBtnActive]}
                             onPress={() => { playHaptic('light'); setHintsEnabled(!hintsEnabled); }}
                         >
@@ -414,7 +460,7 @@ export default function SetupScreen({ navigation, route }) {
 
                 {/* Language & Categories - Compact buttons */}
                 <View style={styles.optionsRow}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.optionBtn}
                         onPress={() => setIsLanguageModalVisible(true)}
                     >
@@ -424,7 +470,7 @@ export default function SetupScreen({ navigation, route }) {
                         </Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.optionBtn}
                         onPress={toggleCategoriesOpen}
                     >
@@ -465,7 +511,7 @@ export default function SetupScreen({ navigation, route }) {
                             <Text style={styles.addPlayerBtnText}>+ ADD</Text>
                         </TouchableOpacity>
                     </View>
-                    
+
                     <View style={styles.playersList}>
                         {players.map((p, i) => (
                             <PlayerRow
@@ -483,7 +529,7 @@ export default function SetupScreen({ navigation, route }) {
                 </View>
 
                 {/* Start Button - Kodak style */}
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={[styles.startButton, isStarting && styles.startButtonDisabled]}
                     onPress={startGame}
                     disabled={isStarting}
