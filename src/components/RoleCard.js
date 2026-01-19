@@ -79,14 +79,15 @@ export default function RoleCard({ player, category, hintsEnabled, onNext, langu
 
     // Use playerIndex for sequential non-repeating covers (cycles through all covers in order)
     const [coverIndex, setCoverIndex] = useState(() => {
-        // Use playerIndex to get sequential covers (0, 1, 2, 3, 4, 5, 0, 1, ...)
-        return playerIndex % currentThemeCovers.length;
+        // Randomize cover start
+        return Math.floor(Math.random() * currentThemeCovers.length);
     });
 
     const pan = useRef(new Animated.ValueXY()).current;
     const slideRangeRef = useRef(SLIDE_RANGE);
     const hasPeekedRef = useRef(false);
     const lastPlayerIndexRef = useRef(playerIndex);
+    const lastRoleRef = useRef(player.role);
     const [buttonClicked, setButtonClicked] = useState(false);
 
     // Keep refs in sync
@@ -98,23 +99,27 @@ export default function RoleCard({ player, category, hintsEnabled, onNext, langu
         hasPeekedRef.current = hasPeeked;
     }, [hasPeeked]);
 
-    // Reset ALL state when playerIndex changes (new player in pass n play)
+    // Reset ALL state when playerIndex changes (new player) or Role changes (new game same player)
     useEffect(() => {
-        if (lastPlayerIndexRef.current !== playerIndex) {
-            // Reset all interaction state for new player
+        const isNewPlayer = lastPlayerIndexRef.current !== playerIndex;
+        const isNewGame = lastRoleRef.current !== player.role;
+
+        if (isNewPlayer || isNewGame) {
+            // Reset all interaction state
             setHasPeeked(false);
             setButtonClicked(false);
             hasPeekedRef.current = false;
             lastPlayerIndexRef.current = playerIndex;
+            lastRoleRef.current = player.role;
 
-            // Reset pan position for new player
+            // Reset pan position
             pan.setValue({ x: 0, y: 0 });
 
-            // Update cover to match playerIndex (sequential non-repeating)
+            // Randomize cover for the new player/game
             const covers = THEME_COVER_IMAGES[theme.id] || THEME_COVER_IMAGES['default'];
-            setCoverIndex(playerIndex % covers.length);
+            setCoverIndex(Math.floor(Math.random() * covers.length));
         }
-    }, [playerIndex, theme.id]);
+    }, [playerIndex, player.role, theme.id]);
 
     // Clamped pan.x for visual movement of the knob and cover
     const clampedPanX = pan.x.interpolate({
