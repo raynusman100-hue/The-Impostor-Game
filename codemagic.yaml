@@ -1,6 +1,6 @@
 workflows:
   android-apk-test:
-    name: Android APK Test Build
+    name: Android Production APK Build
     max_build_duration: 60
     instance_type: mac_mini_m2
 
@@ -26,18 +26,36 @@ workflows:
         script: |
           npx expo prebuild --platform android --clean
 
-      - name: Build Debug APK for Testing
+      - name: Setup Signing Keystore
+        script: |
+          # Use Node.js for robust, cross-platform base64 decoding
+          node -e "
+            const fs = require('fs');
+            const keystore = process.env.CM_KEYSTORE;
+            if (!keystore) {
+              console.error('ERROR: CM_KEYSTORE environment variable is NOT set!');
+              process.exit(1);
+            }
+            fs.writeFileSync('/tmp/keystore.keystore', Buffer.from(keystore, 'base64'));
+          "
+
+      - name: Build Release APK with Signing
         script: |
           cd android
-          ./gradlew assembleDebug
+          ./gradlew assembleRelease \
+            -Pandroid.injected.signing.store.file=/tmp/keystore.keystore \
+            -Pandroid.injected.signing.store.password=$CM_KEYSTORE_PASSWORD \
+            -Pandroid.injected.signing.key.alias=$CM_KEY_ALIAS \
+            -Pandroid.injected.signing.key.password=$CM_KEY_PASSWORD
 
       - name: Print APK Info
         script: |
-          echo "=== APK BUILD COMPLETE ==="
-          echo "APK location: android/app/build/outputs/apk/debug/"
-          ls -la android/app/build/outputs/apk/debug/
+          echo "=== PRODUCTION APK BUILD COMPLETE ==="
+          echo "APK location: android/app/build/outputs/apk/release/"
+          ls -la android/app/build/outputs/apk/release/
           echo ""
-          echo "This is a DEBUG APK for testing voice chat and Google Sign-In"
+          echo "This is a PRODUCTION RELEASE APK signed with your keystore"
+          echo "Ready for Play Store or testing on production environment"
           echo "========================================"
 
     artifacts:
