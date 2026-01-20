@@ -240,24 +240,19 @@ export default function HomeScreen({ navigation }) {
                     { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
                 ]}
             >
-                {/* Kodak-style film frame header */}
+                {/* Kodak-style film frame header - line only, no text */}
                 <View style={styles.filmFrameTop}>
-                    <View style={styles.frameCode}>
-                        <Text style={styles.frameCodeText}>▶ 35MM</Text>
-                    </View>
-                    <View style={styles.kodakBadge}>
-                        <Text style={styles.kodakBadgeText}>IMPOSTOR</Text>
-                    </View>
-                    <View style={styles.frameCode}>
-                        <Text style={styles.frameCodeText}>FRAME 01</Text>
-                    </View>
+                    {/* Empty spacers to maintain line structure */}
+                    <View style={styles.frameCode} />
+                    <View style={styles.frameCode} />
+                    <View style={styles.frameCode} />
                 </View>
 
-                {/* Title with cinematic glow */}
-                <Animated.View style={[styles.titleContainer, { opacity: titleFlickerAnim }]}>
+                {/* Title with cinematic glow - below the line, no flicker */}
+                <View style={styles.titleContainer}>
                     <Text style={styles.titleMain}>IMPOSTOR</Text>
                     <Text style={styles.titleSub}>GAME</Text>
-                </Animated.View>
+                </View>
 
                 {/* Character Image */}
                 <AnimatedCharacter theme={theme} />
@@ -289,11 +284,6 @@ export default function HomeScreen({ navigation }) {
                         </View>
                     </View>
                 </View>
-
-                {/* Film frame footer */}
-                <View style={styles.filmFrameBottom}>
-                    <Text style={styles.frameFooterText}>KODAK VISION3 500T 5219</Text>
-                </View>
             </Animated.View>
         </LinearGradient>
     );
@@ -320,17 +310,17 @@ function AnimatedCharacter({ theme }) {
 
     // Responsive sizing based on screen height
     const getCharacterSize = () => {
-        if (SCREEN_HEIGHT < 700) return 340;      // Small phones
-        if (SCREEN_HEIGHT < 800) return 380;      // Medium phones
+        if (SCREEN_HEIGHT < 700) return 340;      // Small phones - slightly bigger
+        if (SCREEN_HEIGHT < 800) return 390;      // Medium phones
         if (SCREEN_HEIGHT < 900) return 420;      // Large phones
         return 460;                                // Extra large phones/tablets
     };
 
     const getCharacterTop = () => {
-        if (SCREEN_HEIGHT < 700) return '16%';    // Small phones - higher
-        if (SCREEN_HEIGHT < 800) return '22%';    // Medium phones
-        if (SCREEN_HEIGHT < 900) return '24%';    // Large phones
-        return '26%';                              // Extra large phones/tablets
+        if (SCREEN_HEIGHT < 700) return '20%';    // Small phones - higher
+        if (SCREEN_HEIGHT < 800) return '24%';    // Medium phones
+        if (SCREEN_HEIGHT < 900) return '26%';    // Large phones
+        return '28%';                              // Extra large phones/tablets
     };
 
     const characterSize = getCharacterSize();
@@ -374,10 +364,10 @@ const characterStyles = StyleSheet.create({
         position: 'absolute',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 1, // Changed from -1 to 1 to ensure visibility on iOS
+        zIndex: 0, // Behind title text so it doesn't overshadow
     },
     characterImage: {
-        opacity: 0.85,
+        opacity: 1, // Full opacity - character should be fully visible
         resizeMode: 'contain',
     },
 });
@@ -388,7 +378,7 @@ const getStyles = (theme) => StyleSheet.create({
     },
     settingsButton: {
         position: 'absolute',
-        top: Platform.OS === 'ios' ? 60 : 36, // iOS: moved down slightly for safe area
+        top: Platform.OS === 'ios' ? 45 : 30, // Moved up above the frame text
         left: 22,
         zIndex: 10,
         width: 42,
@@ -427,7 +417,7 @@ const getStyles = (theme) => StyleSheet.create({
     },
     profileButton: {
         position: 'absolute',
-        top: Platform.OS === 'ios' ? 60 : 36, // iOS: moved down slightly for safe area
+        top: Platform.OS === 'ios' ? 45 : 30, // Moved up above the frame text
         right: 22,
         zIndex: 10,
         width: 42,
@@ -459,7 +449,7 @@ const getStyles = (theme) => StyleSheet.create({
     content: {
         flex: 1,
         alignItems: 'center',
-        paddingTop: Platform.OS === 'ios' ? 110 : 36, // iOS: more padding for title visibility
+        paddingTop: Platform.OS === 'ios' ? 50 : 35, // Moved up - no frame text needed
         paddingHorizontal: 26,
     },
     // Film frame header
@@ -494,11 +484,12 @@ const getStyles = (theme) => StyleSheet.create({
         fontFamily: 'Panchang-Bold',
         letterSpacing: 3,
     },
-    // Title - more compact
+    // Title - below the line
     titleContainer: {
         alignItems: 'center',
-        marginTop: 4,
-        marginBottom: SCREEN_HEIGHT < 700 ? 100 : 120,
+        marginTop: 8, // Space below the line
+        marginBottom: SCREEN_HEIGHT < 700 ? 50 : 60, // Space before character
+        zIndex: 1, // Above character
     },
     titleMain: {
         fontSize: SCREEN_HEIGHT < 700 ? 48 : 52,
@@ -506,6 +497,7 @@ const getStyles = (theme) => StyleSheet.create({
         fontFamily: 'BespokeStencil-Extrabold',
         letterSpacing: 2,
         ...theme.textShadows.depth,
+        zIndex: 1, // Above character
     },
     titleSub: {
         fontSize: SCREEN_HEIGHT < 700 ? 36 : 40,
@@ -513,11 +505,12 @@ const getStyles = (theme) => StyleSheet.create({
         fontFamily: 'BespokeStencil-Extrabold',
         letterSpacing: 4,
         marginTop: -4,
+        zIndex: 1, // Above character
     },
     // Menu - positioned at bottom, simple
     menuContainer: {
         position: 'absolute',
-        bottom: Platform.OS === 'ios' ? 50 : 35,
+        bottom: Platform.OS === 'ios' ? 40 : 30, // Reduced bottom space
         left: 26,
         right: 26,
     },
@@ -530,7 +523,7 @@ const getStyles = (theme) => StyleSheet.create({
     // Film frame footer
     filmFrameBottom: {
         position: 'absolute',
-        bottom: Platform.OS === 'ios' ? 25 : 15,
+        bottom: Platform.OS === 'ios' ? 20 : 12, // Reduced bottom space
         alignItems: 'center',
     },
     frameFooterText: {
