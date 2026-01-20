@@ -15,9 +15,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.usman.impostergame",
+      "bundleIdentifier": "com.rayn100.impostergame",
       "buildNumber": "1",
       "backgroundColor": "#0a0a0a",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "NSCameraUsageDescription": "Imposter Game uses your camera to scan QR codes for quickly joining multiplayer game rooms.",
         "NSMicrophoneUsageDescription": "Imposter Game uses your microphone to record voice messages during multiplayer game chat.",
