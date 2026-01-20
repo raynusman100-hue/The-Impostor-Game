@@ -212,7 +212,14 @@ workflows:
         script: |
           cd ios
           # Defines the path to the xcarchive
-          ARCHIVE_PATH="$PWD/build/ios/xcarchive/ImposterGame.xcarchive"
+          
+          # Dynamic detection of workspace and scheme
+          WORKSPACE=$(ls -d *.xcworkspace | head -n 1)
+          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
+          echo "Found Workspace: $WORKSPACE"
+          echo "Using Scheme: $SCHEME"
+          
+          ARCHIVE_PATH="$PWD/build/ios/xcarchive/$SCHEME.xcarchive"
           EXPORT_OPTIONS_PLIST="$PWD/ExportOptions.plist"
 
           # 0. REDUNDANT INSTALL (Ensure they exist right here)
@@ -238,8 +245,8 @@ workflows:
 
           # 1. Archive the app
           xcodebuild archive \
-            -workspace "ImposterGame.xcworkspace" \
-            -scheme "ImposterGame" \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
             -config Release \
             -archivePath "$ARCHIVE_PATH" \
             -allowProvisioningUpdates \
@@ -329,11 +336,18 @@ workflows:
       - name: Build Unsigned .app
         script: |
           cd ios
+          
+          # Dynamic detection of workspace and scheme
+          WORKSPACE=$(ls -d *.xcworkspace | head -n 1)
+          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
+          echo "Found Workspace: $WORKSPACE"
+          echo "Using Scheme: $SCHEME"
+
           # Build a Debug version (Supports instant reload/Metro)
           # CODE_SIGNING_ALLOWED=NO tells Xcode not to sign
           xcodebuild build \
-            -workspace ImposterGame.xcworkspace \
-            -scheme ImposterGame \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
             -configuration Debug \
             -sdk iphoneos \
             -derivedDataPath ./build \
@@ -344,9 +358,16 @@ workflows:
       - name: Package as IPA
         script: |
           cd ios
+          # Detect Scheme again to find the built app path
+          WORKSPACE=$(ls -d *.xcworkspace | head -n 1)
+          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
+          
           mkdir -p Payload
-          # The .app usually lives in build/Build/Products/Debug-iphoneos/
-          cp -r build/Build/Products/Debug-iphoneos/ImposterGame.app Payload/
+          # The .app usually lives in build/Build/Products/Debug-iphoneos/[SCHEME].app
+          APP_PATH="build/Build/Products/Debug-iphoneos/$SCHEME.app"
+          
+          echo "Packaging app from: $APP_PATH"
+          cp -r "$APP_PATH" Payload/
           
           # Create IPA
           zip -r imposter-dev-unsigned.ipa Payload
