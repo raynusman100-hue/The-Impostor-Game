@@ -51,9 +51,9 @@ This builds the development client that you install ONCE on your iPhone:
 
 After the one-time IPA installation, you NEVER need to rebuild or reinstall:
 
-1. **Start Metro bundler on your computer:**
+1. **Start Metro bundler with dev client on your computer:**
    ```bash
-   npm start
+   npx expo start --dev-client
    ```
 
 2. **Open the app on your iPhone**
@@ -78,11 +78,7 @@ The Debug IPA you installed connects to Metro bundler for instant refresh:
 
 1. **Ensure iPhone and computer are on the same WiFi network**
 
-2. **Start Metro bundler:**
-   ```bash
-   npm start
-   ```
-   Or:
+2. **Start Metro bundler with dev client flag:**
    ```bash
    npx expo start --dev-client
    ```
@@ -155,6 +151,16 @@ After installation:
 2. **Check Codemagic** - build should start automatically
 3. **Download IPA** from Codemagic artifacts
 4. **Install via Sideloadly** (one time)
-5. **Run `npm start`** on your computer
+5. **Run `npx expo start --dev-client`** on your computer
 6. **Open app on iPhone** - instant refresh ready!
 7. **Test Google Sign-In** - error should be fixed
+
+## Quick Reference Commands
+
+```bash
+# Daily development - run this every time
+npx expo start --dev-client
+
+# Alternative if you prefer shorter command
+npm start -- --dev-client
+```
