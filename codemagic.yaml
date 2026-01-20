@@ -1,4 +1,52 @@
 workflows:
+  android-dev-apk:
+    name: Android Dev APK (with Metro support)
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    environment:
+      groups:
+        - imposter
+      node: 20
+      java: 17
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: android-dev
+          include: true
+
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm install
+
+      - name: Prebuild Android native project
+        script: |
+          npx expo prebuild --platform android --clean
+
+      - name: Build Debug APK (Dev Client)
+        script: |
+          cd android
+          ./gradlew assembleDebug
+
+      - name: Print APK Info
+        script: |
+          echo "=== ANDROID DEV APK BUILD COMPLETE ==="
+          echo "APK location: android/app/build/outputs/apk/debug/"
+          ls -la android/app/build/outputs/apk/debug/
+          echo ""
+          echo "This is a DEBUG APK with Metro bundler support"
+          echo "After installing:"
+          echo "1. Run 'npx expo start --dev-client' on your computer"
+          echo "2. Scan QR code or enter URL manually"
+          echo "3. Instant refresh enabled for development"
+          echo "========================================"
+
+    artifacts:
+      - android/app/build/outputs/apk/debug/*.apk
+
   android-apk-test:
     name: Android Production APK Build
     max_build_duration: 60

@@ -302,6 +302,7 @@ export default function HomeScreen({ navigation }) {
 function AnimatedCharacter({ theme }) {
     const scaleAnim = useRef(new Animated.Value(1)).current;
     const floatAnim = useRef(new Animated.Value(0)).current;
+    const [imageError, setImageError] = useState(false);
 
     useEffect(() => {
         const breathe = Animated.sequence([
@@ -334,7 +335,10 @@ function AnimatedCharacter({ theme }) {
 
     const characterSize = getCharacterSize();
     const characterTop = getCharacterTop();
-    const characterSource = require('../../assets/sweat boy .png');
+    // Try alternative images without spaces in filename for iOS compatibility
+    const characterSource = Platform.OS === 'ios' 
+        ? require('../../assets/star_character.png')
+        : require('../../assets/sweat boy .png');
 
     return (
         <Animated.View
@@ -353,7 +357,17 @@ function AnimatedCharacter({ theme }) {
             <Image
                 source={characterSource}
                 style={[characterStyles.characterImage, { width: characterSize, height: characterSize }]}
+                onError={(e) => {
+                    console.log('Character image failed to load:', e.nativeEvent.error);
+                    setImageError(true);
+                }}
+                onLoad={() => console.log('Character image loaded successfully')}
             />
+            {imageError && (
+                <Text style={{ color: theme.colors.text, fontSize: 12, marginTop: 10 }}>
+                    Character image failed to load
+                </Text>
+            )}
         </Animated.View>
     );
 }
@@ -363,7 +377,7 @@ const characterStyles = StyleSheet.create({
         position: 'absolute',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: -1,
+        zIndex: 1, // Changed from -1 to 1 to ensure visibility on iOS
     },
     characterImage: {
         opacity: 0.85,
