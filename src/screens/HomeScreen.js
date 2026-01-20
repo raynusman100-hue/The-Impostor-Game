@@ -335,10 +335,7 @@ function AnimatedCharacter({ theme }) {
 
     const characterSize = getCharacterSize();
     const characterTop = getCharacterTop();
-    // Try alternative images without spaces in filename for iOS compatibility
-    const characterSource = Platform.OS === 'ios' 
-        ? require('../../assets/star_character.png')
-        : require('../../assets/sweat boy .png');
+    const characterSource = require('../../assets/sweat_boy.png');
 
     return (
         <Animated.View
@@ -391,7 +388,7 @@ const getStyles = (theme) => StyleSheet.create({
     },
     settingsButton: {
         position: 'absolute',
-        top: Platform.OS === 'ios' ? 50 : 36,
+        top: Platform.OS === 'ios' ? 60 : 36, // iOS: moved down slightly for safe area
         left: 22,
         zIndex: 10,
         width: 42,
@@ -430,7 +427,7 @@ const getStyles = (theme) => StyleSheet.create({
     },
     profileButton: {
         position: 'absolute',
-        top: Platform.OS === 'ios' ? 50 : 36,
+        top: Platform.OS === 'ios' ? 60 : 36, // iOS: moved down slightly for safe area
         right: 22,
         zIndex: 10,
         width: 42,
@@ -462,7 +459,7 @@ const getStyles = (theme) => StyleSheet.create({
     content: {
         flex: 1,
         alignItems: 'center',
-        paddingTop: Platform.OS === 'ios' ? 50 : 36,
+        paddingTop: Platform.OS === 'ios' ? 110 : 36, // iOS: more padding for title visibility
         paddingHorizontal: 26,
     },
     // Film frame header
