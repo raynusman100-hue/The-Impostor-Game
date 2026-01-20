@@ -80,13 +80,21 @@ function AppNavigator() {
         <Stack.Screen name="ThemeSelector" component={ThemeSelectorScreen} options={{ headerShown: true, title: '' }} />
         <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ headerShown: false }} />
         <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Profile" component={ProfileScreen} options={{ 
+        <Stack.Screen name="Profile" component={ProfileScreen} options={({ route }) => ({ 
           headerShown: true,
           title: 'PROFILE',
-          headerStyle: { backgroundColor: '#0a0a0a' },
+          headerStyle: { 
+            backgroundColor: '#0a0a0a',
+            height: 80, // Compact navbar
+          },
           headerTintColor: '#FFD700',
-          headerTitleStyle: { fontFamily: 'Panchang-Bold', letterSpacing: 2 }
-        }} />
+          headerTitleStyle: { 
+            fontFamily: 'Panchang-Bold', 
+            letterSpacing: 2,
+            fontSize: 14
+          },
+          headerBackTitleVisible: false,
+        })} />
         <Stack.Screen name="Setup" component={SetupScreen} options={{ headerShown: true }} />
         <Stack.Screen name="RoleReveal" component={RoleRevealScreen} options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="WhoStarts" component={WhoStartsScreen} options={{ headerShown: false, gestureEnabled: false }} />

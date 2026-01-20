@@ -310,17 +310,17 @@ function AnimatedCharacter({ theme }) {
 
     // Responsive sizing based on screen height
     const getCharacterSize = () => {
-        if (SCREEN_HEIGHT < 700) return 340;      // Small phones - slightly bigger
-        if (SCREEN_HEIGHT < 800) return 390;      // Medium phones
-        if (SCREEN_HEIGHT < 900) return 420;      // Large phones
-        return 460;                                // Extra large phones/tablets
+        if (SCREEN_HEIGHT < 700) return 350;      // Small phones - slightly bigger
+        if (SCREEN_HEIGHT < 800) return 400;      // Medium phones
+        if (SCREEN_HEIGHT < 900) return 430;      // Large phones
+        return 470;                                // Extra large phones/tablets
     };
 
     const getCharacterTop = () => {
-        if (SCREEN_HEIGHT < 700) return '20%';    // Small phones - higher
-        if (SCREEN_HEIGHT < 800) return '24%';    // Medium phones
-        if (SCREEN_HEIGHT < 900) return '26%';    // Large phones
-        return '28%';                              // Extra large phones/tablets
+        if (SCREEN_HEIGHT < 700) return '18%';    // Small phones - higher
+        if (SCREEN_HEIGHT < 800) return '22%';    // Medium phones
+        if (SCREEN_HEIGHT < 900) return '24%';    // Large phones
+        return '26%';                              // Extra large phones/tablets
     };
 
     const characterSize = getCharacterSize();
