@@ -184,6 +184,22 @@ workflows:
         script: |
           npx expo prebuild --platform ios --clean
 
+      - name: Verify GoogleService-Info.plist
+        script: |
+          echo "=== Verifying GoogleService-Info.plist ==="
+          if [ -f "GoogleService-Info.plist" ]; then
+            echo "✓ GoogleService-Info.plist found in root"
+            # Copy to iOS project if not already there
+            if [ -d "ios" ]; then
+              cp GoogleService-Info.plist ios/
+              echo "✓ Copied GoogleService-Info.plist to ios folder"
+            fi
+          else
+            echo "✗ ERROR: GoogleService-Info.plist NOT FOUND!"
+            exit 1
+          fi
+          echo "========================================="
+
       - name: Set up code signing
         script: |
           keychain initialize
@@ -328,6 +344,22 @@ workflows:
         script: |
           # Uses default EAS/Expo settings which creates Development Build compatible code by default in Debug mode usually
           npx expo prebuild --platform ios --clean
+
+      - name: Verify GoogleService-Info.plist
+        script: |
+          echo "=== Verifying GoogleService-Info.plist ==="
+          if [ -f "GoogleService-Info.plist" ]; then
+            echo "✓ GoogleService-Info.plist found in root"
+            # Copy to iOS project if not already there
+            if [ -d "ios" ]; then
+              cp GoogleService-Info.plist ios/
+              echo "✓ Copied GoogleService-Info.plist to ios folder"
+            fi
+          else
+            echo "✗ ERROR: GoogleService-Info.plist NOT FOUND!"
+            exit 1
+          fi
+          echo "========================================="
 
       - name: Install CocoaPods
         script: |
