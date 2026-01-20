@@ -25,65 +25,73 @@ Added verification steps to both iOS workflows to ensure GoogleService-Info.plis
 - Copies it to the ios/ folder after prebuild
 - Fails the build early if the file is missing
 
-## How to Build & Test with Instant Refresh
+## Development Workflow (Correct Process)
 
-### Option 1: Using Codemagic (Recommended for Testing)
+### Step 1: One-Time IPA Installation (via Codemagic + Sideloadly)
 
-1. **Push to the `ios-dev` branch:**
-   ```bash
-   git add .
-   git commit -m "Fix iOS Google Sign-In configuration"
-   git push origin ios-dev
-   ```
+This builds the development client that you install ONCE on your iPhone:
 
-2. **Codemagic will automatically:**
-   - Build an unsigned Debug IPA
-   - Include GoogleService-Info.plist
-   - Enable Metro bundler support for instant refresh
+1. **Changes are already pushed to `ios-dev` branch** ✓
 
-3. **Download the IPA** from Codemagic artifacts
+2. **Codemagic will automatically build:**
+   - Unsigned Debug IPA with dev client
+   - Includes GoogleService-Info.plist
+   - Supports Metro bundler connection
 
-4. **Install using Sideloadly:**
+3. **Download the IPA** from Codemagic artifacts (check your Codemagic dashboard)
+
+4. **Install using Sideloadly (ONE TIME):**
    - Open Sideloadly
    - Drag the IPA file
    - Connect your iPhone
    - Click "Start"
+   - This installs the development client on your phone
 
-### Option 2: Local Development Build
+### Step 2: Daily Development (Instant Refresh)
 
-For the fastest development cycle with instant refresh:
+After the one-time IPA installation, you NEVER need to rebuild or reinstall:
 
-1. **Install Expo Dev Client:**
-   ```bash
-   npm install -g expo-cli
-   npx expo install expo-dev-client
-   ```
-
-2. **Start Metro bundler:**
-   ```bash
-   npx expo start --dev-client
-   ```
-
-3. **Build and install on device:**
-   ```bash
-   npx expo run:ios --device
-   ```
-
-## Instant Refresh Setup
-
-Once installed, the Debug build will connect to Metro bundler for instant refresh:
-
-1. **Ensure your iPhone and computer are on the same WiFi network**
-
-2. **Start the Metro bundler:**
+1. **Start Metro bundler on your computer:**
    ```bash
    npm start
    ```
 
+2. **Open the app on your iPhone**
+   - App automatically connects to Metro
+   - Make code changes on your computer
+   - Changes appear instantly on your phone (Fast Refresh)
+   - No rebuilding, no reinstalling!
+
+3. **That's it!** Edit code → Save → See changes instantly
+
+### When to Rebuild IPA
+
+You only need to rebuild and reinstall the IPA when:
+- Native dependencies change (new npm packages with native code)
+- app.json configuration changes
+- iOS permissions change
+- Otherwise, just use `npm start` for everything!
+
+## Instant Refresh Setup
+
+The Debug IPA you installed connects to Metro bundler for instant refresh:
+
+1. **Ensure iPhone and computer are on the same WiFi network**
+
+2. **Start Metro bundler:**
+   ```bash
+   npm start
+   ```
+   Or:
+   ```bash
+   npx expo start --dev-client
+   ```
+
 3. **Open the app on your iPhone**
-   - It will automatically connect to Metro
-   - Changes will refresh instantly (Fast Refresh)
+   - Automatically connects to Metro
+   - Code changes refresh instantly
    - Shake device to open developer menu
+   - No need to rebuild or reinstall!
 
 ## Verifying Google Sign-In Works
 
@@ -135,15 +143,18 @@ After installation:
 
 ## Build Types Comparison
 
-| Build Type | Signing | Instant Refresh | Use Case |
-|------------|---------|-----------------|----------|
-| ios-dev (Codemagic) | Unsigned | ✓ Yes | Quick testing with Sideloadly |
-| Local expo run:ios | Debug | ✓ Yes | Active development |
-| ios-testflight | Signed | ✗ No | Beta testing |
+| Build Type | Install Method | Instant Refresh | Rebuild Needed? | Use Case |
+|------------|----------------|-----------------|-----------------|----------|
+| ios-dev IPA | Sideloadly (once) | ✓ Yes via Metro | Only for native changes | Daily development |
+| ios-testflight | TestFlight | ✗ No | Every change | Beta testing |
+| Production | App Store | ✗ No | Every change | Release |
 
 ## Next Steps
 
-1. Push your changes to trigger a Codemagic build
-2. Download and install the IPA via Sideloadly
-3. Test Google Sign-In functionality
-4. Enjoy instant refresh during development!
+1. ✓ **Changes pushed to ios-dev branch**
+2. **Check Codemagic** - build should start automatically
+3. **Download IPA** from Codemagic artifacts
+4. **Install via Sideloadly** (one time)
+5. **Run `npm start`** on your computer
+6. **Open app on iPhone** - instant refresh ready!
+7. **Test Google Sign-In** - error should be fixed
