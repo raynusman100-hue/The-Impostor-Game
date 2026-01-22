@@ -1,0 +1,116 @@
+workflows:
+  android-preview-build:
+    name: Android Preview Build
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: 'codemagic-apk'
+          include: true
+          source: true
+    environment:
+      android_signing:
+        - keystore_reference
+      groups:
+        - google_play
+      vars:
+        PACKAGE_NAME: "com.raynusman.theimpostorgame"
+        GOOGLE_PLAY_TRACK: internal
+      node: 18.17.0
+      npm: 9
+      ndk: r25b
+      java: 11
+    cache:
+      cache_paths:
+        - $HOME/.gradle/caches
+        - $FLUTTER_ROOT/.pub-cache
+        - $HOME/Library/Caches/CocoaPods
+        - node_modules
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm ci
+      - name: Install Expo CLI
+        script: |
+          npm install -g @expo/cli@latest
+      - name: Expo prebuild
+        script: |
+          npx expo prebuild --platform android --clean
+      - name: Set up local.properties
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
+      - name: Build Android APK
+        script: |
+          cd android
+          ./gradlew assembleDebug
+    artifacts:
+      - android/app/build/outputs/**/*.apk
+      - android/app/build/outputs/**/mapping.txt
+    publishing:
+      email:
+        recipients:
+          - raynusman100@gmail.com
+        notify:
+          success: true
+          failure: true
+
+  android-release-build:
+    name: Android Release Build
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: 'v*.*.*'
+          include: true
+    environment:
+      android_signing:
+        - keystore_reference
+      groups:
+        - google_play
+      vars:
+        PACKAGE_NAME: "com.raynusman.theimpostorgame"
+        GOOGLE_PLAY_TRACK: internal
+      node: 18.17.0
+      npm: 9
+      ndk: r25b
+      java: 11
+    cache:
+      cache_paths:
+        - $HOME/.gradle/caches
+        - node_modules
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm ci
+      - name: Install Expo CLI
+        script: |
+          npm install -g @expo/cli@latest
+      - name: Expo prebuild
+        script: |
+          npx expo prebuild --platform android --clean
+      - name: Set up local.properties
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
+      - name: Build Android Release
+        script: |
+          cd android
+          ./gradlew assembleRelease
+    artifacts:
+      - android/app/build/outputs/**/*.apk
+      - android/app/build/outputs/**/*.aab
+      - android/app/build/outputs/**/mapping.txt
+    publishing:
+      email:
+        recipients:
+          - raynusman100@gmail.com
+        notify:
+          success: true
+          failure: true
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+        submit_as_draft: true
