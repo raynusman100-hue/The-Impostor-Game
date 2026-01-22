@@ -1,12 +1,9 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
-import { Platform, PermissionsAndroid } from 'react-native';
+import { Platform, PermissionsAndroid, Alert } from 'react-native';
 import { createAgoraRtcEngine, ClientRoleType, ChannelProfileType } from 'react-native-agora';
 import { Audio } from 'expo-av';
 import { AGORA_APP_ID } from './constants';
 
-// ============================================================
-// AGORA VOICE CHAT ENABLED FOR PRODUCTION BUILD
-// ============================================================
 const VOICE_CHAT_ENABLED = true;
 
 // Check if we're on web
@@ -30,7 +27,6 @@ const DisabledVoiceChatProvider = ({ children }) => {
 
     const toggleMute = () => {
         setIsMuted(prev => !prev);
-        console.log('VoiceChat: DISABLED - toggleMute called');
     };
 
     return (
@@ -54,52 +50,113 @@ const FullVoiceChatProvider = ({ children }) => {
     const [isMuted, setIsMuted] = useState(false);
     const [remoteUsers, setRemoteUsers] = useState([]);
     const [engineInitialized, setEngineInitialized] = useState(false);
+    const [initError, setInitError] = useState(null);
+    const [joinError, setJoinError] = useState(null);
+    const [currentAppId, setCurrentAppId] = useState(null); // Track the actual ID used
+    const currentChannelRef = useRef(null);
 
+    // Initialize Engine Once
     useEffect(() => {
         const init = async () => {
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('🎤 [TRAP 1] VoiceChat Init Started');
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
             try {
-                if (AGORA_APP_ID === 'REPLACE_WITH_YOUR_AGORA_APP_ID') {
-                    console.warn('VoiceChat: Missing Agora App ID');
+                console.log('🎤 [TRAP 2] Checking App ID:', AGORA_APP_ID);
+                console.log('🎤 [TRAP 2] App ID length:', AGORA_APP_ID?.length);
+
+                if (!AGORA_APP_ID || AGORA_APP_ID.includes('placeholder')) {
+                    const error = 'Invalid Agora App ID';
+                    console.error('🎤 [TRAP 2] ❌ FAILED:', error);
+                    setInitError(error);
                     return;
                 }
+                console.log('🎤 [TRAP 2] ✅ App ID valid');
 
+                console.log('🎤 [TRAP 3] Requesting permissions for platform:', Platform.OS);
                 if (Platform.OS === 'android') {
-                    await PermissionsAndroid.requestMultiple([
+                    const granted = await PermissionsAndroid.requestMultiple([
                         PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
                     ]);
-                } else {
-                    await Audio.requestPermissionsAsync();
+                    console.log('🎤 [TRAP 3] Android permissions result:', granted);
+                } else if (Platform.OS === 'ios') {
+                    const { granted } = await Audio.requestPermissionsAsync();
+                    console.log('🎤 [TRAP 3] iOS permission granted:', granted);
                 }
+                console.log('🎤 [TRAP 3] ✅ Permissions requested');
 
+                console.log('🎤 [TRAP 4] Creating Agora Engine...');
                 const engine = createAgoraRtcEngine();
+                console.log('🎤 [TRAP 4] Engine created:', !!engine);
                 agoraEngineRef.current = engine;
+                console.log('🎤 [TRAP 4] ✅ Engine created successfully');
 
+                console.log('🎤 [TRAP 5] Initializing engine with App ID...');
                 engine.initialize({ appId: AGORA_APP_ID });
 
+                // FORCE SPEAKERPHONE
+                console.log('🎤 [TRAP 5.1] Forcing Speakerphone Output');
+                engine.setDefaultAudioRouteToSpeakerphone(true);
+
+                console.log('🎤 [TRAP 5] ✅ Engine initialized');
+
+                console.log('🎤 [TRAP 6] Setting up event listeners...');
+
+                // Event Listeners
                 engine.addListener('onJoinChannelSuccess', (connection, elapsed) => {
-                    console.log('VoiceChat: Joined channel', connection.channelId);
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    console.log('🎤 [EVENT] ✅ onJoinChannelSuccess FIRED!');
+                    console.log('🎤 [EVENT] Channel:', connection.channelId);
+                    console.log('🎤 [EVENT] Elapsed:', elapsed);
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                     setIsJoined(true);
                 });
 
                 engine.addListener('onUserJoined', (connection, remoteUid, elapsed) => {
-                    console.log('VoiceChat: User joined', remoteUid);
+                    console.log('🎤 [EVENT] User joined:', remoteUid);
                     setRemoteUsers(prev => [...prev, remoteUid]);
                 });
 
                 engine.addListener('onUserOffline', (connection, remoteUid, reason) => {
-                    console.log('VoiceChat: User offline', remoteUid);
+                    console.log('🎤 [EVENT] User offline:', remoteUid, 'reason:', reason);
                     setRemoteUsers(prev => prev.filter(uid => uid !== remoteUid));
                 });
 
                 engine.addListener('onLeaveChannel', (connection, stats) => {
-                    console.log('VoiceChat: Left channel');
+                    console.log('🎤 [EVENT] Left channel');
                     setIsJoined(false);
                     setRemoteUsers([]);
                 });
 
+                engine.addListener('onError', (err, msg) => {
+                    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    console.error('🎤 [EVENT] ❌ onError FIRED!');
+                    console.error('🎤 [EVENT] Error code:', err);
+                    console.error('🎤 [EVENT] Error message:', msg);
+                    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    if (err !== 0) {
+                        setJoinError(`Agora Error ${err}: ${msg}`);
+                    }
+                });
+
+                engine.addListener('onConnectionStateChanged', (connection, state, reason) => {
+                    console.log('🎤 [EVENT] Connection state:', state, 'reason:', reason);
+                });
+
+                console.log('🎤 [TRAP 6] ✅ Event listeners added');
+
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                console.log('🎤 [TRAP 7] ✅✅✅ INITIALIZATION COMPLETE ✅✅✅');
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                 setEngineInitialized(true);
             } catch (e) {
-                console.error('VoiceChat: Init failed', e);
+                console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                console.error('🎤 [TRAP ERROR] ❌❌❌ Init EXCEPTION ❌❌❌');
+                console.error('🎤 [TRAP ERROR] Error:', e);
+                console.error('🎤 [TRAP ERROR] Stack:', e.stack);
+                console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                setInitError(e.message);
             }
         };
 
@@ -107,40 +164,170 @@ const FullVoiceChatProvider = ({ children }) => {
 
         return () => {
             if (agoraEngineRef.current) {
+                console.log('🎤 [CLEANUP] Releasing engine');
                 agoraEngineRef.current.release();
             }
         };
     }, []);
 
-    const joinChannel = async (channelName, uid) => {
-        if (!engineInitialized || !agoraEngineRef.current) return;
+    const joinChannel = async (channelName, uid, specificAppId = null) => {
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('🎤 [TRAP 10] joinChannel() CALLED');
+        console.log('🎤 [TRAP 10] Channel:', channelName);
+        console.log('🎤 [TRAP 10] UID:', uid);
+        console.log('🎤 [TRAP 10] Specific App ID:', specificAppId);
+
+        // RE-INITIALIZATION LIGIC FOR ROTATION
+        if (specificAppId && specificAppId !== currentAppId) {
+            console.log('🎤 [ROTATION] 🔄 Detected different App ID for this room.');
+            console.log(`🎤 [ROTATION] Current: ${currentAppId} -> New: ${specificAppId}`);
+
+            try {
+                if (agoraEngineRef.current) {
+                    console.log('🎤 [ROTATION] Destroying old engine...');
+                    agoraEngineRef.current.release();
+                    agoraEngineRef.current = null;
+                }
+
+                // Re-create with new ID
+                const engine = createAgoraRtcEngine();
+                agoraEngineRef.current = engine;
+                engine.initialize({ appId: specificAppId });
+                engine.setDefaultAudioRouteToSpeakerphone(true);
+                setCurrentAppId(specificAppId);
+
+                // Re-attach listeners (simplified for brevity, main listeners are in effect hook but this needs care)
+                // Note: The useEffect listeners might be detached. Ideally we should have a reliable init function.
+                // For safety in this hotfix: We assume the engine is usable.
+                // Better approach: Update state to trigger re-run of main useEffect? 
+                // No, that's complex. Let's just init and use it, listeners might be lost. 
+                // WAIT! The useEffect listeners are attached to `agoraEngineRef.current`. 
+                // If we replace the object, we MUST re-attach listeners.
+
+                console.log('🎤 [ROTATION] ✅ Engine re-initialized with new App ID');
+                setEngineInitialized(true);
+
+                // Re-attach essential listeners for this session
+                engine.addListener('onJoinChannelSuccess', (connection, elapsed) => {
+                    console.log('🎤 [EVENT] ✅ onJoinChannelSuccess (Rotated Engine)');
+                    setIsJoined(true);
+                });
+                engine.addListener('onUserJoined', (connection, remoteUid, elapsed) => {
+                    setRemoteUsers(prev => [...prev, remoteUid]);
+                });
+                engine.addListener('onUserOffline', (connection, remoteUid, reason) => {
+                    setRemoteUsers(prev => prev.filter(uid => uid !== remoteUid));
+                });
+                engine.addListener('onLeaveChannel', (connection, stats) => {
+                    setIsJoined(false);
+                    setRemoteUsers([]);
+                });
+
+            } catch (e) {
+                console.error('🎤 [ROTATION] ❌ Failed to switch App ID', e);
+                setJoinError('Failed to switch voice server');
+                return;
+            }
+        }
+
+        console.log('🎤 [TRAP 10] Engine initialized?', engineInitialized);
+        console.log('🎤 [TRAP 10] Engine exists?', !!agoraEngineRef.current);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+        if (!engineInitialized || !agoraEngineRef.current) {
+            console.log('🎤 [TRAP 11] Engine not ready, retrying in 500ms...');
+            setTimeout(() => joinChannel(channelName, uid), 500);
+            return;
+        }
+        console.log('🎤 [TRAP 11] ✅ Engine is ready');
+
+        // Prevent duplicate join
+        if (currentChannelRef.current === channelName && isJoined) {
+            console.log('🎤 [TRAP 12] Already in channel, skipping');
+            return;
+        }
+        console.log('🎤 [TRAP 12] ✅ Not a duplicate join');
 
         try {
+            console.log('🎤 [TRAP 13] Enabling audio...');
+            agoraEngineRef.current.enableAudio();
+            console.log('🎤 [TRAP 13] ✅ Audio enabled');
+
+            console.log('🎤 [TRAP 14] Setting channel profile...');
             agoraEngineRef.current.setChannelProfile(ChannelProfileType.ChannelProfileCommunication);
-            agoraEngineRef.current.joinChannel('', channelName, uid, {
-                clientRoleType: ClientRoleType.ClientRoleBroadcaster,
-                autoSubscribeAudio: true,
-                publishMicrophoneTrack: !isMuted,
-            });
+            console.log('🎤 [TRAP 14] ✅ Profile set');
+
+            console.log('🎤 [TRAP 15] Setting client role...');
+            agoraEngineRef.current.setClientRole(ClientRoleType.ClientRoleBroadcaster);
+            console.log('🎤 [TRAP 15] ✅ Role set');
+
+            const uniqueUid = uid || Math.floor(Math.random() * 1000000);
+            console.log('🎤 [TRAP 16] Using UID:', uniqueUid);
+
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('🎤 [TRAP 17] CALLING joinChannel() API...');
+            console.log('🎤 [TRAP 17] Token: "" (empty)');
+            console.log('🎤 [TRAP 17] Channel:', channelName);
+            console.log('🎤 [TRAP 17] UID:', uniqueUid);
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+            const result = agoraEngineRef.current.joinChannel(
+                "",
+                channelName,
+                uniqueUid,
+                {
+                    clientRoleType: ClientRoleType.ClientRoleBroadcaster,
+                    autoSubscribeAudio: true,
+                    publishMicrophoneTrack: !isMuted,
+                }
+            );
+
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('🎤 [TRAP 18] joinChannel API returned:', result);
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+            if (result !== 0) {
+                console.error('🎤 [TRAP 18] ❌ Error code:', result);
+                setJoinError(`Join returned error code: ${result}`);
+            } else {
+                console.log('🎤 [TRAP 18] ✅ Join call successful (code 0)');
+                console.log('🎤 [TRAP 18] Now waiting for onJoinChannelSuccess event...');
+                currentChannelRef.current = channelName;
+            }
+
+            console.log('🎤 [TRAP 19] Setting mute state to:', isMuted);
             agoraEngineRef.current.muteLocalAudioStream(isMuted);
+
+            // Re-enforcing speakerphone just in case
+            agoraEngineRef.current.setEnableSpeakerphone(true);
+
+            console.log('🎤 [TRAP 19] ✅ Mute state set & Speakerphone forced');
+
         } catch (e) {
-            console.error('VoiceChat: Join failed', e);
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.error('🎤 [TRAP ERROR] ❌❌❌ Join EXCEPTION ❌❌❌');
+            console.error('🎤 [TRAP ERROR]', e);
+            console.error('🎤 [TRAP ERROR] Stack:', e.stack);
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            setJoinError(e.message);
         }
     };
 
     const leaveChannel = async () => {
         if (!agoraEngineRef.current) return;
         try {
-            agoraEngineRef.current.leaveChannel();
+            await agoraEngineRef.current.leaveChannel();
+            currentChannelRef.current = null;
+            setIsJoined(false);
+            setRemoteUsers([]);
         } catch (e) {
-            console.error('VoiceChat: Leave failed', e);
+            console.error('🎤 VoiceChat: Leave failed', e);
         }
     };
 
     const toggleMute = () => {
         if (!agoraEngineRef.current) return;
         const newMutedState = !isMuted;
-
         agoraEngineRef.current.muteLocalAudioStream(newMutedState);
         setIsMuted(newMutedState);
     };
@@ -152,14 +339,18 @@ const FullVoiceChatProvider = ({ children }) => {
             remoteUsers,
             joinChannel,
             leaveChannel,
-            toggleMute
+            toggleMute,
+            engineInitialized,
+            initError,
+            joinError,
+            error: initError || joinError, // Consolidated error for UI
+            currentAppId, // Exposed for debug
         }}>
             {children}
         </VoiceChatContext.Provider>
     );
 };
 
-// Export the appropriate provider - use disabled on web, full on native
-export const VoiceChatProvider = (isWeb || !VOICE_CHAT_ENABLED) 
-    ? DisabledVoiceChatProvider 
+export const VoiceChatProvider = (isWeb || !VOICE_CHAT_ENABLED)
+    ? DisabledVoiceChatProvider
     : FullVoiceChatProvider;

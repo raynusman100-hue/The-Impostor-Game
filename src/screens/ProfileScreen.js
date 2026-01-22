@@ -584,20 +584,6 @@ export default function ProfileScreen({ navigation }) {
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
             <View style={styles.container}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <TouchableOpacity
-                        style={styles.backButton}
-                        onPress={() => navigation.goBack()}
-                    >
-                        <Text style={styles.backButtonText}>← BACK</Text>
-                    </TouchableOpacity>
-                    <View style={styles.headerTitleContainer}>
-                        <Text style={styles.headerTitle}>PROFILE</Text>
-                        <View style={styles.headerLine} />
-                    </View>
-                </View>
-
                 {/* Removed ScrollView, replaced with perfectly fitted View */}
                 <View style={styles.content}>
                     {user ? (
@@ -761,89 +747,84 @@ export default function ProfileScreen({ navigation }) {
     );
 }
 
-const getStyles = (theme) => StyleSheet.create({
-    container: { flex: 1, backgroundColor: theme.colors.background },
-    header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 10, height: Platform.OS === 'ios' ? 110 : 90 },
-    backButton: { marginRight: 16 },
-    backButtonText: { color: theme.colors.primary, fontSize: 14, fontFamily: 'CabinetGrotesk-Bold', letterSpacing: 1 },
-    headerTitleContainer: { flex: 1 },
-    headerTitle: { color: theme.colors.text, fontSize: 32, fontFamily: 'Panchang-Bold', letterSpacing: 2 },
-    headerLine: { height: 2, backgroundColor: theme.colors.primary, width: 40, marginTop: 4 },
+function getStyles(theme) {
+    return StyleSheet.create({
+        container: { flex: 1, backgroundColor: theme.colors.background },
+        content: { flex: 1 },
 
-    content: { flex: 1 },
+        // Signed In Styles - Flexbox Layout
+        signedInContainer: { flex: 1, paddingHorizontal: 20, paddingBottom: 20, paddingTop: 10, justifyContent: 'space-between' },
 
-    // Signed In Styles - Flexbox Layout
-    signedInContainer: { flex: 1, padding: 20, justifyContent: 'space-between' },
+        topSection: { alignItems: 'center', marginTop: 10 },
+        sectionTitle: { fontSize: 14, fontFamily: 'Panchang-Bold', letterSpacing: 4, marginBottom: 12 },
+        toggleContainer: { flexDirection: 'row', backgroundColor: theme.colors.surface, borderRadius: 12, padding: 4, borderWidth: 1, borderColor: theme.colors.primary + '30' },
+        toggleBtn: { paddingVertical: 6, paddingHorizontal: 16, borderRadius: 8 },
+        toggleBtnActive: { backgroundColor: theme.colors.primary },
+        toggleBtnText: { fontSize: 11, fontFamily: 'Teko-Bold', color: theme.colors.textMuted, letterSpacing: 1 },
+        toggleBtnTextActive: { color: theme.colors.secondary },
 
-    topSection: { alignItems: 'center' },
-    sectionTitle: { fontSize: 14, fontFamily: 'Panchang-Bold', letterSpacing: 4, marginBottom: 12 },
-    toggleContainer: { flexDirection: 'row', backgroundColor: theme.colors.surface, borderRadius: 12, padding: 4, borderWidth: 1, borderColor: theme.colors.primary + '30' },
-    toggleBtn: { paddingVertical: 6, paddingHorizontal: 16, borderRadius: 8 },
-    toggleBtnActive: { backgroundColor: theme.colors.primary },
-    toggleBtnText: { fontSize: 11, fontFamily: 'Teko-Bold', color: theme.colors.textMuted, letterSpacing: 1 },
-    toggleBtnTextActive: { color: theme.colors.secondary },
+        avatarDisplayArea: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-    avatarDisplayArea: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+        customUrlContainer: { alignItems: 'center', gap: 16 },
+        customAvatarPreview: { width: 170, height: 170, borderRadius: 85, borderWidth: 4, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface },
+        editCustomBtn: { paddingVertical: 8, paddingHorizontal: 16, borderWidth: 1, borderColor: theme.colors.primary, borderRadius: 8 },
+        editCustomBtnText: { color: theme.colors.primary, fontFamily: 'Teko-Medium', fontSize: 14, letterSpacing: 1 },
 
-    customUrlContainer: { alignItems: 'center', gap: 16 },
-    customAvatarPreview: { width: 170, height: 170, borderRadius: 85, borderWidth: 4, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface },
-    editCustomBtn: { paddingVertical: 8, paddingHorizontal: 16, borderWidth: 1, borderColor: theme.colors.primary, borderRadius: 8 },
-    editCustomBtnText: { color: theme.colors.primary, fontFamily: 'Teko-Medium', fontSize: 14, letterSpacing: 1 },
+        bottomSection: { width: '100%', gap: 10 },
+        formContainer: { width: '100%', marginBottom: 10 },
+        label: { fontSize: 11, fontFamily: 'Panchang-Bold', letterSpacing: 2, marginBottom: 6, marginLeft: 4 },
+        input: { width: '100%', height: 48, borderRadius: 12, borderWidth: 1, paddingHorizontal: 16, fontSize: 18, fontFamily: 'Amulya-Bold' },
+        email: { fontSize: 11, marginTop: 4, marginLeft: 4, fontFamily: 'CabinetGrotesk-Medium' },
 
-    bottomSection: { width: '100%', gap: 10 },
-    formContainer: { width: '100%', marginBottom: 10 },
-    label: { fontSize: 11, fontFamily: 'Panchang-Bold', letterSpacing: 2, marginBottom: 6, marginLeft: 4 },
-    input: { width: '100%', height: 48, borderRadius: 12, borderWidth: 1, paddingHorizontal: 16, fontSize: 18, fontFamily: 'Amulya-Bold' },
-    email: { fontSize: 11, marginTop: 4, marginLeft: 4, fontFamily: 'CabinetGrotesk-Medium' },
+        buttonRow: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+        saveButton: { flex: 2, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', shadowColor: theme.colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
+        buttonText: { fontSize: 16, fontFamily: 'Panchang-Bold', letterSpacing: 2 },
 
-    buttonRow: { flexDirection: 'row', gap: 12, alignItems: 'center' },
-    saveButton: { flex: 2, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', shadowColor: theme.colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-    buttonText: { fontSize: 16, fontFamily: 'Panchang-Bold', letterSpacing: 2 },
+        signOutButton: { flex: 1, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', borderWidth: 2 },
+        buttonTextSmall: { fontSize: 14, fontFamily: 'Panchang-Bold', letterSpacing: 1 },
 
-    signOutButton: { flex: 1, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', borderWidth: 2 },
-    buttonTextSmall: { fontSize: 14, fontFamily: 'Panchang-Bold', letterSpacing: 1 },
+        // Signed Out Styles
+        signedOutContainer: { flex: 1, padding: 40, alignItems: 'center', justifyContent: 'center' },
+        placeholderIcon: { marginBottom: 30, opacity: 0.5 },
+        welcomeText: { fontSize: 16, color: theme.colors.text, textAlign: 'center', fontFamily: 'CabinetGrotesk-Medium', lineHeight: 24, marginBottom: 40 },
+        googleButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%', height: 56, borderRadius: 28, borderWidth: 1, borderColor: '#ddd' },
+        googleIconPlaceholder: { width: 20, height: 20, backgroundColor: 'red', marginRight: 10, borderRadius: 10 },
 
-    // Signed Out Styles
-    signedOutContainer: { flex: 1, padding: 40, alignItems: 'center', justifyContent: 'center' },
-    placeholderIcon: { marginBottom: 30, opacity: 0.5 },
-    welcomeText: { fontSize: 16, color: theme.colors.text, textAlign: 'center', fontFamily: 'CabinetGrotesk-Medium', lineHeight: 24, marginBottom: 40 },
-    googleButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%', height: 56, borderRadius: 28, borderWidth: 1, borderColor: '#ddd' },
-    googleIconPlaceholder: { width: 20, height: 20, backgroundColor: 'red', marginRight: 10, borderRadius: 10 },
+        // Builder Modal
+        builderContainer: { flex: 1, paddingTop: Platform.OS === 'ios' ? 20 : 0, backgroundColor: theme.colors.background },
+        builderHeader: { flexDirection: 'row', justifyContent: 'space-between', padding: 20, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: theme.colors.primary + '20' },
+        builderTitle: { fontSize: 18, fontFamily: 'Panchang-Bold', letterSpacing: 2, color: theme.colors.text },
+        closeBtn: { padding: 8 },
+        closeBtnText: { fontFamily: 'Teko-Bold', fontSize: 16, color: theme.colors.textMuted },
 
-    // Builder Modal
-    builderContainer: { flex: 1, paddingTop: Platform.OS === 'ios' ? 20 : 0, backgroundColor: theme.colors.background },
-    builderHeader: { flexDirection: 'row', justifyContent: 'space-between', padding: 20, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: theme.colors.primary + '20' },
-    builderTitle: { fontSize: 18, fontFamily: 'Panchang-Bold', letterSpacing: 2, color: theme.colors.text },
-    closeBtn: { padding: 8 },
-    closeBtnText: { fontFamily: 'Teko-Bold', fontSize: 16, color: theme.colors.textMuted },
-
-    // Login UI Styles
-    googleBlackBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '100%',
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: '#131314', // Google Black
-        borderWidth: 1,
-        borderColor: '#555',
-    },
-    googleIconContainer: {
-        marginRight: 12,
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 2,
-    },
-    googleIconImage: {
-        width: 24,
-        height: 24,
-    },
-    googleBlackBtnText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontFamily: 'Roboto', // System font usually matches well, or Theme font
-        fontWeight: 'bold',
-        letterSpacing: 0.5,
-    },
-});
+        // Login UI Styles
+        googleBlackBtn: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '100%',
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: '#131314', // Google Black
+            borderWidth: 1,
+            borderColor: '#555',
+        },
+        googleIconContainer: {
+            marginRight: 12,
+            backgroundColor: '#fff',
+            borderRadius: 12,
+            padding: 2,
+        },
+        googleIconImage: {
+            width: 24,
+            height: 24,
+        },
+        googleBlackBtnText: {
+            color: '#FFFFFF',
+            fontSize: 16,
+            fontFamily: 'Roboto', // System font usually matches well, or Theme font
+            fontWeight: 'bold',
+            letterSpacing: 0.5,
+        },
+    });
+}

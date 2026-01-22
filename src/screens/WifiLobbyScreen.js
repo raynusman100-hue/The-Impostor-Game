@@ -52,89 +52,59 @@ const filmPerforationStyles = StyleSheet.create({
 export default function WifiLobbyScreen({ route, navigation }) {
     const { theme } = useTheme();
     const styles = getStyles(theme);
-    const { roomCode, playerId, playerName } = route.params;
+    const { roomCode, playerId, playerName, stampedAppId } = route.params; // <--- RECEIVED STAMPED ID
     const [players, setPlayers] = useState([]);
     const [roomStatus, setRoomStatus] = useState('lobby');
-
-    // Voice Chat
-    const { joinChannel, leaveChannel } = useVoiceChat();
 
     // Host Data
     const [hostName, setHostName] = useState('Waiting...');
     const [hostAvatar, setHostAvatar] = useState(1);
     const [hostAvatarConfig, setHostAvatarConfig] = useState(null);
 
-    const [showChat, setShowChat] = useState(false);
+    const [activeTab, setActiveTab] = useState('lobby'); // 'lobby' | 'chat' | 'voice'
     const [unreadMessages, setUnreadMessages] = useState(0);
 
-    // Disable iOS swipe back gesture
-    useEffect(() => {
-        navigation.setOptions({
-            gestureEnabled: false,
-        });
-    }, [navigation]);
-
-    // Handle leaving room with confirmation
-    const handleLeaveRoom = useCallback(() => {
-        Alert.alert(
-            'Leave Room?',
-            'Are you sure you want to leave the room?',
-            [
-                { text: 'Stay', style: 'cancel' },
-                {
-                    text: 'Leave',
-                    style: 'destructive',
-                    onPress: async () => {
-                        if (roomCode && playerId) {
-                            const playerRef = ref(database, `rooms/${roomCode}/players/${playerId}`);
-                            await remove(playerRef);
-                        }
-                        navigation.navigate('Home');
-                    }
-                }
-            ]
-        );
-    }, [roomCode, playerId, navigation]);
+    // Voice Chat Integration
+    const { isJoined, joinChannel, leaveChannel } = useVoiceChat();
+    // Auto-join REMOVED - User must join manually via Voice tab
 
     // Disable Android back button
     useEffect(() => {
         const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-            handleLeaveRoom();
+            Alert.alert(
+                'Leave Room?',
+                'Are you sure you want to leave the room?',
+                [
+                    { text: 'Stay', style: 'cancel' },
+                    {
+                        text: 'Leave',
+                        style: 'destructive',
+                        onPress: () => {
+                            if (roomCode && playerId) {
+                                const playerRef = ref(database, `rooms/${roomCode}/players/${playerId}`);
+                                remove(playerRef).catch(err => console.error("Error removing player:", err));
+                            }
+                            navigation.navigate('Home');
+                        }
+                    }
+                ]
+            );
             return true; // Prevent default back behavior
         });
 
         return () => backHandler.remove();
-    }, [handleLeaveRoom]);
+    }, [roomCode, playerId, navigation]);
 
     // Enhanced unread message handler
     const handleUnreadChange = useCallback((count) => {
         // Only show unread count when chat is not active
-        if (!showChat) {
+        if (activeTab !== 'chat') {
             setUnreadMessages(count);
         } else {
             setUnreadMessages(0);
         }
-    }, [showChat]);
+    }, [activeTab]);
     const pulseAnim = React.useRef(new Animated.Value(1)).current;
-
-    // Join Voice Channel
-    useEffect(() => {
-        if (roomCode && playerId) {
-            console.log("🔊 PLAYER: Joining voice channel", roomCode);
-            joinChannel(roomCode, 0);
-        }
-    }, [roomCode, playerId]);
-
-    // Leave voice on exit to Home
-    useEffect(() => {
-        const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-            const targetRoute = e.data?.action?.payload?.name;
-            if (targetRoute === 'Home') {
-                leaveChannel();
-            }
-        });
-        return unsubscribe;
-    }, [navigation]);
 
     useEffect(() => {
         Animated.loop(
@@ -174,7 +144,7 @@ export default function WifiLobbyScreen({ route, navigation }) {
                 setRoomStatus(data.status);
                 setHostName(data.host || 'Unknown Host');
                 setHostAvatar(data.hostAvatar || 1);
-                setHostAvatarConfig(data.hostAvatarConfig || null); // Load host custom config
+                setHostAvatarConfig(data.hostAvatarConfig || null);
 
                 if (!hasNavigated && (data.status === 'voting' || data.status === 'game' || data.status === 'roles' || data.status === 'reveal')) {
                     navigateToGame(data.status);
@@ -245,11 +215,6 @@ export default function WifiLobbyScreen({ route, navigation }) {
         };
     }, [roomCode, playerId, navigation]);
 
-    const handlePlayerTap = (name) => {
-        playHaptic('light');
-        Alert.alert('Player', name);
-    };
-
     return (
         <LinearGradient
             colors={theme.colors.backgroundGradient || [theme.colors.background, theme.colors.background, theme.colors.background]}
@@ -258,6 +223,9 @@ export default function WifiLobbyScreen({ route, navigation }) {
             {/* Film perforations - side strips */}
             <FilmPerforations side="left" theme={theme} />
             <FilmPerforations side="right" theme={theme} />
+
+            {/* Floating Voice Control - Always visible when joined */}
+            {isJoined && <VoiceControl />}
 
             {/* Kodak Film Header */}
             <View style={styles.filmHeader}>
@@ -269,49 +237,152 @@ export default function WifiLobbyScreen({ route, navigation }) {
             </View>
 
             <View style={styles.header}>
-                <VoiceControl />
                 <Text style={styles.roomLabel}>WAITING IN ROOM</Text>
                 <Animated.Text style={[styles.roomCode, { transform: [{ scale: pulseAnim }] }]}>
                     {roomCode}
                 </Animated.Text>
             </View>
 
-            {/* Toggle Chat / Lobby */}
-            <View style={styles.tabContainer}>
-                <TouchableOpacity
-                    style={[styles.tab, !showChat && styles.activeTab]}
-                    onPress={() => {
-                        playHaptic('light');
-                        setShowChat(false);
-                    }}
-                >
-                    <Text style={[styles.tabText, !showChat && styles.activeTabText]}>LOBBY</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tab, showChat && styles.activeTab]}
-                    onPress={() => {
-                        playHaptic('light');
-                        setShowChat(true);
-                        setUnreadMessages(0);
-                    }}
-                >
-                    <View style={styles.tabContent}>
-                        <Text style={[styles.tabText, showChat && styles.activeTabText]}>CHAT</Text>
-                        {unreadMessages > 0 && !showChat && (
-                            <View style={styles.notificationDot} />
+
+            {/* Premium Clean Navigation */}
+            <View style={styles.navigationWrapper}>
+                {/* Main Tabs: Lobby & Chat */}
+                <View style={styles.mainTabs}>
+                    <TouchableOpacity
+                        style={[styles.mainTab, activeTab === 'lobby' && styles.mainTabActive]}
+                        onPress={() => {
+                            playHaptic('light');
+                            setActiveTab('lobby');
+                        }}
+                        activeOpacity={0.85}
+                    >
+                        <Text style={[styles.mainTabLabel, activeTab === 'lobby' && styles.mainTabLabelActive]}>LOBBY</Text>
+                        <Text style={[styles.mainTabMeta, activeTab === 'lobby' && { color: theme.colors.primary }]}>
+                            {players.length + 1} PLAYERS
+                        </Text>
+                        {activeTab === 'lobby' && <View style={[styles.activeBar, { backgroundColor: theme.colors.primary }]} />}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.mainTab, activeTab === 'chat' && styles.mainTabActive]}
+                        onPress={() => {
+                            playHaptic('light');
+                            setActiveTab('chat');
+                            setUnreadMessages(0);
+                        }}
+                        activeOpacity={0.85}
+                    >
+                        <Text style={[styles.mainTabLabel, activeTab === 'chat' && styles.mainTabLabelActive]}>CHAT</Text>
+                        <Text style={[styles.mainTabMeta, activeTab === 'chat' && { color: theme.colors.primary }]}>
+                            {unreadMessages > 0 ? `${unreadMessages} NEW` : 'MESSAGES'}
+                        </Text>
+                        {activeTab === 'chat' && <View style={[styles.activeBar, { backgroundColor: theme.colors.primary }]} />}
+                        {unreadMessages > 0 && activeTab !== 'chat' && (
+                            <View style={[styles.unreadDot, { backgroundColor: theme.colors.error }]} />
                         )}
-                    </View>
+                    </TouchableOpacity>
+                </View>
+
+                {/* Voice Chat Section */}
+                <TouchableOpacity
+                    style={[styles.voiceCard, activeTab === 'voice' && styles.voiceCardActive]}
+                    onPress={() => {
+                        playHaptic('medium');
+                        setActiveTab('voice');
+                    }}
+                    activeOpacity={0.9}
+                >
+                    <LinearGradient
+                        colors={activeTab === 'voice' ? [theme.colors.primary + '15', theme.colors.primary + '05'] : [theme.colors.surface, theme.colors.surface]}
+                        style={styles.voiceCardInner}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                    >
+                        <View style={styles.voiceCardContent}>
+                            <View style={styles.voiceCardLeft}>
+                                <Text style={[styles.voiceCardTitle, activeTab === 'voice' && { color: theme.colors.primary }]}>VOICE CHAT</Text>
+                                <Text style={[styles.voiceCardStatus, isJoined && { color: theme.colors.primary }]}>
+                                    {isJoined ? 'CONNECTED' : 'TAP TO JOIN'}
+                                </Text>
+                            </View>
+                            {isJoined && (
+                                <View style={styles.liveIndicator}>
+                                    <View style={[styles.livePulse, { backgroundColor: theme.colors.primary }]} />
+                                    <Text style={[styles.liveText, { color: theme.colors.primary }]}>LIVE</Text>
+                                </View>
+                            )}
+                        </View>
+                    </LinearGradient>
                 </TouchableOpacity>
             </View>
 
             <View style={styles.content}>
-                {showChat ? (
+                {activeTab === 'chat' ? (
                     <ChatSystem
                         roomCode={roomCode}
                         playerId={playerId}
                         playerName={playerName}
                         onUnreadChange={handleUnreadChange}
                     />
+                ) : activeTab === 'voice' ? (
+                    <View style={styles.voiceContainer}>
+                        {!isJoined ? (
+                            <>
+                                <Text style={styles.voiceInstructions}>
+                                    VOICE CHAT
+                                </Text>
+                                <Text style={styles.voiceSubInstructions}>
+                                    Tap below to join the voice channel
+                                </Text>
+                                <TouchableOpacity
+                                    style={styles.joinVoiceBtn}
+                                    onPress={() => {
+                                        playHaptic('heavy');
+                                        console.log('🎤 WifiLobby: Joining with stamped App ID:', stampedAppId);
+                                        joinChannel(roomCode, 0, stampedAppId);
+                                    }}
+                                >
+                                    <View style={styles.joinVoiceInner}>
+                                        <Text
+                                            style={styles.joinVoiceText}
+                                            numberOfLines={1}
+                                            adjustsFontSizeToFit
+                                        >
+                                            JOIN CALL
+                                        </Text>
+                                    </View>
+                                </TouchableOpacity>
+                            </>
+                        ) : (
+                            <>
+                                <Text style={styles.voiceInstructions}>
+                                    CONNECTED
+                                </Text>
+                                <Text style={styles.voiceSubInstructions}>
+                                    You are live in the channel
+                                </Text>
+                                <Text style={[styles.voiceSubInstructions, { marginTop: 20, color: theme.colors.tertiary }]}>
+                                    Use the floating mic button to mute/unmute
+                                </Text>
+
+                                <TouchableOpacity
+                                    style={styles.leaveVoiceBtn}
+                                    onPress={() => {
+                                        playHaptic('medium');
+                                        leaveChannel();
+                                    }}
+                                >
+                                    <Text
+                                        style={styles.leaveVoiceText}
+                                        numberOfLines={1}
+                                        adjustsFontSizeToFit
+                                    >
+                                        LEAVE CALL
+                                    </Text>
+                                </TouchableOpacity>
+                            </>
+                        )}
+                    </View>
                 ) : (
                     <>
                         <View style={styles.loaderContainer}>
@@ -319,11 +390,19 @@ export default function WifiLobbyScreen({ route, navigation }) {
                             <Text style={styles.statusText}>WAITING FOR HOST TO START...</Text>
                         </View>
 
+
                         <View style={styles.playerBox}>
-                            <Text style={styles.playerCount}>PLAYERS JOINED: {players.length + 1}</Text>
+                            <Text
+                                style={styles.playerCount}
+                                numberOfLines={1}
+                                adjustsFontSizeToFit
+                                minimumFontScale={0.8}
+                            >
+                                PLAYERS JOINED: {players.length + 1}
+                            </Text>
 
                             {/* Host Row */}
-                            <TouchableOpacity onPress={() => handlePlayerTap(hostName)} style={styles.playerRow}>
+                            <View style={styles.playerRow}>
                                 {hostAvatarConfig ? (
                                     <CustomBuiltAvatar config={hostAvatarConfig} size={32} />
                                 ) : (
@@ -332,11 +411,11 @@ export default function WifiLobbyScreen({ route, navigation }) {
                                 <Text style={styles.playerName} numberOfLines={1} ellipsizeMode="tail">
                                     {hostName.toUpperCase()} (HOST)
                                 </Text>
-                            </TouchableOpacity>
+                            </View>
 
                             {/* Players Rows */}
                             {players.map(p => (
-                                <TouchableOpacity key={p.id} onPress={() => handlePlayerTap(p.name)} style={styles.playerRow}>
+                                <View key={p.id} style={styles.playerRow}>
                                     {p.customAvatarConfig ? (
                                         <CustomBuiltAvatar config={p.customAvatarConfig} size={32} />
                                     ) : (
@@ -345,19 +424,23 @@ export default function WifiLobbyScreen({ route, navigation }) {
                                     <Text style={styles.playerName} numberOfLines={1} ellipsizeMode="tail">
                                         {p.name}
                                     </Text>
-                                </TouchableOpacity>
+                                </View>
                             ))}
                         </View>
                     </>
                 )}
             </View>
 
-            {!showChat && (
+            {activeTab === 'lobby' && (
                 <KodakButton
                     title="LEAVE ROOM"
-                    onPress={() => {
+                    onPress={async () => {
                         playHaptic('medium');
-                        handleLeaveRoom();
+                        if (roomCode && playerId) {
+                            const playerRef = ref(database, `rooms/${roomCode}/players/${playerId}`);
+                            await remove(playerRef);
+                        }
+                        navigation.navigate('Home');
                     }}
                     variant="secondary"
                     style={styles.leaveBtn}
@@ -372,164 +455,320 @@ export default function WifiLobbyScreen({ route, navigation }) {
                     ))}
                 </View>
             </View>
+
+
         </LinearGradient>
     );
 }
 
-const getStyles = (theme) => StyleSheet.create({
-    container: {
-        flex: 1,
-        padding: theme.spacing.xl,
-        alignItems: 'center',
-    },
+function getStyles(theme) {
+    return StyleSheet.create({
+        container: {
+            flex: 1,
+            padding: theme.spacing.xl,
+            alignItems: 'center',
+        },
 
-    // Kodak Film Strip Decorations
-    filmHeader: {
-        width: '100%',
-        position: 'absolute',
-        top: 40,
-        left: 0,
-        right: 0,
-    },
-    filmFooter: {
-        width: '100%',
-        position: 'absolute',
-        bottom: 15,
-        left: 0,
-        right: 0,
-    },
-    filmStrip: {
-        flexDirection: 'row',
-        justifyContent: 'space-evenly',
-        paddingHorizontal: 5,
-    },
-    filmHole: {
-        width: 12,
-        height: 8,
-        backgroundColor: theme.colors.primary,
-        borderRadius: 2,
-        opacity: 0.8,
-    },
+        // Kodak Film Strip Decorations
+        filmHeader: {
+            width: '100%',
+            position: 'absolute',
+            top: 40,
+            left: 0,
+            right: 0,
+        },
+        filmFooter: {
+            width: '100%',
+            position: 'absolute',
+            bottom: 15,
+            left: 0,
+            right: 0,
+        },
+        filmStrip: {
+            flexDirection: 'row',
+            justifyContent: 'space-evenly',
+            paddingHorizontal: 5,
+        },
+        filmHole: {
+            width: 12,
+            height: 8,
+            backgroundColor: theme.colors.primary,
+            borderRadius: 2,
+            opacity: 0.8,
+        },
 
-    header: {
-        marginTop: 60,
-        alignItems: 'center',
-        marginBottom: 20,
-        position: 'relative',
-        width: '100%',
-    },
-    roomLabel: {
-        fontSize: 14,
-        color: theme.colors.tertiary,
-        fontFamily: theme.fonts.bold,
-        letterSpacing: 6,
-    },
-    roomCode: {
-        fontSize: 52,
-        color: theme.colors.text,
-        fontFamily: theme.fonts.header,
-        letterSpacing: 10,
-        ...theme.textShadows.depth,
-    },
+        header: {
+            marginTop: 60,
+            alignItems: 'center',
+            marginBottom: 20,
+            position: 'relative',
+            width: '100%',
+        },
+        roomLabel: {
+            fontSize: 14,
+            color: theme.colors.tertiary,
+            fontFamily: theme.fonts.bold,
+            letterSpacing: 6,
+        },
+        roomCode: {
+            fontSize: 52,
+            color: theme.colors.text,
+            fontFamily: theme.fonts.header,
+            letterSpacing: 10,
+            ...theme.textShadows.depth,
+        },
 
-    tabContainer: {
-        flexDirection: 'row',
-        marginBottom: 15,
-        backgroundColor: theme.colors.surface,
-        borderRadius: 25,
-        padding: 4,
-        borderWidth: 2,
-        borderColor: theme.colors.primary,
-    },
-    tab: {
-        paddingVertical: 10,
-        paddingHorizontal: 35,
-        borderRadius: 20,
-    },
-    activeTab: {
-        backgroundColor: theme.colors.primary,
-    },
-    tabText: {
-        color: theme.colors.textMuted,
-        fontFamily: theme.fonts.bold,
-        fontSize: 14,
-        letterSpacing: 2,
-    },
-    activeTabText: {
-        color: theme.colors.secondary,
-        fontFamily: theme.fonts.bold,
-    },
-    tabContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        position: 'relative',
-    },
-    notificationDot: {
-        position: 'absolute',
-        top: -6,
-        right: -8,
-        backgroundColor: theme.colors.error,
-        borderRadius: 6,
-        width: 12,
-        height: 12,
-        borderWidth: 2,
-        borderColor: theme.colors.background,
-    },
+        // Version 2: Horizontal Tabs + Premium Voice
+        topTabs: {
+            flexDirection: 'row',
+            gap: 12,
+            marginBottom: 16,
+            paddingHorizontal: 20,
+        },
+        topTab: {
+            flex: 1,
+            paddingVertical: 14,
+            paddingHorizontal: 20,
+            borderRadius: 16,
+            alignItems: 'center',
+            backgroundColor: theme.colors.surface,
+            borderWidth: 2,
+            borderColor: theme.colors.primary + '30',
+        },
+        topTabActive: {
+            backgroundColor: theme.colors.primary + '15',
+            borderColor: theme.colors.primary,
+            shadowColor: theme.colors.primary,
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.3,
+            shadowRadius: 4,
+            elevation: 4,
+        },
+        topTabText: {
+            fontSize: 14,
+            fontFamily: theme.fonts.bold,
+            color: theme.colors.textMuted,
+            letterSpacing: 2.5,
+        },
+        topTabTextActive: {
+            color: theme.colors.primary,
+        },
+        topTabCount: {
+            fontSize: 20,
+            fontFamily: theme.fonts.header,
+            color: theme.colors.textMuted,
+            marginTop: 4,
+        },
+        chatBadge: {
+            position: 'absolute',
+            top: -8,
+            right: -8,
+            backgroundColor: theme.colors.error,
+            borderRadius: 10,
+            minWidth: 20,
+            height: 20,
+            paddingHorizontal: 6,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 2,
+            borderColor: theme.colors.background,
+        },
+        chatBadgeText: {
+            fontSize: 11,
+            fontFamily: theme.fonts.bold,
+            color: '#fff',
+        },
 
-    content: {
-        flex: 1,
-        width: '100%',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    loaderContainer: {
-        alignItems: 'center',
-        marginBottom: 30,
-    },
-    loader: {
-        marginBottom: 20,
-    },
-    statusText: {
-        fontSize: 18,
-        color: theme.colors.text,
-        fontFamily: theme.fonts.bold,
-        textAlign: 'center',
-        letterSpacing: 3,
-        ...theme.textShadows.softDepth,
-    },
+        // Premium Voice Section
+        voiceSection: {
+            marginHorizontal: 20,
+            marginBottom: 20,
+            borderRadius: 20,
+            overflow: 'hidden',
+            borderWidth: 2,
+            borderColor: theme.colors.primary + '40',
+        },
+        voiceSectionActive: {
+            borderWidth: 3,
+            borderColor: theme.colors.primary,
+            shadowColor: theme.colors.primary,
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.4,
+            shadowRadius: 12,
+            elevation: 10,
+        },
+        voiceSectionGradient: {
+            backgroundColor: theme.colors.surface,
+        },
+        voiceSectionContent: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            padding: 20,
+            gap: 16,
+        },
+        voiceIconWrapper: {
+            position: 'relative',
+        },
+        voiceIcon: {
+            fontSize: 36,
+        },
+        voiceLiveDot: {
+            position: 'absolute',
+            top: 0,
+            right: -2,
+            width: 10,
+            height: 10,
+            borderRadius: 5,
+            borderWidth: 2,
+            borderColor: theme.colors.background,
+        },
+        voiceTextWrapper: {
+            flex: 1,
+        },
+        voiceTitle: {
+            fontSize: 16,
+            fontFamily: theme.fonts.bold,
+            color: theme.colors.text,
+            letterSpacing: 3,
+            marginBottom: 4,
+        },
+        voiceStatus: {
+            fontSize: 12,
+            fontFamily: theme.fonts.medium,
+            color: theme.colors.textMuted,
+            letterSpacing: 0.5,
+        },
+        voiceArrow: {
+            fontSize: 32,
+            color: theme.colors.primary,
+            fontWeight: '300',
+        },
 
-    playerBox: {
-        width: '100%',
-        padding: 20,
-        borderRadius: 16,
-        borderWidth: 2,
-        borderColor: theme.colors.primary,
-        backgroundColor: theme.colors.surface,
-    },
-    playerCount: {
-        fontSize: 14,
-        color: theme.colors.tertiary,
-        fontFamily: theme.fonts.bold,
-        marginBottom: 15,
-        letterSpacing: 3,
-    },
-    playerName: {
-        fontSize: 18,
-        color: theme.colors.text,
-        fontFamily: theme.fonts.medium,
-        marginBottom: 4,
-        flex: 1,
-        letterSpacing: 1,
-    },
-    playerRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        marginBottom: 8
-    },
+        content: {
+            flex: 1,
+            width: '100%',
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        loaderContainer: {
+            alignItems: 'center',
+            marginBottom: 30,
+        },
+        loader: {
+            marginBottom: 20,
+        },
+        statusText: {
+            fontSize: 18,
+            color: theme.colors.text,
+            fontFamily: theme.fonts.bold,
+            textAlign: 'center',
+            letterSpacing: 3,
+            ...theme.textShadows.softDepth,
+        },
 
-    leaveBtn: {
-        width: '100%',
-        marginBottom: 50,
-    },
-});
+        playerBox: {
+            width: '100%',
+            padding: 20,
+            borderRadius: 16,
+            borderWidth: 2,
+            borderColor: theme.colors.primary,
+            backgroundColor: theme.colors.surface,
+        },
+        playerCount: {
+            fontSize: 14,
+            color: theme.colors.tertiary,
+            fontFamily: theme.fonts.bold,
+            marginBottom: 15,
+            letterSpacing: 3,
+        },
+        playerName: {
+            fontSize: 18,
+            color: theme.colors.text,
+            fontFamily: theme.fonts.medium,
+            marginBottom: 4,
+            flex: 1,
+            letterSpacing: 1,
+        },
+        playerRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+            marginBottom: 8
+        },
+
+        leaveBtn: {
+            width: '100%',
+            marginBottom: 50,
+        },
+
+        // Voice Tab Styles
+        voiceContainer: {
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            width: '100%',
+        },
+        voiceInstructions: {
+            fontSize: 24,
+            fontFamily: theme.fonts.header,
+            color: theme.colors.primary,
+            letterSpacing: 2,
+            marginBottom: 10,
+            textAlign: 'center',
+            ...theme.textShadows.glow,
+        },
+        voiceSubInstructions: {
+            fontSize: 14,
+            fontFamily: theme.fonts.medium,
+            color: theme.colors.tertiary,
+            letterSpacing: 1,
+            textAlign: 'center',
+            opacity: 0.8,
+            marginBottom: 30,
+        },
+        joinVoiceBtn: {
+            width: 120,
+            height: 120,
+            borderRadius: 60,
+            backgroundColor: theme.colors.primary,
+            justifyContent: 'center',
+            alignItems: 'center',
+            elevation: 10,
+            shadowColor: theme.colors.primary,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.5,
+            shadowRadius: 10,
+            marginTop: 20,
+        },
+        joinVoiceInner: {
+            width: 110,
+            height: 110,
+            borderRadius: 55,
+            borderWidth: 2,
+            borderColor: '#000',
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: theme.colors.primary,
+        },
+        joinVoiceText: {
+            fontFamily: theme.fonts.bold,
+            color: '#000',
+            fontSize: 18,
+            textAlign: 'center',
+        },
+        leaveVoiceBtn: {
+            marginTop: 40,
+            paddingVertical: 10,
+            paddingHorizontal: 20,
+            borderRadius: 8,
+            borderWidth: 1,
+            borderColor: theme.colors.error,
+        },
+        leaveVoiceText: {
+            color: theme.colors.error,
+            fontFamily: theme.fonts.bold,
+            fontSize: 12,
+            letterSpacing: 2,
+        },
+    });
+}

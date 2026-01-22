@@ -1,8 +1,11 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { View, Text, Platform, Animated, StyleSheet } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import HomeScreen from './src/screens/HomeScreen';
+import AppInitializer from './src/screens/AppInitializer';
 import ProfileScreen from './src/screens/ProfileScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import SetupScreen from './src/screens/SetupScreen';
@@ -21,17 +24,34 @@ import ThemeSelectorScreen from './src/screens/ThemeSelectorScreen';
 import PrivacyPolicyScreen from './src/screens/PrivacyPolicyScreen';
 import TermsOfServiceScreen from './src/screens/TermsOfServiceScreen';
 import ProVersionScreen from './src/screens/ProVersionScreen';
+import PremiumScreen from './src/screens/PremiumScreen';
 import { ThemeProvider, useTheme } from './src/utils/ThemeContext';
 import { SettingsProvider } from './src/utils/SettingsContext';
 import { VoiceChatProvider } from './src/utils/VoiceChatContext';
 
+// --- TEMP: SEED FIREBASE CONFIG ---
+import { ref, set } from 'firebase/database';
+import { database } from './src/utils/firebase';
+import { AGORA_APP_ID } from './src/utils/constants';
+
+const seedConfig = async () => {
+  try {
+    console.log('🌱 SEEDING: Writing App ID to Firebase...');
+    await set(ref(database, 'config/agoraAppId'), AGORA_APP_ID);
+    console.log('🌱 SEEDING: ✅ Done! Config is now in Firebase.');
+  } catch (e) {
+    console.error('🌱 SEEDING: ❌ Failed', e);
+  }
+};
+// ----------------------------------
+
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { useFonts } from 'expo-font';
-import { View, Platform, Animated, StyleSheet } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import ConsentScreen from './src/screens/ConsentScreen';
+
+console.log('🚀 App.js: TOP LEVEL - File is loading');
 
 // Prevent auto-hide, but catch errors (important for Expo Go)
 SplashScreen.preventAutoHideAsync().catch(() => {
@@ -42,9 +62,17 @@ const Stack = createStackNavigator();
 
 function AppNavigator() {
   const { theme } = useTheme();
+  const [isNavigationReady, setIsNavigationReady] = useState(false);
+
+  // Track app opens and show premium every 2nd time - AFTER navigation is ready
+  useEffect(() => {
+    if (!isNavigationReady) return;
+
+    // App initialization logic can go here if needed
+  }, [isNavigationReady]);
 
   return (
-    <NavigationContainer>
+    <NavigationContainer onReady={() => setIsNavigationReady(true)}>
       <StatusBar style="light" />
       <Stack.Navigator
         initialRouteName="Home"
@@ -69,7 +97,7 @@ function AppNavigator() {
           gestureEnabled: true, // Enable iOS swipe back gesture
         }}
       >
-        <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Home" component={AppInitializer} options={{ headerShown: false }} />
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
         <Stack.Screen name="HowToPlay" component={HowToPlayScreen} options={{ headerShown: true }} />
         <Stack.Screen name="WifiModeSelector" component={WifiModeSelectorScreen} options={{ headerShown: true, headerTransparent: true }} />
@@ -80,21 +108,31 @@ function AppNavigator() {
         <Stack.Screen name="ThemeSelector" component={ThemeSelectorScreen} options={{ headerShown: true, title: '' }} />
         <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ headerShown: false }} />
         <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Profile" component={ProfileScreen} options={({ route }) => ({ 
-          headerShown: true,
-          title: 'PROFILE',
-          headerStyle: { 
-            backgroundColor: '#0a0a0a',
-            height: 80, // Compact navbar
-          },
-          headerTintColor: '#FFD700',
-          headerTitleStyle: { 
-            fontFamily: 'Panchang-Bold', 
-            letterSpacing: 2,
-            fontSize: 14
-          },
-          headerBackTitleVisible: false,
-        })} />
+        <Stack.Screen
+          name="Profile"
+          component={ProfileScreen}
+          options={{
+            headerShown: true,
+            headerTransparent: false, // Ensure content starts BELOW the header
+            headerTitle: "PROFILE",
+            headerStyle: {
+              backgroundColor: theme.colors.background,
+              height: 70,
+              elevation: 0,
+              shadowOpacity: 0,
+              borderBottomWidth: 1,
+              borderBottomColor: theme.colors.primary + '30',
+            },
+            headerTintColor: theme.colors.primary,
+            headerTitleStyle: {
+              fontFamily: 'Panchang-Bold',
+              fontSize: 24,
+              letterSpacing: 4,
+            },
+            headerTitleAlign: 'center',
+            headerBackTitleVisible: false,
+          }}
+        />
         <Stack.Screen name="Setup" component={SetupScreen} options={{ headerShown: true }} />
         <Stack.Screen name="RoleReveal" component={RoleRevealScreen} options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="WhoStarts" component={WhoStartsScreen} options={{ headerShown: false, gestureEnabled: false }} />
@@ -102,82 +140,79 @@ function AppNavigator() {
         <Stack.Screen name="Discussion" component={DiscussionScreen} options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="Result" component={ResultScreen} options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="ProVersion" component={ProVersionScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Premium" component={PremiumScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
 }
 
-// Smooth fade overlay - just a solid color that fades out
-function SmoothFadeOverlay({ onAnimationComplete }) {
-  const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  useEffect(() => {
-    // Smooth fade out of the dark background
-    Animated.timing(fadeAnim, {
-      toValue: 0,
-      duration: 400,
-      useNativeDriver: true,
-    }).start(() => {
-      onAnimationComplete();
-    });
-  }, []);
-
-  return (
-    <Animated.View
-      style={[
-        splashStyles.overlay,
-        { opacity: fadeAnim },
-      ]}
-      pointerEvents="none"
-    />
-  );
-}
-
-const splashStyles = StyleSheet.create({
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#0a0a0a',
-    zIndex: 999,
-  },
-});
 
 export default function App() {
+  console.log('🚀 App.js: App() function called');
+
+  // TEMP: Run once
+  useEffect(() => { seedConfig(); }, []);
+
   const [appIsReady, setAppIsReady] = useState(false);
-  const [splashAnimationComplete, setSplashAnimationComplete] = useState(false);
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(null); // null = loading, true/false = checked
 
-  const [fontsLoaded] = useFonts({
+  console.log('🚀 App.js: About to load fonts');
+
+  const [fontsLoaded, fontError] = useFonts({
     'Teko-Medium': require('./assets/Teko_Complete/Fonts/OTF/Teko-Medium.otf'),
     'Sharpie-Black': require('./assets/Sharpie-Black.otf'),
     'BespokeStencil-Extrabold': require('./assets/BespokeStencil-Extrabold.otf'),
     'Panchang-Bold': require('./assets/Panchang-Bold.otf'),
     'CabinetGrotesk-Bold': require('./assets/CabinetGrotesk-Bold.otf'),
     'CabinetGrotesk-Black': require('./assets/CabinetGrotesk-Black.otf'),
+    'CabinetGrotesk-Extrabold': require('./assets/CabinetGrotesk_Complete/Fonts/OTF/CabinetGrotesk-Extrabold.otf'),
     'Nippo-Bold': require('./assets/Nippo-Bold.otf'),
     'Comico-Regular': require('./assets/Comico_Complete/Comico_Complete/Fonts/OTF/Comico-Regular.otf'),
     'Kola-Regular': require('./assets/Kola_Complete/Kola_Complete/Fonts/OTF/Kola-Regular.otf'),
   });
 
+  console.log('🚀 App.js: Fonts loaded?', fontsLoaded, 'Font error?', fontError);
+
+  useEffect(() => {
+    if (fontError) {
+      console.error("App: Font loading error:", fontError);
+    }
+  }, [fontError]);
+
   useEffect(() => {
     async function prepare() {
-      if (fontsLoaded) {
-        // Check if user has accepted terms before
-        try {
-          const accepted = await AsyncStorage.getItem('terms_accepted');
-          setHasAcceptedTerms(accepted === 'true');
-        } catch (e) {
-          setHasAcceptedTerms(false);
-        }
+      console.log('App: Prepare started');
+      try {
+        if (fontsLoaded) {
+          console.log('App: Fonts loaded, checking terms');
+          // Check if user has accepted terms before
+          try {
+            const accepted = await AsyncStorage.getItem('terms_accepted');
+            console.log('App: Terms accepted status:', accepted);
+            setHasAcceptedTerms(accepted === 'true');
+          } catch (e) {
+            console.error('App: Failed to read terms:', e);
+            setHasAcceptedTerms(false);
+          }
 
-        // Hide native splash immediately - we'll show our animated overlay
-        try {
-          await SplashScreen.hideAsync();
-        } catch (e) {
-          // Ignore errors - splash may already be hidden
+          // Hide native splash immediately - we'll show our animated overlay
+          try {
+            console.log('App: Hiding native splash');
+            await SplashScreen.hideAsync();
+          } catch (e) {
+            console.warn('App: Error hiding splash:', e);
+            // Ignore errors - splash may already be hidden
+          }
+          // Small delay to ensure first frame is rendered
+          await new Promise(resolve => setTimeout(resolve, 50));
+          console.log('App: Setting appIsReady to true');
+          setAppIsReady(true);
+        } else {
+          console.log('App: Fonts NOT loaded yet');
         }
-        // Small delay to ensure first frame is rendered
-        await new Promise(resolve => setTimeout(resolve, 50));
-        setAppIsReady(true);
+      } catch (e) {
+        console.error('App: Error during prepare:', e);
       }
     }
     prepare();
@@ -209,15 +244,10 @@ export default function App() {
               <AppNavigator />
             ) : null}
 
-            {/* Smooth fade overlay - fades out to reveal content */}
-            {appIsReady && !splashAnimationComplete && hasAcceptedTerms !== null && (
-              <SmoothFadeOverlay
-                onAnimationComplete={() => setSplashAnimationComplete(true)}
-              />
-            )}
+            {/* Smooth fade overlay removed */}
             {/* Static overlay while fonts are loading */}
             {!appIsReady && (
-              <View style={splashStyles.overlay} />
+              <View style={{ flex: 1, backgroundColor: '#0a0a0a' }} />
             )}
           </SettingsProvider>
         </VoiceChatProvider>

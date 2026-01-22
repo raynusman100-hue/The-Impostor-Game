@@ -171,7 +171,8 @@ export default function PrivacyPolicyScreen({ navigation }) {
     );
 }
 
-const getStyles = (theme) => StyleSheet.create({
+function getStyles(theme) {
+    return StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: theme.colors.background,
@@ -296,3 +297,4 @@ const getStyles = (theme) => StyleSheet.create({
         opacity: 0.5,
     },
 });
+}

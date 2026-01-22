@@ -372,7 +372,8 @@ const characterStyles = StyleSheet.create({
     },
 });
 
-const getStyles = (theme) => StyleSheet.create({
+function getStyles(theme) {
+    return StyleSheet.create({
     container: {
         flex: 1,
     },
@@ -533,4 +534,5 @@ const getStyles = (theme) => StyleSheet.create({
         letterSpacing: 3,
         opacity: 0.5,
     },
-});
+    });
+}

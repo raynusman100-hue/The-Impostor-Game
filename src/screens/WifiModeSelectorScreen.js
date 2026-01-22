@@ -159,7 +159,8 @@ export default function WifiModeSelectorScreen({ navigation }) {
     );
 }
 
-const getStyles = (theme) => StyleSheet.create({
+function getStyles(theme) {
+    return StyleSheet.create({
     container: {
         flex: 1,
         alignItems: 'center',
@@ -206,3 +207,4 @@ const getStyles = (theme) => StyleSheet.create({
         letterSpacing: 4,
     },
 });
+}

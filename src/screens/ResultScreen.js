@@ -557,7 +557,8 @@ export default function ResultScreen({ route, navigation }) {
     );
 }
 
-const getStyles = (theme) => StyleSheet.create({
+function getStyles(theme) {
+    return StyleSheet.create({
     container: { flex: 1 },
     safeArea: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: theme.spacing.m },
 
@@ -717,3 +718,4 @@ const getStyles = (theme) => StyleSheet.create({
         textAlign: 'center',
     },
 });
+}

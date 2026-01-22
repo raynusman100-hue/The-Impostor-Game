@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { playHaptic } from '../utils/haptics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -25,17 +25,34 @@ export const CustomBuiltAvatar = ({ config, size = 100 }) => {
 
     const SingleEye = ({ x, isRight, style }) => {
         const baseW = 8 * S, baseH = 9 * S, pupil = 4 * S;
-        if (style === 'closed') return <View style={{ position: 'absolute', left: x - 5 * S, top: EYE_Y - 1.5 * S, width: 10 * S, height: 3 * S, backgroundColor: '#2d2d2d', borderRadius: 2 * S }} />;
-        if (style === 'happy') return <View style={{ position: 'absolute', left: x - 5 * S, top: EYE_Y - 2.5 * S, width: 10 * S, height: 5 * S, borderBottomWidth: 2.5 * S, borderColor: '#2d2d2d', borderBottomLeftRadius: 8 * S, borderBottomRightRadius: 8 * S, backgroundColor: 'transparent' }} />;
-        if (style === 'angry') { const rot = isRight ? '-12deg' : '12deg'; return <View style={{ position: 'absolute', left: x - baseW / 2, top: EYE_Y - baseH / 2 - 4 * S }}><View style={{ width: 9 * S, height: 2 * S, backgroundColor: '#2d2d2d', marginBottom: 2 * S, transform: [{ rotate: rot }], alignSelf: 'center' }} /><View style={{ width: baseW, height: baseH, backgroundColor: '#fff', borderRadius: baseW / 2, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#e0e0e0' }}><View style={{ width: pupil, height: pupil, backgroundColor: '#2d2d2d', borderRadius: pupil / 2 }} /></View></View>; }
-        let w = baseW, h = baseH; if (style === 'big') { w = 11 * S; h = 12 * S; } if (style === 'small') { w = 6 * S; h = 7 * S; }
+        if (style === 'closed') return <View style={{ position: 'absolute', left: x - 5*S, top: EYE_Y - 1.5*S, width: 10*S, height: 3*S, backgroundColor: '#2d2d2d', borderRadius: 2*S }} />;
+        if (style === 'happy') return <View style={{ position: 'absolute', left: x - 5*S, top: EYE_Y - 2.5*S, width: 10*S, height: 5*S, borderBottomWidth: 2.5*S, borderColor: '#2d2d2d', borderBottomLeftRadius: 8*S, borderBottomRightRadius: 8*S, backgroundColor: 'transparent' }} />;
+        if (style === 'angry') { const rot = isRight ? '-12deg' : '12deg'; return <View style={{ position: 'absolute', left: x - baseW/2, top: EYE_Y - baseH/2 - 4*S }}><View style={{ width: 9*S, height: 2*S, backgroundColor: '#2d2d2d', marginBottom: 2*S, transform: [{ rotate: rot }], alignSelf: 'center' }} /><View style={{ width: baseW, height: baseH, backgroundColor: '#fff', borderRadius: baseW/2, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#e0e0e0' }}><View style={{ width: pupil, height: pupil, backgroundColor: '#2d2d2d', borderRadius: pupil/2 }} /></View></View>; }
+        let w = baseW, h = baseH; if (style === 'big') { w = 11*S; h = 12*S; } if (style === 'small') { w = 6*S; h = 7*S; }
         const isCute = style === 'cute';
-        return <View style={{ position: 'absolute', left: x - w / 2, top: EYE_Y - h / 2, width: w, height: h, backgroundColor: '#fff', borderRadius: w / 2, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#e0e0e0' }}><View style={{ width: pupil, height: pupil, backgroundColor: '#2d2d2d', borderRadius: pupil / 2, marginTop: isCute ? -2 * S : 0 }} />{isCute && <View style={{ position: 'absolute', top: 2 * S, right: 2 * S, width: 2.5 * S, height: 2.5 * S, backgroundColor: '#fff', borderRadius: 1.5 * S }} />}</View>;
+        return <View style={{ position: 'absolute', left: x - w/2, top: EYE_Y - h/2, width: w, height: h, backgroundColor: '#fff', borderRadius: w/2, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#e0e0e0' }}><View style={{ width: pupil, height: pupil, backgroundColor: '#2d2d2d', borderRadius: pupil/2, marginTop: isCute ? -2*S : 0 }} />{isCute && <View style={{ position: 'absolute', top: 2*S, right: 2*S, width: 2.5*S, height: 2.5*S, backgroundColor: '#fff', borderRadius: 1.5*S }} />}</View>;
     };
 
-    const Eyes = () => { const map = { happy: 'happy', sleepy: 'closed', angry: 'angry', big: 'big', small: 'small', cute: 'cute', normal: 'normal' }; const left = eyeStyle === 'wink' ? 'normal' : (map[eyeStyle] || 'normal'); const right = eyeStyle === 'wink' ? 'closed' : (map[eyeStyle] || 'normal'); return <><SingleEye x={EYE_LEFT_X} style={left} /><SingleEye x={EYE_RIGHT_X} style={right} isRight /></>; };
+    const Eyes = () => { 
+        const map = { happy: 'happy', sleepy: 'closed', angry: 'angry', big: 'big', small: 'small', cute: 'cute', normal: 'normal' }; 
+        const left = eyeStyle === 'wink' ? 'normal' : (map[eyeStyle] || 'normal'); 
+        const right = eyeStyle === 'wink' ? 'closed' : (map[eyeStyle] || 'normal'); 
+        return <><SingleEye x={EYE_LEFT_X} style={left} /><SingleEye x={EYE_RIGHT_X} style={right} isRight /></>; 
+    };
 
-    const Mouth = () => { const cx = FACE_CENTER_X; switch (mouthStyle) { case 'grin': return <View style={{ position: 'absolute', left: cx - 9 * S, top: MOUTH_Y - 4.5 * S, width: 18 * S, height: 9 * S, backgroundColor: '#2d2d2d', borderBottomLeftRadius: 9 * S, borderBottomRightRadius: 9 * S, overflow: 'hidden' }}><View style={{ position: 'absolute', bottom: 0, width: '100%', height: 4 * S, backgroundColor: '#e85a5a' }} /></View>; case 'neutral': return <View style={{ position: 'absolute', left: cx - 6 * S, top: MOUTH_Y - 1.25 * S, width: 12 * S, height: 2.5 * S, backgroundColor: '#2d2d2d', borderRadius: 1.5 * S }} />; case 'open': return <View style={{ position: 'absolute', left: cx - 5 * S, top: MOUTH_Y - 5 * S, width: 10 * S, height: 10 * S, backgroundColor: '#2d2d2d', borderRadius: 5 * S, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 2 * S }}><View style={{ width: 5 * S, height: 3 * S, backgroundColor: '#e85a5a', borderBottomLeftRadius: 3 * S, borderBottomRightRadius: 3 * S }} /></View>; case 'smirk': return <View style={{ position: 'absolute', left: cx - 5 * S, top: MOUTH_Y - 2.5 * S, width: 10 * S, height: 5 * S, borderBottomWidth: 2.5 * S, borderRightWidth: 2 * S, borderColor: '#2d2d2d', borderBottomRightRadius: 8 * S, backgroundColor: 'transparent' }} />; case 'sad': return <View style={{ position: 'absolute', left: cx - 6 * S, top: MOUTH_Y - 2.5 * S, width: 12 * S, height: 5 * S, borderTopWidth: 2.5 * S, borderColor: '#2d2d2d', borderTopLeftRadius: 8 * S, borderTopRightRadius: 8 * S, backgroundColor: 'transparent' }} />; case 'kiss': return <View style={{ position: 'absolute', left: cx - 3.5 * S, top: MOUTH_Y - 3.5 * S, width: 7 * S, height: 7 * S, backgroundColor: '#e85a5a', borderRadius: 3.5 * S }} />; case 'teeth': return <View style={{ position: 'absolute', left: cx - 8 * S, top: MOUTH_Y - 4.5 * S, width: 16 * S, height: 9 * S, backgroundColor: '#2d2d2d', borderRadius: 4 * S, alignItems: 'center', justifyContent: 'center' }}><View style={{ width: 12 * S, height: 4 * S, backgroundColor: '#fff', borderRadius: 1 * S }} /></View>; default: return <View style={{ position: 'absolute', left: cx - 7 * S, top: MOUTH_Y - 3.5 * S, width: 14 * S, height: 7 * S, borderBottomWidth: 2.5 * S, borderColor: '#2d2d2d', borderBottomLeftRadius: 9 * S, borderBottomRightRadius: 9 * S, backgroundColor: 'transparent' }} />; } };
+    const Mouth = () => { 
+        const cx = FACE_CENTER_X; 
+        switch (mouthStyle) { 
+            case 'grin': return <View style={{ position: 'absolute', left: cx - 9*S, top: MOUTH_Y - 4.5*S, width: 18*S, height: 9*S, backgroundColor: '#2d2d2d', borderBottomLeftRadius: 9*S, borderBottomRightRadius: 9*S, overflow: 'hidden' }}><View style={{ position: 'absolute', bottom: 0, width: '100%', height: 4*S, backgroundColor: '#e85a5a' }} /></View>; 
+            case 'neutral': return <View style={{ position: 'absolute', left: cx - 6*S, top: MOUTH_Y - 1.25*S, width: 12*S, height: 2.5*S, backgroundColor: '#2d2d2d', borderRadius: 1.5*S }} />; 
+            case 'open': return <View style={{ position: 'absolute', left: cx - 5*S, top: MOUTH_Y - 5*S, width: 10*S, height: 10*S, backgroundColor: '#2d2d2d', borderRadius: 5*S, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 2*S }}><View style={{ width: 5*S, height: 3*S, backgroundColor: '#e85a5a', borderBottomLeftRadius: 3*S, borderBottomRightRadius: 3*S }} /></View>; 
+            case 'smirk': return <View style={{ position: 'absolute', left: cx - 5*S, top: MOUTH_Y - 2.5*S, width: 10*S, height: 5*S, borderBottomWidth: 2.5*S, borderRightWidth: 2*S, borderColor: '#2d2d2d', borderBottomRightRadius: 8*S, backgroundColor: 'transparent' }} />; 
+            case 'sad': return <View style={{ position: 'absolute', left: cx - 6*S, top: MOUTH_Y - 2.5*S, width: 12*S, height: 5*S, borderTopWidth: 2.5*S, borderColor: '#2d2d2d', borderTopLeftRadius: 8*S, borderTopRightRadius: 8*S, backgroundColor: 'transparent' }} />; 
+            case 'kiss': return <View style={{ position: 'absolute', left: cx - 3.5*S, top: MOUTH_Y - 3.5*S, width: 7*S, height: 7*S, backgroundColor: '#e85a5a', borderRadius: 3.5*S }} />; 
+            case 'teeth': return <View style={{ position: 'absolute', left: cx - 8*S, top: MOUTH_Y - 4.5*S, width: 16*S, height: 9*S, backgroundColor: '#2d2d2d', borderRadius: 4*S, alignItems: 'center', justifyContent: 'center' }}><View style={{ width: 12*S, height: 4*S, backgroundColor: '#fff', borderRadius: 1*S }} /></View>; 
+            default: return <View style={{ position: 'absolute', left: cx - 7*S, top: MOUTH_Y - 3.5*S, width: 14*S, height: 7*S, borderBottomWidth: 2.5*S, borderColor: '#2d2d2d', borderBottomLeftRadius: 9*S, borderBottomRightRadius: 9*S, backgroundColor: 'transparent' }} />; 
+        } 
+    };
 
     const Hair = () => {
         if (hairStyle === 'none') return null;
@@ -43,16 +60,16 @@ export const CustomBuiltAvatar = ({ config, size = 100 }) => {
         const hairTop = isSquare ? -FH * 0.12 : -FH * 0.18;
         const sideExtend = FW * 0.08;
         const topRadius = isSquare ? FW * 0.15 : FW * 0.45;
-
+        
         switch (hairStyle) {
             case 'short':
                 return <View style={{ position: 'absolute', left: FW * 0.05, top: hairTop, width: FW * 0.9, height: FH * 0.38, backgroundColor: hairColor, borderTopLeftRadius: topRadius, borderTopRightRadius: topRadius, borderBottomLeftRadius: isSquare ? FW * 0.05 : FW * 0.1, borderBottomRightRadius: isSquare ? FW * 0.05 : FW * 0.1 }} />;
             case 'spiky':
                 const spikeW = FW * 0.12, spikeH = isSquare ? FH * 0.28 : FH * 0.32, spikeTop = isSquare ? hairTop - FH * 0.05 : hairTop - FH * 0.08;
-                return <View style={{ position: 'absolute', left: 0, top: spikeTop, width: FW, height: FH * 0.5 }}>{[-2, -1, 0, 1, 2].map(i => <View key={i} style={{ position: 'absolute', left: FACE_CENTER_X + (i * FW * 0.14) - spikeW / 2, top: Math.abs(i) * FH * 0.04, width: spikeW, height: spikeH, backgroundColor: hairColor, borderRadius: spikeW / 2, transform: [{ rotate: `${i * 10}deg` }] }} />)}</View>;
+                return <View style={{ position: 'absolute', left: 0, top: spikeTop, width: FW, height: FH * 0.5 }}>{[-2, -1, 0, 1, 2].map(i => <View key={i} style={{ position: 'absolute', left: FACE_CENTER_X + (i * FW * 0.14) - spikeW/2, top: Math.abs(i) * FH * 0.04, width: spikeW, height: spikeH, backgroundColor: hairColor, borderRadius: spikeW / 2, transform: [{ rotate: `${i * 10}deg` }] }} />)}</View>;
             case 'curly':
                 const curlSize = FW * 0.18, curlTop = isSquare ? hairTop : hairTop - FH * 0.05;
-                return <View style={{ position: 'absolute', left: 0, top: curlTop, width: FW, height: FH * 0.4 }}>{[0, 1, 2, 3, 4, 5, 6].map(i => <View key={i} style={{ position: 'absolute', left: (i * FW * 0.14) - sideExtend, top: (i % 2) * FH * 0.06, width: curlSize, height: curlSize, backgroundColor: hairColor, borderRadius: curlSize / 2 }} />)}</View>;
+                return <View style={{ position: 'absolute', left: 0, top: curlTop, width: FW, height: FH * 0.4 }}>{[0,1,2,3,4,5,6].map(i => <View key={i} style={{ position: 'absolute', left: (i * FW * 0.14) - sideExtend, top: (i % 2) * FH * 0.06, width: curlSize, height: curlSize, backgroundColor: hairColor, borderRadius: curlSize / 2 }} />)}</View>;
             case 'wavy':
                 return <View style={{ position: 'absolute', left: -sideExtend, top: hairTop, width: FW + sideExtend * 2, height: FH * 0.6, backgroundColor: hairColor, borderTopLeftRadius: isSquare ? FW * 0.2 : FW * 0.5, borderTopRightRadius: isSquare ? FW * 0.2 : FW * 0.5, borderBottomLeftRadius: FW * 0.15, borderBottomRightRadius: FW * 0.15 }} />;
             case 'long':
@@ -75,7 +92,20 @@ export const CustomBuiltAvatar = ({ config, size = 100 }) => {
         }
     };
 
-    const Accessory = () => { if (accessory === 'none') return null; const glassesWidth = (EYE_RIGHT_X - EYE_LEFT_X) + 20 * S, glassesLeft = EYE_LEFT_X - 10 * S, lensSize = 14 * S, bridgeWidth = EYE_RIGHT_X - EYE_LEFT_X - lensSize; switch (accessory) { case 'glasses': return <View style={{ position: 'absolute', left: glassesLeft, top: EYE_Y - 7 * S, width: glassesWidth, height: 14 * S }}><View style={{ position: 'absolute', left: 10 * S - lensSize / 2, top: 0, width: lensSize, height: lensSize, borderWidth: 2 * S, borderColor: '#2d2d2d', borderRadius: 2 * S, backgroundColor: 'transparent' }} /><View style={{ position: 'absolute', left: 10 * S + (EYE_RIGHT_X - EYE_LEFT_X) - lensSize / 2, top: 0, width: lensSize, height: lensSize, borderWidth: 2 * S, borderColor: '#2d2d2d', borderRadius: 2 * S, backgroundColor: 'transparent' }} /><View style={{ position: 'absolute', left: 10 * S + lensSize / 2, top: 5 * S, width: bridgeWidth, height: 2 * S, backgroundColor: '#2d2d2d' }} /><View style={{ position: 'absolute', left: 0, top: 3 * S, width: 10 * S - lensSize / 2, height: 2 * S, backgroundColor: '#2d2d2d' }} /><View style={{ position: 'absolute', right: 0, top: 3 * S, width: 10 * S - lensSize / 2, height: 2 * S, backgroundColor: '#2d2d2d' }} /></View>; case 'sunglasses': return <View style={{ position: 'absolute', left: glassesLeft, top: EYE_Y - 7 * S, width: glassesWidth, height: 14 * S }}><View style={{ position: 'absolute', left: 10 * S - lensSize / 2, top: 0, width: lensSize, height: lensSize, backgroundColor: '#1a1a1a', borderRadius: 2 * S }} /><View style={{ position: 'absolute', left: 10 * S + (EYE_RIGHT_X - EYE_LEFT_X) - lensSize / 2, top: 0, width: lensSize, height: lensSize, backgroundColor: '#1a1a1a', borderRadius: 2 * S }} /><View style={{ position: 'absolute', left: 10 * S + lensSize / 2, top: 5 * S, width: bridgeWidth, height: 2.5 * S, backgroundColor: '#1a1a1a' }} /><View style={{ position: 'absolute', left: 0, top: 3 * S, width: 10 * S - lensSize / 2, height: 2.5 * S, backgroundColor: '#1a1a1a' }} /><View style={{ position: 'absolute', right: 0, top: 3 * S, width: 10 * S - lensSize / 2, height: 2.5 * S, backgroundColor: '#1a1a1a' }} /></View>; case 'roundGlasses': const rs = 13 * S; return <View style={{ position: 'absolute', left: glassesLeft, top: EYE_Y - 6.5 * S, width: glassesWidth, height: 14 * S }}><View style={{ position: 'absolute', left: 10 * S - rs / 2, top: 0, width: rs, height: rs, borderWidth: 1.5 * S, borderColor: '#8B4513', borderRadius: rs / 2, backgroundColor: 'transparent' }} /><View style={{ position: 'absolute', left: 10 * S + (EYE_RIGHT_X - EYE_LEFT_X) - rs / 2, top: 0, width: rs, height: rs, borderWidth: 1.5 * S, borderColor: '#8B4513', borderRadius: rs / 2, backgroundColor: 'transparent' }} /><View style={{ position: 'absolute', left: 10 * S + rs / 2, top: 5 * S, width: (EYE_RIGHT_X - EYE_LEFT_X) - rs, height: 1.5 * S, backgroundColor: '#8B4513' }} /></View>; case 'eyepatch': return <><View style={{ position: 'absolute', left: EYE_RIGHT_X - 8 * S, top: EYE_Y - 8 * S, width: 16 * S, height: 16 * S, backgroundColor: '#1a1a1a', borderRadius: 3 * S }} /><View style={{ position: 'absolute', left: EYE_RIGHT_X + 6 * S, top: EYE_Y - 1 * S, width: FW - EYE_RIGHT_X, height: 2 * S, backgroundColor: '#1a1a1a' }} /><View style={{ position: 'absolute', left: 0, top: EYE_Y - 1 * S, width: EYE_RIGHT_X - 8 * S, height: 2 * S, backgroundColor: '#1a1a1a' }} /></>; case 'bandana': return <View style={{ position: 'absolute', left: -3 * S, top: -FH * 0.08, width: FW + 6 * S, height: 12 * S, backgroundColor: '#E74C3C', borderRadius: 2 * S }}><View style={{ position: 'absolute', left: FW * 0.7, top: 8 * S, width: 8 * S, height: 15 * S, backgroundColor: '#E74C3C', borderRadius: 4 * S, transform: [{ rotate: '20deg' }] }} /></View>; case 'earrings': return <><View style={{ position: 'absolute', left: -4 * S, top: EYE_Y + 8 * S, width: 6 * S, height: 6 * S, backgroundColor: '#FFD700', borderRadius: 3 * S }} /><View style={{ position: 'absolute', left: FW - 2 * S, top: EYE_Y + 8 * S, width: 6 * S, height: 6 * S, backgroundColor: '#FFD700', borderRadius: 3 * S }} /></>; case 'headphones': return <><View style={{ position: 'absolute', left: -2 * S, top: -FH * 0.12, width: FW + 4 * S, height: FH * 0.25, borderWidth: 4 * S, borderColor: '#2d2d2d', borderTopLeftRadius: FW * 0.5, borderTopRightRadius: FW * 0.5, borderBottomWidth: 0, backgroundColor: 'transparent' }} /><View style={{ position: 'absolute', left: -10 * S, top: EYE_Y - 5 * S, width: 14 * S, height: 18 * S, backgroundColor: '#2d2d2d', borderRadius: 4 * S }} /><View style={{ position: 'absolute', left: FW - 4 * S, top: EYE_Y - 5 * S, width: 14 * S, height: 18 * S, backgroundColor: '#2d2d2d', borderRadius: 4 * S }} /></>; default: return null; } };
+    const Accessory = () => { 
+        if (accessory === 'none') return null; 
+        const glassesWidth = (EYE_RIGHT_X - EYE_LEFT_X) + 20*S, glassesLeft = EYE_LEFT_X - 10*S, lensSize = 14*S, bridgeWidth = EYE_RIGHT_X - EYE_LEFT_X - lensSize; 
+        switch (accessory) { 
+            case 'glasses': return <View style={{ position: 'absolute', left: glassesLeft, top: EYE_Y - 7*S, width: glassesWidth, height: 14*S }}><View style={{ position: 'absolute', left: 10*S - lensSize/2, top: 0, width: lensSize, height: lensSize, borderWidth: 2*S, borderColor: '#2d2d2d', borderRadius: 2*S, backgroundColor: 'transparent' }} /><View style={{ position: 'absolute', left: 10*S + (EYE_RIGHT_X - EYE_LEFT_X) - lensSize/2, top: 0, width: lensSize, height: lensSize, borderWidth: 2*S, borderColor: '#2d2d2d', borderRadius: 2*S, backgroundColor: 'transparent' }} /><View style={{ position: 'absolute', left: 10*S + lensSize/2, top: 5*S, width: bridgeWidth, height: 2*S, backgroundColor: '#2d2d2d' }} /><View style={{ position: 'absolute', left: 0, top: 3*S, width: 10*S - lensSize/2, height: 2*S, backgroundColor: '#2d2d2d' }} /><View style={{ position: 'absolute', right: 0, top: 3*S, width: 10*S - lensSize/2, height: 2*S, backgroundColor: '#2d2d2d' }} /></View>; 
+            case 'sunglasses': return <View style={{ position: 'absolute', left: glassesLeft, top: EYE_Y - 7*S, width: glassesWidth, height: 14*S }}><View style={{ position: 'absolute', left: 10*S - lensSize/2, top: 0, width: lensSize, height: lensSize, backgroundColor: '#1a1a1a', borderRadius: 2*S }} /><View style={{ position: 'absolute', left: 10*S + (EYE_RIGHT_X - EYE_LEFT_X) - lensSize/2, top: 0, width: lensSize, height: lensSize, backgroundColor: '#1a1a1a', borderRadius: 2*S }} /><View style={{ position: 'absolute', left: 10*S + lensSize/2, top: 5*S, width: bridgeWidth, height: 2.5*S, backgroundColor: '#1a1a1a' }} /><View style={{ position: 'absolute', left: 0, top: 3*S, width: 10*S - lensSize/2, height: 2.5*S, backgroundColor: '#1a1a1a' }} /><View style={{ position: 'absolute', right: 0, top: 3*S, width: 10*S - lensSize/2, height: 2.5*S, backgroundColor: '#1a1a1a' }} /></View>; 
+            case 'roundGlasses': const rs = 13*S; return <View style={{ position: 'absolute', left: glassesLeft, top: EYE_Y - 6.5*S, width: glassesWidth, height: 14*S }}><View style={{ position: 'absolute', left: 10*S - rs/2, top: 0, width: rs, height: rs, borderWidth: 1.5*S, borderColor: '#8B4513', borderRadius: rs/2, backgroundColor: 'transparent' }} /><View style={{ position: 'absolute', left: 10*S + (EYE_RIGHT_X - EYE_LEFT_X) - rs/2, top: 0, width: rs, height: rs, borderWidth: 1.5*S, borderColor: '#8B4513', borderRadius: rs/2, backgroundColor: 'transparent' }} /><View style={{ position: 'absolute', left: 10*S + rs/2, top: 5*S, width: (EYE_RIGHT_X - EYE_LEFT_X) - rs, height: 1.5*S, backgroundColor: '#8B4513' }} /></View>; 
+            case 'eyepatch': return <><View style={{ position: 'absolute', left: EYE_RIGHT_X - 8*S, top: EYE_Y - 8*S, width: 16*S, height: 16*S, backgroundColor: '#1a1a1a', borderRadius: 3*S }} /><View style={{ position: 'absolute', left: EYE_RIGHT_X + 6*S, top: EYE_Y - 1*S, width: FW - EYE_RIGHT_X, height: 2*S, backgroundColor: '#1a1a1a' }} /><View style={{ position: 'absolute', left: 0, top: EYE_Y - 1*S, width: EYE_RIGHT_X - 8*S, height: 2*S, backgroundColor: '#1a1a1a' }} /></>; 
+            case 'bandana': return <View style={{ position: 'absolute', left: -3*S, top: -FH * 0.08, width: FW + 6*S, height: 12*S, backgroundColor: '#E74C3C', borderRadius: 2*S }}><View style={{ position: 'absolute', left: FW * 0.7, top: 8*S, width: 8*S, height: 15*S, backgroundColor: '#E74C3C', borderRadius: 4*S, transform: [{ rotate: '20deg' }] }} /></View>; 
+            case 'earrings': return <><View style={{ position: 'absolute', left: -4*S, top: EYE_Y + 8*S, width: 6*S, height: 6*S, backgroundColor: '#FFD700', borderRadius: 3*S }} /><View style={{ position: 'absolute', left: FW - 2*S, top: EYE_Y + 8*S, width: 6*S, height: 6*S, backgroundColor: '#FFD700', borderRadius: 3*S }} /></>; 
+            case 'headphones': return <><View style={{ position: 'absolute', left: -2*S, top: -FH * 0.12, width: FW + 4*S, height: FH * 0.25, borderWidth: 4*S, borderColor: '#2d2d2d', borderTopLeftRadius: FW * 0.5, borderTopRightRadius: FW * 0.5, borderBottomWidth: 0, backgroundColor: 'transparent' }} /><View style={{ position: 'absolute', left: -10*S, top: EYE_Y - 5*S, width: 14*S, height: 18*S, backgroundColor: '#2d2d2d', borderRadius: 4*S }} /><View style={{ position: 'absolute', left: FW - 4*S, top: EYE_Y - 5*S, width: 14*S, height: 18*S, backgroundColor: '#2d2d2d', borderRadius: 4*S }} /></>; 
+            default: return null; 
+        } 
+    };
 
     return (
         <View style={{ width: size, height: size, backgroundColor: bgColor, borderRadius: size / 2, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
@@ -90,18 +120,10 @@ export const CustomBuiltAvatar = ({ config, size = 100 }) => {
 };
 
 
-// ============ BUILDER UI ============
-const TABS = [
-    { id: 'face', label: 'FACE' },
-    { id: 'eyes', label: 'EYES' },
-    { id: 'mouth', label: 'MOUTH' },
-    { id: 'hair', label: 'HAIR' },
-    { id: 'extras', label: 'EXTRAS' },
-];
-
+// ============ BUILDER UI - CLEAN LAYOUT ============
 const CustomAvatarBuilder = ({ initialConfig, onSave, onCancel, theme }) => {
     const colors = theme?.colors || { primary: '#FFB800', secondary: '#000', background: '#0a0a0a', surface: '#1a1a1a', text: '#fff', textMuted: '#888' };
-
+    
     const [config, setConfig] = useState(initialConfig || {
         faceShape: 'round', skinColor: '#FFDBB4', eyeStyle: 'normal', mouthStyle: 'smile',
         hairStyle: 'none', hairColor: '#1a1a1a', accessory: 'none', bgColor: '#FFB800',
@@ -109,7 +131,7 @@ const CustomAvatarBuilder = ({ initialConfig, onSave, onCancel, theme }) => {
     const [activeTab, setActiveTab] = useState('face');
 
     const update = (key, value) => { playHaptic('light'); setConfig(p => ({ ...p, [key]: value })); };
-
+    
     const randomize = () => {
         playHaptic('medium');
         setConfig({
@@ -124,72 +146,132 @@ const CustomAvatarBuilder = ({ initialConfig, onSave, onCancel, theme }) => {
         });
     };
 
-    const PillBtn = ({ value, selected, onPress }) => (
-        <TouchableOpacity onPress={onPress} style={[styles.pillBtn, { borderColor: selected ? colors.primary : colors.textMuted + '50', backgroundColor: selected ? colors.primary + '20' : 'transparent' }]}>
-            <Text style={[styles.pillBtnText, { color: selected ? colors.primary : colors.textMuted }]}>{value.toUpperCase()}</Text>
+    // Text option button
+    const TextBtn = ({ value, selected, onPress }) => (
+        <TouchableOpacity 
+            onPress={onPress} 
+            style={[
+                styles.textBtn, 
+                { borderColor: selected ? colors.primary : colors.textMuted + '40' }, 
+                selected && { backgroundColor: colors.primary + '20' }
+            ]}
+        >
+            <Text style={[styles.textBtnLabel, { color: selected ? colors.primary : colors.textMuted }]}>
+                {value.toUpperCase()}
+            </Text>
         </TouchableOpacity>
     );
 
+    // Color option button
     const ColorBtn = ({ color, selected, onPress }) => (
-        <TouchableOpacity onPress={onPress} style={[styles.colorBtn, { backgroundColor: color }, selected && { borderColor: colors.primary, borderWidth: 3, transform: [{ scale: 1.1 }] }]} />
+        <TouchableOpacity 
+            onPress={onPress} 
+            style={[
+                styles.colorBtn, 
+                { backgroundColor: color }, 
+                selected && { borderColor: colors.primary, borderWidth: 3 }
+            ]}
+        />
     );
 
+    const TABS = [
+        { id: 'face', label: 'FACE' },
+        { id: 'eyes', label: 'EYES' },
+        { id: 'mouth', label: 'MOUTH' },
+        { id: 'hair', label: 'HAIR' },
+        { id: 'extras', label: 'MORE' },
+    ];
+
     const renderTabContent = () => {
-        // Replaced ScrollView with View + flexWrap for non-scrolling layout
-        // Assuming content fits. If it doesn't, we can reduce padding or item size.
-        // For HAIRSTYLES (11 items), it should wrap to ~4 lines. 
-        // With PillBtn height ~35px + margin 12px = ~47px * 4 = 188px.
-        // Plus Color row ~40px. Total ~230px. Should fit easily in remaining space.
-
-        const ContentContainer = ({ children }) => (
-            <View style={styles.tabContentContainer}>
-                {children}
-            </View>
-        );
-
         switch (activeTab) {
             case 'face':
                 return (
-                    <ContentContainer>
-                        <Text style={[styles.sectionTitle, { color: colors.text }]}>SHAPE</Text>
-                        <View style={styles.optionRow}>{FACE_SHAPES.map(v => <PillBtn key={v} value={v} selected={config.faceShape === v} onPress={() => update('faceShape', v)} />)}</View>
-                        <Text style={[styles.sectionTitleSmall, { color: colors.text }]}>SKIN CODE</Text>
-                        <View style={styles.colorRow}>{SKIN_COLORS.map(c => <ColorBtn key={c} color={c} selected={config.skinColor === c} onPress={() => update('skinColor', c)} />)}</View>
-                        <Text style={[styles.sectionTitleSmall, { color: colors.text }]}>BACKGROUND</Text>
-                        <View style={styles.colorRow}>{BG_COLORS.map(c => <ColorBtn key={c} color={c} selected={config.bgColor === c} onPress={() => update('bgColor', c)} />)}</View>
-                    </ContentContainer>
+                    <View style={styles.tabContent}>
+                        <Text style={[styles.sectionTitle, { color: colors.primary }]}>SHAPE</Text>
+                        <View style={styles.optionGrid}>
+                            {FACE_SHAPES.map(v => (
+                                <TextBtn key={v} value={v} selected={config.faceShape === v} onPress={() => update('faceShape', v)} />
+                            ))}
+                        </View>
+                        
+                        <View style={styles.colorSection}>
+                            <View style={styles.colorGroup}>
+                                <Text style={[styles.sectionTitleSmall, { color: colors.primary }]}>SKIN</Text>
+                                <View style={styles.colorRowCompact}>
+                                    {SKIN_COLORS.map(c => (
+                                        <ColorBtn key={c} color={c} selected={config.skinColor === c} onPress={() => update('skinColor', c)} />
+                                    ))}
+                                </View>
+                            </View>
+                            
+                            <View style={styles.colorGroup}>
+                                <Text style={[styles.sectionTitleSmall, { color: colors.primary }]}>BACKGROUND</Text>
+                                <View style={styles.colorRowCompact}>
+                                    {BG_COLORS.map(c => (
+                                        <ColorBtn key={c} color={c} selected={config.bgColor === c} onPress={() => update('bgColor', c)} />
+                                    ))}
+                                </View>
+                            </View>
+                        </View>
+                    </View>
                 );
+                
             case 'eyes':
                 return (
-                    <ContentContainer>
-                        <Text style={[styles.sectionTitle, { color: colors.text }]}>STYLE</Text>
-                        <View style={styles.optionRow}>{EYE_STYLES.map(v => <PillBtn key={v} value={v} selected={config.eyeStyle === v} onPress={() => update('eyeStyle', v)} />)}</View>
-                    </ContentContainer>
+                    <View style={styles.tabContent}>
+                        <Text style={[styles.sectionTitle, { color: colors.primary }]}>EYE STYLE</Text>
+                        <View style={styles.optionGrid}>
+                            {EYE_STYLES.map(v => (
+                                <TextBtn key={v} value={v} selected={config.eyeStyle === v} onPress={() => update('eyeStyle', v)} />
+                            ))}
+                        </View>
+                    </View>
                 );
+                
             case 'mouth':
                 return (
-                    <ContentContainer>
-                        <Text style={[styles.sectionTitle, { color: colors.text }]}>STYLE</Text>
-                        <View style={styles.optionRow}>{MOUTH_STYLES.map(v => <PillBtn key={v} value={v} selected={config.mouthStyle === v} onPress={() => update('mouthStyle', v)} />)}</View>
-                    </ContentContainer>
+                    <View style={styles.tabContent}>
+                        <Text style={[styles.sectionTitle, { color: colors.primary }]}>MOUTH STYLE</Text>
+                        <View style={styles.optionGrid}>
+                            {MOUTH_STYLES.map(v => (
+                                <TextBtn key={v} value={v} selected={config.mouthStyle === v} onPress={() => update('mouthStyle', v)} />
+                            ))}
+                        </View>
+                    </View>
                 );
+                
             case 'hair':
                 return (
-                    <ContentContainer>
-                        <Text style={[styles.sectionTitle, { color: colors.text }]}>STYLE</Text>
-                        <View style={styles.optionRow}>{HAIR_STYLES.map(v => <PillBtn key={v} value={v} selected={config.hairStyle === v} onPress={() => update('hairStyle', v)} />)}</View>
-                        <Text style={[styles.sectionTitleSmall, { color: colors.text }]}>COLOR</Text>
-                        <View style={styles.colorRow}>{HAIR_COLORS.map(c => <ColorBtn key={c} color={c} selected={config.hairColor === c} onPress={() => update('hairColor', c)} />)}</View>
-                    </ContentContainer>
+                    <View style={styles.tabContent}>
+                        <Text style={[styles.sectionTitle, { color: colors.primary }]}>HAIR STYLE</Text>
+                        <View style={styles.optionGrid}>
+                            {HAIR_STYLES.map(v => (
+                                <TextBtn key={v} value={v} selected={config.hairStyle === v} onPress={() => update('hairStyle', v)} />
+                            ))}
+                        </View>
+                        
+                        <Text style={[styles.sectionTitle, { color: colors.primary }]}>HAIR COLOR</Text>
+                        <View style={styles.colorRow}>
+                            {HAIR_COLORS.map(c => (
+                                <ColorBtn key={c} color={c} selected={config.hairColor === c} onPress={() => update('hairColor', c)} />
+                            ))}
+                        </View>
+                    </View>
                 );
+                
             case 'extras':
                 return (
-                    <ContentContainer>
-                        <Text style={[styles.sectionTitle, { color: colors.text }]}>ACCESSORY</Text>
-                        <View style={styles.optionRow}>{ACCESSORIES.map(v => <PillBtn key={v} value={v} selected={config.accessory === v} onPress={() => update('accessory', v)} />)}</View>
-                    </ContentContainer>
+                    <View style={styles.tabContent}>
+                        <Text style={[styles.sectionTitle, { color: colors.primary }]}>ACCESSORIES</Text>
+                        <View style={styles.optionGrid}>
+                            {ACCESSORIES.map(v => (
+                                <TextBtn key={v} value={v} selected={config.accessory === v} onPress={() => update('accessory', v)} />
+                            ))}
+                        </View>
+                    </View>
                 );
-            default:
+                
+            default: 
                 return null;
         }
     };
@@ -198,9 +280,9 @@ const CustomAvatarBuilder = ({ initialConfig, onSave, onCancel, theme }) => {
         <View style={styles.container}>
             {/* Preview Header */}
             <View style={styles.previewSection}>
-                <CustomBuiltAvatar config={config} size={100} />
-                <TouchableOpacity
-                    onPress={randomize}
+                <CustomBuiltAvatar config={config} size={80} />
+                <TouchableOpacity 
+                    onPress={randomize} 
                     style={[styles.randomBtn, { backgroundColor: colors.primary }]}
                 >
                     <Text style={styles.randomText}>🎲</Text>
@@ -214,12 +296,12 @@ const CustomAvatarBuilder = ({ initialConfig, onSave, onCancel, theme }) => {
                         key={tab.id}
                         onPress={() => { playHaptic('light'); setActiveTab(tab.id); }}
                         style={[
-                            styles.tabItem,
+                            styles.tabItem, 
                             activeTab === tab.id && { borderBottomColor: colors.primary, borderBottomWidth: 3 }
                         ]}
                     >
                         <Text style={[
-                            styles.tabText,
+                            styles.tabText, 
                             { color: activeTab === tab.id ? colors.primary : colors.textMuted }
                         ]}>
                             {tab.label}
@@ -235,14 +317,14 @@ const CustomAvatarBuilder = ({ initialConfig, onSave, onCancel, theme }) => {
 
             {/* Action Buttons */}
             <View style={styles.actionRow}>
-                <TouchableOpacity
-                    onPress={onCancel}
+                <TouchableOpacity 
+                    onPress={onCancel} 
                     style={[styles.cancelBtn, { borderColor: colors.primary }]}
                 >
                     <Text style={[styles.actionBtnText, { color: colors.textMuted }]}>CANCEL</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                    onPress={() => { playHaptic('success'); onSave(config); }}
+                <TouchableOpacity 
+                    onPress={() => { playHaptic('success'); onSave(config); }} 
                     style={[styles.saveBtn, { backgroundColor: colors.primary }]}
                 >
                     <Text style={[styles.actionBtnText, { color: colors.secondary }]}>SAVE</Text>
@@ -253,127 +335,139 @@ const CustomAvatarBuilder = ({ initialConfig, onSave, onCancel, theme }) => {
 };
 
 const styles = StyleSheet.create({
-    container: {
+    container: { 
         flex: 1,
-        paddingHorizontal: 20,
     },
-
+    
     // Preview Section
-    previewSection: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 16,
+    previewSection: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        paddingVertical: 12,
         gap: 20,
     },
-    randomBtn: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        alignItems: 'center',
+    randomBtn: { 
+        width: 44, 
+        height: 44, 
+        borderRadius: 22, 
+        alignItems: 'center', 
         justifyContent: 'center',
     },
-    randomText: {
+    randomText: { 
         fontSize: 22,
     },
-
+    
     // Tab Bar
-    tabBar: {
-        flexDirection: 'row',
-        borderBottomWidth: 1,
-        marginBottom: 16,
+    tabBar: { 
+        flexDirection: 'row', 
+        borderBottomWidth: 1, 
+        marginBottom: 12,
+        paddingHorizontal: 4,
     },
-    tabItem: {
-        flex: 1,
-        paddingVertical: 12,
+    tabItem: { 
+        flex: 1, 
+        paddingVertical: 10, 
         alignItems: 'center',
+        minWidth: 50,
     },
-    tabText: {
-        fontSize: 10,
-        fontFamily: 'Panchang-Bold',
-        letterSpacing: 1,
+    tabText: { 
+        fontSize: 10, 
+        fontFamily: 'Panchang-Bold', 
+        letterSpacing: 0.5,
         textAlign: 'center',
     },
-
+    
     // Content Area
-    contentArea: {
+    contentArea: { 
         flex: 1,
-        justifyContent: 'flex-start', // Align to top
     },
-    tabContentContainer: {
-        width: '100%',
+    tabContent: {
+        flex: 1,
     },
-    sectionTitle: {
-        fontSize: 12,
-        fontFamily: 'Panchang-Bold',
-        letterSpacing: 2,
-        marginBottom: 12,
+    sectionTitle: { 
+        fontSize: 11, 
+        fontFamily: 'Panchang-Bold', 
+        letterSpacing: 2, 
+        marginBottom: 8, 
         marginTop: 4,
     },
-    sectionTitleSmall: {
-        fontSize: 11,
-        fontFamily: 'Panchang-Bold',
-        letterSpacing: 1,
-        marginBottom: 8,
-        marginTop: 8,
+    sectionTitleSmall: { 
+        fontSize: 10, 
+        fontFamily: 'Panchang-Bold', 
+        letterSpacing: 1, 
+        marginBottom: 6,
     },
-
-    // Option Row
-    optionRow: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
+    
+    // Option Grid
+    optionGrid: { 
+        flexDirection: 'row', 
+        flexWrap: 'wrap', 
         gap: 8,
         marginBottom: 12,
     },
-    pillBtn: {
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 16,
-        borderWidth: 1,
+    textBtn: { 
+        paddingHorizontal: 12, 
+        paddingVertical: 8, 
+        borderRadius: 8, 
+        borderWidth: 2,
     },
-    pillBtnText: {
-        fontSize: 10,
-        fontFamily: 'Teko-Bold',
+    textBtnLabel: { 
+        fontSize: 11, 
+        fontFamily: 'Teko-Medium', 
         letterSpacing: 1,
     },
-
-    // Color Row
-    colorRow: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 12,
-        marginBottom: 12,
-    },
-    colorBtn: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        borderWidth: 0,
-    },
-
-    // Action Buttons
-    actionRow: {
+    
+    // Color Section - side by side layout
+    colorSection: {
         flexDirection: 'row',
         gap: 16,
-        paddingBottom: Platform.OS === 'ios' ? 30 : 20,
-        paddingTop: 10,
     },
-    cancelBtn: {
+    colorGroup: {
         flex: 1,
-        paddingVertical: 14,
-        borderRadius: 25,
-        borderWidth: 1,
+    },
+    colorRowCompact: { 
+        flexDirection: 'row', 
+        flexWrap: 'wrap', 
+        gap: 8,
+    },
+    
+    // Color Row
+    colorRow: { 
+        flexDirection: 'row', 
+        flexWrap: 'wrap', 
+        gap: 10, 
+        marginBottom: 12,
+    },
+    colorBtn: { 
+        width: 32, 
+        height: 32, 
+        borderRadius: 16,
+        borderWidth: 0,
+    },
+    
+    // Action Buttons
+    actionRow: { 
+        flexDirection: 'row', 
+        gap: 12, 
+        paddingTop: 12,
+    },
+    cancelBtn: { 
+        flex: 1, 
+        paddingVertical: 14, 
+        borderRadius: 12, 
+        borderWidth: 2, 
         alignItems: 'center',
     },
-    saveBtn: {
-        flex: 1,
-        paddingVertical: 14,
-        borderRadius: 25,
+    saveBtn: { 
+        flex: 1, 
+        paddingVertical: 14, 
+        borderRadius: 12, 
         alignItems: 'center',
     },
-    actionBtnText: {
-        fontSize: 14,
-        fontFamily: 'Panchang-Bold',
+    actionBtnText: { 
+        fontSize: 14, 
+        fontFamily: 'CabinetGrotesk-Black', 
         letterSpacing: 2,
     },
 });

@@ -7,6 +7,7 @@ import { useTheme } from '../utils/ThemeContext';
 import { getRandomWord, CATEGORY_LABELS } from '../utils/words';
 import { translateText, SUPPORTED_LANGUAGES } from '../utils/translationService';
 import LanguageSelectorModal from '../components/LanguageSelectorModal';
+import CategorySelectionModal from '../components/CategorySelectionModal';
 import { playHaptic } from '../utils/haptics';
 
 // Enable LayoutAnimation for Android
@@ -219,8 +220,8 @@ export default function SetupScreen({ navigation, route }) {
     };
 
     const toggleCategoriesOpen = () => {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setIsCategoriesOpen(!isCategoriesOpen);
+        playHaptic('light');
+        setIsCategoriesOpen(true);
     };
 
     const toggleCategory = (key) => {
@@ -481,27 +482,13 @@ export default function SetupScreen({ navigation, route }) {
                     </TouchableOpacity>
                 </View>
 
-                {/* Categories Dropdown */}
-                {isCategoriesOpen && (
-                    <View style={styles.categoryDropdown}>
-                        <View style={styles.categoryGrid}>
-                            {CATEGORY_LABELS.map((cat) => {
-                                const isSelected = selectedCategories.includes(cat.key);
-                                return (
-                                    <TouchableOpacity
-                                        key={cat.key}
-                                        style={[styles.categoryChip, isSelected && styles.categoryChipSelected]}
-                                        onPress={() => toggleCategory(cat.key)}
-                                    >
-                                        <Text style={[styles.categoryChipText, isSelected && styles.categoryChipTextSelected]}>
-                                            {cat.label.toUpperCase()}
-                                        </Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </View>
-                    </View>
-                )}
+                {/* Category Selection Modal */}
+                <CategorySelectionModal
+                    visible={isCategoriesOpen}
+                    onClose={() => setIsCategoriesOpen(false)}
+                    selectedCategories={selectedCategories}
+                    onSelectCategory={toggleCategory}
+                />
 
                 {/* Players Section - Film frame style */}
                 <View style={styles.playersFrame}>
@@ -579,355 +566,357 @@ export default function SetupScreen({ navigation, route }) {
     );
 }
 
-const getStyles = (theme) => StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    filmGrainOverlay: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'transparent',
-        opacity: 0.03,
-    },
-    scrollContent: {
-        paddingTop: Platform.OS === 'ios' ? 50 : 30,
-        paddingBottom: 30,
-        paddingHorizontal: 24,
-    },
-    // Kodak Header
-    headerFrame: {
-        alignItems: 'center',
-        marginBottom: 16,
-        paddingVertical: 12,
-        borderTopWidth: 2,
-        borderBottomWidth: 2,
-        borderColor: theme.colors.primary,
-    },
-    kodakBadge: {
-        backgroundColor: theme.colors.primary,
-        paddingHorizontal: 16,
-        paddingVertical: 4,
-        borderRadius: 4,
-        marginBottom: 4,
-    },
-    kodakText: {
-        color: theme.colors.secondary,
-        fontSize: 10,
-        fontFamily: theme.fonts.bold,
-        letterSpacing: 3,
-    },
-    title: {
-        fontSize: 48,
-        color: theme.colors.text,
-        fontFamily: theme.fonts.header,
-        letterSpacing: 8,
-        ...theme.textShadows.depth,
-    },
-    frameNumber: {
-        marginTop: 4,
-    },
-    frameNumberText: {
-        color: theme.colors.primary,
-        fontSize: 11,
-        fontFamily: theme.fonts.medium,
-        letterSpacing: 2,
-    },
-    // Compact Settings Row
-    settingsRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 12,
-        gap: 12,
-    },
-    compactSection: {
-        flex: 1,
-        backgroundColor: theme.colors.surface,
-        borderRadius: 12,
-        padding: 12,
-        borderWidth: 1,
-        borderColor: theme.colors.primary + '50',
-    },
-    compactLabel: {
-        color: theme.colors.primary,
-        fontSize: 10,
-        fontFamily: theme.fonts.bold,
-        letterSpacing: 2,
-        marginBottom: 8,
-        textAlign: 'center',
-    },
-    miniCounterRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 12,
-    },
-    miniCounterBtn: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: theme.colors.primary + '30',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: theme.colors.primary,
-    },
-    miniCounterBtnText: {
-        color: theme.colors.primary,
-        fontSize: 20,
-        fontFamily: theme.fonts.bold,
-        lineHeight: 22,
-    },
-    miniCounterValue: {
-        color: theme.colors.text,
-        fontSize: 28,
-        fontFamily: theme.fonts.header,
-        minWidth: 30,
-        textAlign: 'center',
-    },
-    toggleBtn: {
-        backgroundColor: theme.colors.surface,
-        borderRadius: 20,
-        paddingVertical: 10,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: theme.colors.textMuted,
-    },
-    toggleBtnActive: {
-        backgroundColor: theme.colors.primary,
-        borderColor: theme.colors.primary,
-    },
-    toggleBtnText: {
-        color: theme.colors.textSecondary,
-        fontSize: 14,
-        fontFamily: theme.fonts.bold,
-        letterSpacing: 2,
-    },
-    toggleBtnTextActive: {
-        color: theme.colors.secondary,
-    },
-    // Options Row
-    optionsRow: {
-        flexDirection: 'row',
-        gap: 12,
-        marginBottom: 12,
-    },
-    optionBtn: {
-        flex: 1,
-        backgroundColor: theme.colors.surface,
-        borderRadius: 12,
-        padding: 12,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: theme.colors.textMuted + '40',
-    },
-    optionBtnLabel: {
-        color: theme.colors.textMuted,
-        fontSize: 9,
-        fontFamily: theme.fonts.medium,
-        letterSpacing: 2,
-        marginBottom: 4,
-    },
-    optionBtnValue: {
-        color: theme.colors.text,
-        fontSize: 18,
-        fontFamily: theme.fonts.bold,
-        letterSpacing: 1,
-    },
-    // Category Dropdown
-    categoryDropdown: {
-        backgroundColor: theme.colors.surface,
-        borderRadius: 12,
-        padding: 12,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: theme.colors.primary + '40',
-    },
-    categoryGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    categoryChip: {
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderRadius: 16,
-        backgroundColor: theme.colors.background,
-        borderWidth: 1,
-        borderColor: theme.colors.textMuted + '50',
-    },
-    categoryChipSelected: {
-        backgroundColor: theme.colors.primary,
-        borderColor: theme.colors.primary,
-    },
-    categoryChipText: {
-        color: theme.colors.textSecondary,
-        fontSize: 11,
-        fontFamily: theme.fonts.medium,
-        letterSpacing: 1,
-    },
-    categoryChipTextSelected: {
-        color: theme.colors.secondary,
-    },
-    // Players Frame
-    playersFrame: {
-        backgroundColor: theme.colors.surface,
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 20,
-        borderWidth: 2,
-        borderColor: theme.colors.primary + '50',
-    },
-    frameHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-        paddingBottom: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.primary + '30',
-    },
-    frameHeaderText: {
-        color: theme.colors.primary,
-        fontSize: 14,
-        fontFamily: theme.fonts.bold,
-        letterSpacing: 4,
-    },
-    addPlayerBtn: {
-        backgroundColor: theme.colors.primary + '30',
-        paddingHorizontal: 14,
-        paddingVertical: 6,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: theme.colors.primary,
-    },
-    addPlayerBtnText: {
-        color: theme.colors.primary,
-        fontSize: 12,
-        fontFamily: theme.fonts.bold,
-        letterSpacing: 1,
-    },
-    playersList: {
-        gap: 8,
-    },
-    playerRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    playerNumber: {
-        width: 28,
-        height: 28,
-        borderRadius: 6,
-        backgroundColor: theme.colors.primary + '25',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    playerNumberText: {
-        color: theme.colors.primary,
-        fontSize: 11,
-        fontFamily: theme.fonts.bold,
-    },
-    inputContainer: {
-        flex: 1,
-        height: 44,
-        borderRadius: 10,
-        backgroundColor: theme.colors.background,
-        borderWidth: 1,
-        borderColor: theme.colors.textMuted + '40',
-        justifyContent: 'center',
-    },
-    input: {
-        color: theme.colors.text,
-        paddingHorizontal: 14,
-        fontSize: 15,
-        fontFamily: theme.fonts.medium,
-        letterSpacing: 1,
-    },
-    removeBtn: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: theme.colors.error + '30',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: theme.colors.error + '80',
-    },
-    removeBtnText: {
-        color: theme.colors.error,
-        fontSize: 20,
-        fontFamily: theme.fonts.bold,
-        lineHeight: 22,
-    },
-    // Start Button - Kodak style (simple, no shadow)
-    startButton: {
-        backgroundColor: theme.colors.primary,
-        borderRadius: 30,
-        overflow: 'hidden',
-    },
-    startButtonDisabled: {
-        opacity: 0.6,
-    },
-    startButtonInner: {
-        paddingVertical: 18,
-        alignItems: 'center',
-    },
-    startButtonText: {
-        color: theme.colors.secondary,
-        fontSize: 28,
-        fontFamily: theme.fonts.header,
-        letterSpacing: 6,
-    },
-    bottomSpacer: {
-        height: 20,
-    },
-    // Warning Modal
-    warningOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.9)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 24,
-    },
-    warningContent: {
-        backgroundColor: theme.colors.surface,
-        borderRadius: 20,
-        padding: 24,
-        width: '100%',
-        maxWidth: 320,
-        alignItems: 'center',
-        borderWidth: 2,
-        borderColor: theme.colors.primary,
-    },
-    warningIcon: {
-        fontSize: 48,
-        marginBottom: 12,
-    },
-    warningTitle: {
-        fontSize: 18,
-        color: theme.colors.primary,
-        fontFamily: theme.fonts.bold,
-        letterSpacing: 2,
-        marginBottom: 12,
-        textAlign: 'center',
-    },
-    warningMessage: {
-        fontSize: 14,
-        color: theme.colors.textSecondary,
-        fontFamily: theme.fonts.medium,
-        textAlign: 'center',
-        marginBottom: 20,
-        lineHeight: 20,
-    },
-    warningButton: {
-        backgroundColor: theme.colors.primary,
-        paddingVertical: 12,
-        paddingHorizontal: 32,
-        borderRadius: 20,
-    },
-    warningButtonText: {
-        color: theme.colors.secondary,
-        fontSize: 14,
-        fontFamily: theme.fonts.bold,
-        letterSpacing: 2,
-    },
-});
+function getStyles(theme) {
+    return StyleSheet.create({
+        container: {
+            flex: 1,
+        },
+        filmGrainOverlay: {
+            ...StyleSheet.absoluteFillObject,
+            backgroundColor: 'transparent',
+            opacity: 0.03,
+        },
+        scrollContent: {
+            paddingTop: Platform.OS === 'ios' ? 50 : 30,
+            paddingBottom: 30,
+            paddingHorizontal: 24,
+        },
+        // Kodak Header
+        headerFrame: {
+            alignItems: 'center',
+            marginBottom: 16,
+            paddingVertical: 12,
+            borderTopWidth: 2,
+            borderBottomWidth: 2,
+            borderColor: theme.colors.primary,
+        },
+        kodakBadge: {
+            backgroundColor: theme.colors.primary,
+            paddingHorizontal: 16,
+            paddingVertical: 4,
+            borderRadius: 4,
+            marginBottom: 4,
+        },
+        kodakText: {
+            color: theme.colors.secondary,
+            fontSize: 10,
+            fontFamily: theme.fonts.bold,
+            letterSpacing: 3,
+        },
+        title: {
+            fontSize: 48,
+            color: theme.colors.text,
+            fontFamily: theme.fonts.header,
+            letterSpacing: 8,
+            ...theme.textShadows.depth,
+        },
+        frameNumber: {
+            marginTop: 4,
+        },
+        frameNumberText: {
+            color: theme.colors.primary,
+            fontSize: 11,
+            fontFamily: theme.fonts.medium,
+            letterSpacing: 2,
+        },
+        // Compact Settings Row
+        settingsRow: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            marginBottom: 12,
+            gap: 12,
+        },
+        compactSection: {
+            flex: 1,
+            backgroundColor: theme.colors.surface,
+            borderRadius: 12,
+            padding: 12,
+            borderWidth: 1,
+            borderColor: theme.colors.primary + '50',
+        },
+        compactLabel: {
+            color: theme.colors.primary,
+            fontSize: 10,
+            fontFamily: theme.fonts.bold,
+            letterSpacing: 2,
+            marginBottom: 8,
+            textAlign: 'center',
+        },
+        miniCounterRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 12,
+        },
+        miniCounterBtn: {
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: theme.colors.primary + '30',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 1,
+            borderColor: theme.colors.primary,
+        },
+        miniCounterBtnText: {
+            color: theme.colors.primary,
+            fontSize: 20,
+            fontFamily: theme.fonts.bold,
+            lineHeight: 22,
+        },
+        miniCounterValue: {
+            color: theme.colors.text,
+            fontSize: 28,
+            fontFamily: theme.fonts.header,
+            minWidth: 30,
+            textAlign: 'center',
+        },
+        toggleBtn: {
+            backgroundColor: theme.colors.surface,
+            borderRadius: 20,
+            paddingVertical: 10,
+            alignItems: 'center',
+            borderWidth: 1,
+            borderColor: theme.colors.textMuted,
+        },
+        toggleBtnActive: {
+            backgroundColor: theme.colors.primary,
+            borderColor: theme.colors.primary,
+        },
+        toggleBtnText: {
+            color: theme.colors.textSecondary,
+            fontSize: 14,
+            fontFamily: theme.fonts.bold,
+            letterSpacing: 2,
+        },
+        toggleBtnTextActive: {
+            color: theme.colors.secondary,
+        },
+        // Options Row
+        optionsRow: {
+            flexDirection: 'row',
+            gap: 12,
+            marginBottom: 12,
+        },
+        optionBtn: {
+            flex: 1,
+            backgroundColor: theme.colors.surface,
+            borderRadius: 12,
+            padding: 12,
+            alignItems: 'center',
+            borderWidth: 1,
+            borderColor: theme.colors.textMuted + '40',
+        },
+        optionBtnLabel: {
+            color: theme.colors.textMuted,
+            fontSize: 9,
+            fontFamily: theme.fonts.medium,
+            letterSpacing: 2,
+            marginBottom: 4,
+        },
+        optionBtnValue: {
+            color: theme.colors.text,
+            fontSize: 18,
+            fontFamily: theme.fonts.bold,
+            letterSpacing: 1,
+        },
+        // Category Dropdown
+        categoryDropdown: {
+            backgroundColor: theme.colors.surface,
+            borderRadius: 12,
+            padding: 12,
+            marginBottom: 12,
+            borderWidth: 1,
+            borderColor: theme.colors.primary + '40',
+        },
+        categoryGrid: {
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: 8,
+        },
+        categoryChip: {
+            paddingHorizontal: 14,
+            paddingVertical: 8,
+            borderRadius: 16,
+            backgroundColor: theme.colors.background,
+            borderWidth: 1,
+            borderColor: theme.colors.textMuted + '50',
+        },
+        categoryChipSelected: {
+            backgroundColor: theme.colors.primary,
+            borderColor: theme.colors.primary,
+        },
+        categoryChipText: {
+            color: theme.colors.textSecondary,
+            fontSize: 11,
+            fontFamily: theme.fonts.medium,
+            letterSpacing: 1,
+        },
+        categoryChipTextSelected: {
+            color: theme.colors.secondary,
+        },
+        // Players Frame
+        playersFrame: {
+            backgroundColor: theme.colors.surface,
+            borderRadius: 16,
+            padding: 16,
+            marginBottom: 20,
+            borderWidth: 2,
+            borderColor: theme.colors.primary + '50',
+        },
+        frameHeader: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 12,
+            paddingBottom: 10,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.primary + '30',
+        },
+        frameHeaderText: {
+            color: theme.colors.primary,
+            fontSize: 14,
+            fontFamily: theme.fonts.bold,
+            letterSpacing: 4,
+        },
+        addPlayerBtn: {
+            backgroundColor: theme.colors.primary + '30',
+            paddingHorizontal: 14,
+            paddingVertical: 6,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: theme.colors.primary,
+        },
+        addPlayerBtnText: {
+            color: theme.colors.primary,
+            fontSize: 12,
+            fontFamily: theme.fonts.bold,
+            letterSpacing: 1,
+        },
+        playersList: {
+            gap: 8,
+        },
+        playerRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+        },
+        playerNumber: {
+            width: 28,
+            height: 28,
+            borderRadius: 6,
+            backgroundColor: theme.colors.primary + '25',
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        playerNumberText: {
+            color: theme.colors.primary,
+            fontSize: 11,
+            fontFamily: theme.fonts.bold,
+        },
+        inputContainer: {
+            flex: 1,
+            height: 44,
+            borderRadius: 10,
+            backgroundColor: theme.colors.background,
+            borderWidth: 1,
+            borderColor: theme.colors.textMuted + '40',
+            justifyContent: 'center',
+        },
+        input: {
+            color: theme.colors.text,
+            paddingHorizontal: 14,
+            fontSize: 15,
+            fontFamily: theme.fonts.medium,
+            letterSpacing: 1,
+        },
+        removeBtn: {
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            backgroundColor: theme.colors.error + '30',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 1,
+            borderColor: theme.colors.error + '80',
+        },
+        removeBtnText: {
+            color: theme.colors.error,
+            fontSize: 20,
+            fontFamily: theme.fonts.bold,
+            lineHeight: 22,
+        },
+        // Start Button - Kodak style (simple, no shadow)
+        startButton: {
+            backgroundColor: theme.colors.primary,
+            borderRadius: 30,
+            overflow: 'hidden',
+        },
+        startButtonDisabled: {
+            opacity: 0.6,
+        },
+        startButtonInner: {
+            paddingVertical: 18,
+            alignItems: 'center',
+        },
+        startButtonText: {
+            color: theme.colors.secondary,
+            fontSize: 28,
+            fontFamily: theme.fonts.header,
+            letterSpacing: 6,
+        },
+        bottomSpacer: {
+            height: 20,
+        },
+        // Warning Modal
+        warningOverlay: {
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 24,
+        },
+        warningContent: {
+            backgroundColor: theme.colors.surface,
+            borderRadius: 20,
+            padding: 24,
+            width: '100%',
+            maxWidth: 320,
+            alignItems: 'center',
+            borderWidth: 2,
+            borderColor: theme.colors.primary,
+        },
+        warningIcon: {
+            fontSize: 48,
+            marginBottom: 12,
+        },
+        warningTitle: {
+            fontSize: 18,
+            color: theme.colors.primary,
+            fontFamily: theme.fonts.bold,
+            letterSpacing: 2,
+            marginBottom: 12,
+            textAlign: 'center',
+        },
+        warningMessage: {
+            fontSize: 14,
+            color: theme.colors.textSecondary,
+            fontFamily: theme.fonts.medium,
+            textAlign: 'center',
+            marginBottom: 20,
+            lineHeight: 20,
+        },
+        warningButton: {
+            backgroundColor: theme.colors.primary,
+            paddingVertical: 12,
+            paddingHorizontal: 32,
+            borderRadius: 20,
+        },
+        warningButtonText: {
+            color: theme.colors.secondary,
+            fontSize: 14,
+            fontFamily: theme.fonts.bold,
+            letterSpacing: 2,
+        },
+    });
+}

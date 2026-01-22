@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView, Image, Alert, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView, Image, Alert, BackHandler, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../utils/ThemeContext';
 import RoleCard from '../components/RoleCard';
@@ -459,167 +459,170 @@ export default function RoleRevealScreen({ route, navigation }) {
     );
 }
 
-const getStyles = (theme) => StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: theme.colors.background,
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: theme.spacing.m,
-    },
+function getStyles(theme) {
+    return StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: theme.colors.background,
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: theme.spacing.m,
+        },
 
-    // Kodak Film Strip Decorations
-    filmHeader: {
-        width: '100%',
-        position: 'absolute',
-        top: 45,
-        left: 0,
-        right: 0,
-    },
-    filmFooter: {
-        width: '100%',
-        position: 'absolute',
-        bottom: 10,
-        left: 0,
-        right: 0,
-    },
-    filmStrip: {
-        flexDirection: 'row',
-        justifyContent: 'space-evenly',
-        paddingHorizontal: 5,
-    },
-    filmHole: {
-        width: 12,
-        height: 8,
-        backgroundColor: theme.colors.primary,
-        borderRadius: 2,
-        opacity: 0.8,
-    },
+        // Kodak Film Strip Decorations
+        filmHeader: {
+            width: '100%',
+            position: 'absolute',
+            top: 45,
+            left: 0,
+            right: 0,
+        },
+        filmFooter: {
+            width: '100%',
+            position: 'absolute',
+            bottom: 10,
+            left: 0,
+            right: 0,
+        },
+        filmStrip: {
+            flexDirection: 'row',
+            justifyContent: 'space-evenly',
+            paddingHorizontal: 5,
+        },
+        filmHole: {
+            width: 12,
+            height: 8,
+            backgroundColor: theme.colors.primary,
+            borderRadius: 2,
+            opacity: 0.8,
+        },
 
-    header: {
-        fontSize: 28,
-        color: theme.colors.tertiary,
-        marginBottom: theme.spacing.s,
-        textAlign: 'center',
-        fontFamily: theme.fonts.header,
-        letterSpacing: 2,
-        textTransform: 'uppercase',
-    },
-    kodakHeader: {
-        color: theme.colors.text,
-        ...theme.textShadows.depth,
-        letterSpacing: 4,
-    },
-    loading: {
-        color: theme.colors.text,
-        fontSize: 24,
-        fontFamily: theme.fonts.header,
-        textAlign: 'center',
-        marginTop: 20,
-    },
-    // Local Progress
-    progressContainer: {
-        alignItems: 'center',
-        marginTop: theme.spacing.l,
-        gap: theme.spacing.s,
-        width: '100%',
-    },
-    progress: {
-        color: theme.colors.textSecondary,
-        fontSize: theme.fontSize.small,
-        fontFamily: theme.fonts.medium,
-        letterSpacing: 2,
-        width: '90%',
-        textAlign: 'center',
-    },
-    progressBar: {
-        flexDirection: 'row',
-        gap: 6,
-    },
-    progressDot: {
-        width: 12,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: theme.colors.surface,
-        borderWidth: 1,
-        borderColor: theme.colors.textSecondary,
-    },
-    progressDotActive: {
-        backgroundColor: theme.colors.primary,
-        borderColor: theme.colors.primary,
-        width: 24,
-    },
-    // WiFi Status
-    statusListContainer: {
-        marginTop: 15,
-        height: 75,
-        width: '100%',
-        alignItems: 'center',
-    },
-    statusHeader: {
-        color: theme.colors.textSecondary,
-        fontSize: 10,
-        fontFamily: theme.fonts.bold,
-        letterSpacing: 1,
-        marginBottom: 8,
-    },
-    kodakStatusHeader: {
-        color: theme.colors.tertiary,
-        letterSpacing: 3,
-    },
-    statusListContent: {
-        alignItems: 'center',
-        gap: 12,
-        paddingHorizontal: 20
-    },
-    statusItem: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        borderWidth: 2,
-        borderColor: theme.colors.textMuted,
-        justifyContent: 'center',
-        alignItems: 'center',
-        position: 'relative'
-    },
-    kodakStatusItem: {
-        borderColor: theme.colors.textMuted,
-    },
-    statusItemReady: {
-        borderColor: theme.colors.success
-    },
-    kodakStatusItemReady: {
-        borderColor: theme.colors.primary,
-    },
-    statusBadge: {
-        position: 'absolute',
-        bottom: -4,
-        right: -4,
-        width: 16,
-        height: 16,
-        borderRadius: 8,
-        backgroundColor: theme.colors.textSecondary,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: theme.colors.background
-    },
-    kodakStatusBadge: {
-        backgroundColor: theme.colors.primary,
-        borderColor: theme.colors.background,
-    },
-    checkMark: {
-        color: theme.colors.background,
-        fontSize: 10,
-        fontWeight: 'bold'
-    },
-    statusCount: {
-        marginTop: 8,
-        color: theme.colors.primary,
-        fontFamily: theme.fonts.bold
-    },
-    kodakStatusCount: {
-        color: theme.colors.text,
-        letterSpacing: 2,
-    }
-});
+        header: {
+            fontSize: 28,
+            color: theme.colors.tertiary,
+            marginBottom: theme.spacing.s,
+            textAlign: 'center',
+            fontFamily: theme.fonts.header,
+            letterSpacing: 2,
+            textTransform: 'uppercase',
+        },
+        kodakHeader: {
+            color: theme.colors.text,
+            ...theme.textShadows.depth,
+            letterSpacing: 4,
+        },
+        loading: {
+            color: theme.colors.text,
+            fontSize: 24,
+            fontFamily: theme.fonts.header,
+            textAlign: 'center',
+            marginTop: 20,
+        },
+        // Local Progress
+        progressContainer: {
+            alignItems: 'center',
+            marginTop: theme.spacing.l,
+            gap: theme.spacing.s,
+            width: '100%',
+        },
+        progress: {
+            color: theme.colors.textSecondary,
+            fontSize: theme.fontSize.small,
+            fontFamily: theme.fonts.medium,
+            letterSpacing: 2,
+            width: '90%',
+            textAlign: 'center',
+        },
+        progressBar: {
+            flexDirection: 'row',
+            gap: 6,
+        },
+        progressDot: {
+            width: 12,
+            height: 6,
+            borderRadius: 3,
+            backgroundColor: theme.colors.surface,
+            borderWidth: 1,
+            borderColor: theme.colors.textSecondary,
+        },
+        progressDotActive: {
+            backgroundColor: theme.colors.primary,
+            borderColor: theme.colors.primary,
+            width: 24,
+        },
+        // WiFi Status
+        statusListContainer: {
+            marginTop: 15,
+            height: 75,
+            width: '100%',
+            alignItems: 'center',
+        },
+        statusHeader: {
+            color: theme.colors.textSecondary,
+            fontSize: 10,
+            fontFamily: theme.fonts.bold,
+            letterSpacing: 1,
+            marginBottom: 8,
+        },
+        kodakStatusHeader: {
+            color: theme.colors.tertiary,
+            letterSpacing: 3,
+        },
+        statusListContent: {
+            alignItems: 'center',
+            gap: 12,
+            paddingHorizontal: 20
+        },
+        statusItem: {
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            borderWidth: 2,
+            borderColor: theme.colors.textMuted,
+            justifyContent: 'center',
+            alignItems: 'center',
+            position: 'relative'
+        },
+        kodakStatusItem: {
+            borderColor: theme.colors.textMuted,
+        },
+        statusItemReady: {
+            borderColor: theme.colors.success
+        },
+        kodakStatusItemReady: {
+            borderColor: theme.colors.primary,
+        },
+        statusBadge: {
+            position: 'absolute',
+            bottom: -4,
+            right: -4,
+            width: 16,
+            height: 16,
+            borderRadius: 8,
+            backgroundColor: theme.colors.textSecondary,
+            justifyContent: 'center',
+            alignItems: 'center',
+            borderWidth: 1,
+            borderColor: theme.colors.background
+        },
+        kodakStatusBadge: {
+            backgroundColor: theme.colors.primary,
+            borderColor: theme.colors.background,
+        },
+        checkMark: {
+            color: theme.colors.background,
+            fontSize: 10,
+            fontWeight: 'bold'
+        },
+        statusCount: {
+            marginTop: 8,
+            color: theme.colors.primary,
+            fontFamily: theme.fonts.bold
+        },
+        kodakStatusCount: {
+            color: theme.colors.text,
+            letterSpacing: 2,
+        }
+    });
+}
+

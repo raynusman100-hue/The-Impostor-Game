@@ -8,6 +8,7 @@ import { playHaptic } from '../utils/haptics';
 const KNOB_SIZE = 60;
 
 // Theme-Specific Cover Images - Each theme can have its own set of covers
+// Theme-Specific Cover Images - Each theme can have its own set of covers
 const THEME_COVER_IMAGES = {
     // White/Light themed covers - for bright themes
     'default': [
@@ -20,6 +21,11 @@ const THEME_COVER_IMAGES = {
         require('../../assets/White/White.1.png'),
         require('../../assets/White/White.2.png'),
         require('../../assets/White/White.3.png'),
+        require('../../assets/White/white1.png'),
+        require('../../assets/White/white2.png'),
+        require('../../assets/White/white3.png'),
+        require('../../assets/White/white4.png'),
+        require('../../assets/White/white5.png'),
     ],
     'kodak-daylight': [
         require('../../assets/White/ChatGPT Image Dec 31, 2025, 11_08_31 PM.png'),
@@ -31,6 +37,11 @@ const THEME_COVER_IMAGES = {
         require('../../assets/White/White.1.png'),
         require('../../assets/White/White.2.png'),
         require('../../assets/White/White.3.png'),
+        require('../../assets/White/white1.png'),
+        require('../../assets/White/white2.png'),
+        require('../../assets/White/white3.png'),
+        require('../../assets/White/white4.png'),
+        require('../../assets/White/white5.png'),
     ],
     // Black/Dark themed covers - for dark themes
     'kodak-cinema': [
@@ -43,6 +54,11 @@ const THEME_COVER_IMAGES = {
         require('../../assets/Black/ChatGPT Image Jan 12, 2026, 05_16_37 PM.png'),
         require('../../assets/Black/ChatGPT Image Jan 12, 2026, 05_35_46 PM.png'),
         require('../../assets/Black/ChatGPT Image Jan 12, 2026, 05_38_46 PM.png'),
+        require('../../assets/Black/11.png'),
+        require('../../assets/Black/1111.png'),
+        require('../../assets/Black/67.png'),
+        require('../../assets/Black/6767.png'),
+        require('../../assets/Black/black11.png'),
     ],
     'retro-pop': [
         require('../../assets/Black/Black1.png'),
@@ -54,6 +70,11 @@ const THEME_COVER_IMAGES = {
         require('../../assets/Black/ChatGPT Image Jan 12, 2026, 05_16_37 PM.png'),
         require('../../assets/Black/ChatGPT Image Jan 12, 2026, 05_35_46 PM.png'),
         require('../../assets/Black/ChatGPT Image Jan 12, 2026, 05_38_46 PM.png'),
+        require('../../assets/Black/11.png'),
+        require('../../assets/Black/1111.png'),
+        require('../../assets/Black/67.png'),
+        require('../../assets/Black/6767.png'),
+        require('../../assets/Black/black11.png'),
     ]
 };
 
@@ -254,7 +275,7 @@ export default function RoleCard({ player, category, hintsEnabled, onNext, langu
                             top: 0,
                             left: 0,
                         }}
-                        resizeMode="cover"
+                        resizeMode="contain"
                     />
 
                     <View style={styles.coverHeader}>
@@ -331,243 +352,245 @@ export default function RoleCard({ player, category, hintsEnabled, onNext, langu
     );
 }
 
-const getStyles = (theme, CARD_WIDTH, CARD_HEIGHT, SLIDER_WIDTH) => StyleSheet.create({
-    wrapper: {
-        alignItems: 'center',
-        padding: theme.spacing.m,
-    },
-    cardContainer: {
-        width: CARD_WIDTH,
-        height: CARD_HEIGHT,
-        borderRadius: theme.borderRadius.xl,
-        backgroundColor: theme.colors.background,
-        overflow: 'hidden',
-        position: 'relative',
-        borderWidth: 1,
-        borderColor: theme.colors.textSecondary,
-    },
-    cardFrontLayer: {
-        ...StyleSheet.absoluteFillObject,
-        alignItems: 'center',
-        zIndex: 10,
-        overflow: 'hidden',
-        borderRadius: theme.borderRadius.xl,
-        backgroundColor: theme.colors.background, // Fallback
-    },
-    coverHeader: {
-        marginTop: theme.spacing.l,
-        marginBottom: theme.spacing.m,
-        alignItems: 'center',
-    },
-    playerName: {
-        fontSize: CARD_WIDTH * 0.095,
-        color: theme.colors.tertiary, // Use silver tertiary
-        fontFamily: theme.fonts.header,
-        letterSpacing: 2,
-        textTransform: 'uppercase',
-        paddingHorizontal: theme.spacing.m,
-    },
-    // Avatar placeholder - central space for future avatars
-    // Instruction text when not peeked
-    instructionContainer: {
-        position: 'absolute',
-        bottom: 110,
-        alignItems: 'center',
-        width: '100%',
-    },
-    tapText: {
-        color: '#FFFFFF',
-        fontSize: CARD_WIDTH * 0.065, // Scaled (roughly 26-29px)
-        fontFamily: theme.fonts.header,
-        letterSpacing: 2,
-        textAlign: 'center',
-        width: '100%',
-    },
-    subText: {
-        color: 'rgba(255, 255, 255, 0.7)',
-        fontSize: 24,
-        marginTop: theme.spacing.xs,
-        textAlign: 'center',
-    },
-    // Next Player Button - Redesigned
-    nextButtonContainer: {
-        position: 'absolute',
-        bottom: 100,
-        width: '100%',
-        alignItems: 'center',
-        paddingHorizontal: theme.spacing.xl,
-    },
-    nextBtnOuter: {
-        width: '80%',
-        maxWidth: 300,
-        paddingVertical: theme.spacing.m,
-        paddingHorizontal: theme.spacing.l,
-        backgroundColor: theme.colors.primary, // Use silver primary
-        borderRadius: theme.borderRadius.pill,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    kodakNextBtnOuter: {
-        backgroundColor: '#E5A500',
-        borderWidth: 2,
-        borderColor: '#FFD54F',
-        shadowColor: '#FFB800',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.6,
-        shadowRadius: 12,
-        elevation: 10,
-    },
-    nextBtnText: {
-        fontSize: CARD_WIDTH * 0.058,
-        color: theme.colors.background, // Use black background for contrast
-        fontWeight: '900',
-        fontFamily: theme.fonts.header,
-        letterSpacing: 2.5,
-        textTransform: 'uppercase',
-    },
-    kodakNextBtnText: {
-        color: '#0a0a0a',
-    },
-    // Back Layer
-    cardBackLayer: {
-        flex: 1,
-        backgroundColor: theme.colors.surface,
-        alignItems: 'center',
-        justifyContent: 'flex-start',
-        padding: theme.spacing.xl,
-    },
-    roleTitle: {
-        fontSize: 48,
-        fontFamily: theme.fonts.header,
-        letterSpacing: 4,
-        marginTop: theme.spacing.xl,
-        textAlign: 'center',
-        marginBottom: theme.spacing.xl,
-    },
-    infoContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        flex: 1,
-        width: '100%',
-    },
-    label: {
-        color: theme.colors.textSecondary,
-        fontSize: theme.fontSize.medium,
-        fontFamily: theme.fonts.medium,
-        letterSpacing: 2,
-        marginBottom: theme.spacing.s,
-    },
-    secretWord: {
-        color: theme.colors.text,
-        fontSize: 56, // Slightly reduced base size
-        fontFamily: theme.fonts.header,
-        textAlign: 'center',
-        letterSpacing: 2,
-        marginBottom: theme.spacing.m,
-        paddingHorizontal: 20, // Prevent edge touching
-    },
-    imposterContainer: {
-        alignItems: 'center',
-    },
-    imposterLabel: {
-        fontSize: 32,
-        fontFamily: theme.fonts.header,
-        letterSpacing: 2,
-        marginBottom: theme.spacing.l,
-        textAlign: 'center',
-    },
-    hintText: {
-        color: theme.colors.textMuted,
-        fontSize: theme.fontSize.medium,
-        fontFamily: theme.fonts.medium,
-        fontStyle: 'italic',
-        textAlign: 'center',
-    },
-    // Slider Styles
-    sliderContainer: {
-        position: 'absolute',
-        bottom: 20,
-        left: (CARD_WIDTH - SLIDER_WIDTH) / 2, // Centered
-        width: SLIDER_WIDTH,
-        height: 70,
-        borderRadius: 35,
-        backgroundColor: theme.colors.surface,
-        justifyContent: 'center',
-        padding: 5,
-        borderWidth: 1,
-        borderColor: theme.colors.textSecondary,
-        zIndex: 20, // Above Front Layer
-    },
-    kodakSliderContainer: {
-        backgroundColor: 'rgba(26, 26, 26, 0.95)',
-        borderWidth: 2,
-        borderColor: '#D4A000',
-    },
-    sliderTrack: {
-        ...StyleSheet.absoluteFillObject,
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1,
-    },
-    sliderText: {
-        color: theme.colors.textMuted,
-        fontFamily: theme.fonts.medium,
-        letterSpacing: 3,
-        paddingLeft: 40,
-    },
-    kodakSliderText: {
-        color: '#D4A000',
-        letterSpacing: 4,
-    },
-    sliderKnob: {
-        width: KNOB_SIZE,
-        height: KNOB_SIZE,
-        borderRadius: KNOB_SIZE / 2,
-        backgroundColor: theme.colors.primary,
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 2,
-        position: 'absolute',
-        top: 4,
-        left: 4,
-    },
-    kodakSliderKnob: {
-        backgroundColor: '#E5A500',
-        borderWidth: 2,
-        borderColor: '#FFD54F',
-        shadowColor: '#FFB800',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.6,
-        shadowRadius: 8,
-        elevation: 8,
-    },
-    knobIcon: {
-        color: theme.colors.text,
-        fontSize: 24,
-        fontWeight: 'bold',
-    },
-    kodakKnobIcon: {
-        color: '#0a0a0a',
-    },
-    globeIconContainer: {
-        position: 'absolute',
-        top: 20,
-        right: 20,
-        backgroundColor: theme.colors.surface,
-        padding: 8,
-        borderRadius: 20, // Circle
-        borderWidth: 1,
-        borderColor: theme.colors.primary,
-        elevation: 3,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 3,
-        zIndex: 10,
-    },
-    globeIcon: {
-        fontSize: 32, // Larger
-        textAlign: 'center',
-        color: theme.colors.primary, // Brown color
-    },
-});
+function getStyles(theme, CARD_WIDTH, CARD_HEIGHT, SLIDER_WIDTH) {
+    return StyleSheet.create({
+        wrapper: {
+            alignItems: 'center',
+            padding: theme.spacing.m,
+        },
+        cardContainer: {
+            width: CARD_WIDTH,
+            height: CARD_HEIGHT,
+            borderRadius: theme.borderRadius.xl,
+            backgroundColor: theme.colors.background,
+            overflow: 'hidden',
+            position: 'relative',
+            borderWidth: 1,
+            borderColor: theme.colors.textSecondary,
+        },
+        cardFrontLayer: {
+            ...StyleSheet.absoluteFillObject,
+            alignItems: 'center',
+            zIndex: 10,
+            overflow: 'hidden',
+            borderRadius: theme.borderRadius.xl,
+            backgroundColor: theme.colors.background, // Fallback
+        },
+        coverHeader: {
+            marginTop: theme.spacing.l,
+            marginBottom: theme.spacing.m,
+            alignItems: 'center',
+        },
+        playerName: {
+            fontSize: CARD_WIDTH * 0.095,
+            color: theme.colors.tertiary, // Use silver tertiary
+            fontFamily: theme.fonts.header,
+            letterSpacing: 2,
+            textTransform: 'uppercase',
+            paddingHorizontal: theme.spacing.m,
+        },
+        // Avatar placeholder - central space for future avatars
+        // Instruction text when not peeked
+        instructionContainer: {
+            position: 'absolute',
+            bottom: 110,
+            alignItems: 'center',
+            width: '100%',
+        },
+        tapText: {
+            color: '#FFFFFF',
+            fontSize: CARD_WIDTH * 0.065, // Scaled (roughly 26-29px)
+            fontFamily: theme.fonts.header,
+            letterSpacing: 2,
+            textAlign: 'center',
+            width: '100%',
+        },
+        subText: {
+            color: 'rgba(255, 255, 255, 0.7)',
+            fontSize: 24,
+            marginTop: theme.spacing.xs,
+            textAlign: 'center',
+        },
+        // Next Player Button - Redesigned
+        nextButtonContainer: {
+            position: 'absolute',
+            bottom: 100,
+            width: '100%',
+            alignItems: 'center',
+            paddingHorizontal: theme.spacing.xl,
+        },
+        nextBtnOuter: {
+            width: '80%',
+            maxWidth: 300,
+            paddingVertical: theme.spacing.m,
+            paddingHorizontal: theme.spacing.l,
+            backgroundColor: theme.colors.primary, // Use silver primary
+            borderRadius: theme.borderRadius.pill,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        kodakNextBtnOuter: {
+            backgroundColor: '#E5A500',
+            borderWidth: 2,
+            borderColor: '#FFD54F',
+            shadowColor: '#FFB800',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.6,
+            shadowRadius: 12,
+            elevation: 10,
+        },
+        nextBtnText: {
+            fontSize: CARD_WIDTH * 0.058,
+            color: theme.colors.background, // Use black background for contrast
+            fontWeight: '900',
+            fontFamily: theme.fonts.header,
+            letterSpacing: 2.5,
+            textTransform: 'uppercase',
+        },
+        kodakNextBtnText: {
+            color: '#0a0a0a',
+        },
+        // Back Layer
+        cardBackLayer: {
+            flex: 1,
+            backgroundColor: theme.colors.surface,
+            alignItems: 'center',
+            justifyContent: 'flex-start',
+            padding: theme.spacing.xl,
+        },
+        roleTitle: {
+            fontSize: 48,
+            fontFamily: theme.fonts.header,
+            letterSpacing: 4,
+            marginTop: theme.spacing.xl,
+            textAlign: 'center',
+            marginBottom: theme.spacing.xl,
+        },
+        infoContainer: {
+            alignItems: 'center',
+            justifyContent: 'center',
+            flex: 1,
+            width: '100%',
+        },
+        label: {
+            color: theme.colors.textSecondary,
+            fontSize: theme.fontSize.medium,
+            fontFamily: theme.fonts.medium,
+            letterSpacing: 2,
+            marginBottom: theme.spacing.s,
+        },
+        secretWord: {
+            color: theme.colors.text,
+            fontSize: 56, // Slightly reduced base size
+            fontFamily: theme.fonts.header,
+            textAlign: 'center',
+            letterSpacing: 2,
+            marginBottom: theme.spacing.m,
+            paddingHorizontal: 20, // Prevent edge touching
+        },
+        imposterContainer: {
+            alignItems: 'center',
+        },
+        imposterLabel: {
+            fontSize: 32,
+            fontFamily: theme.fonts.header,
+            letterSpacing: 2,
+            marginBottom: theme.spacing.l,
+            textAlign: 'center',
+        },
+        hintText: {
+            color: theme.colors.textMuted,
+            fontSize: theme.fontSize.medium,
+            fontFamily: theme.fonts.medium,
+            fontStyle: 'italic',
+            textAlign: 'center',
+        },
+        // Slider Styles
+        sliderContainer: {
+            position: 'absolute',
+            bottom: 20,
+            left: (CARD_WIDTH - SLIDER_WIDTH) / 2, // Centered
+            width: SLIDER_WIDTH,
+            height: 70,
+            borderRadius: 35,
+            backgroundColor: theme.colors.surface,
+            justifyContent: 'center',
+            padding: 5,
+            borderWidth: 1,
+            borderColor: theme.colors.textSecondary,
+            zIndex: 20, // Above Front Layer
+        },
+        kodakSliderContainer: {
+            backgroundColor: 'rgba(26, 26, 26, 0.95)',
+            borderWidth: 2,
+            borderColor: '#D4A000',
+        },
+        sliderTrack: {
+            ...StyleSheet.absoluteFillObject,
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1,
+        },
+        sliderText: {
+            color: theme.colors.textMuted,
+            fontFamily: theme.fonts.medium,
+            letterSpacing: 3,
+            paddingLeft: 40,
+        },
+        kodakSliderText: {
+            color: '#D4A000',
+            letterSpacing: 4,
+        },
+        sliderKnob: {
+            width: KNOB_SIZE,
+            height: KNOB_SIZE,
+            borderRadius: KNOB_SIZE / 2,
+            backgroundColor: theme.colors.primary,
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2,
+            position: 'absolute',
+            top: 4,
+            left: 4,
+        },
+        kodakSliderKnob: {
+            backgroundColor: '#E5A500',
+            borderWidth: 2,
+            borderColor: '#FFD54F',
+            shadowColor: '#FFB800',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.6,
+            shadowRadius: 8,
+            elevation: 8,
+        },
+        knobIcon: {
+            color: theme.colors.text,
+            fontSize: 24,
+            fontWeight: 'bold',
+        },
+        kodakKnobIcon: {
+            color: '#0a0a0a',
+        },
+        globeIconContainer: {
+            position: 'absolute',
+            top: 20,
+            right: 20,
+            backgroundColor: theme.colors.surface,
+            padding: 8,
+            borderRadius: 20, // Circle
+            borderWidth: 1,
+            borderColor: theme.colors.primary,
+            elevation: 3,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.2,
+            shadowRadius: 3,
+            zIndex: 10,
+        },
+        globeIcon: {
+            fontSize: 32, // Larger
+            textAlign: 'center',
+            color: theme.colors.primary, // Brown color
+        },
+    });
+}

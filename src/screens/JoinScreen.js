@@ -10,8 +10,6 @@ import { database } from '../utils/firebase';
 import { ref, get, set, push, onDisconnect } from 'firebase/database';
 import { CustomAvatar } from '../utils/AvatarGenerator';
 import { CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
-import VoiceControl from '../components/VoiceControl';
-import { useVoiceChat } from '../utils/VoiceChatContext';
 
 export default function JoinScreen({ navigation, route }) {
     const { theme } = useTheme();
@@ -92,12 +90,15 @@ export default function JoinScreen({ navigation, route }) {
                     useCustomAvatar: !!playerData.customAvatarConfig
                 });
 
-                // Navigate to lobby
+                // Navigate to lobby with STAMPED App ID
+                const stampedAppId = roomData.agoraAppId || null;
+                console.log("🔄 JOIN: Found stamped App ID:", stampedAppId);
+
                 navigation.navigate('WifiLobby', {
                     roomCode: targetCode,
                     playerId: pId,
                     playerName: playerData.name,
-                    avatarConfig: playerData.customAvatarConfig // Pass locally for immediate render if needed
+                    stampedAppId: stampedAppId // <--- PASSING STAMP TO LOBBY
                 });
             } else {
                 Alert.alert('Not Found', 'Room code does not exist.');
@@ -169,8 +170,6 @@ export default function JoinScreen({ navigation, route }) {
                 </View>
             </View>
 
-            <VoiceControl />
-
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <Text style={styles.title}>JOIN GAME</Text>
 
@@ -230,136 +229,138 @@ export default function JoinScreen({ navigation, route }) {
     );
 }
 
-const getStyles = (theme) => StyleSheet.create({
-    container: {
-        flex: 1,
-    },
+function getStyles(theme) {
+    return StyleSheet.create({
+        container: {
+            flex: 1,
+        },
 
-    // Kodak Film Strip Decorations
-    filmHeader: {
-        width: '100%',
-        paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    },
-    filmFooter: {
-        width: '100%',
-        paddingBottom: 20,
-    },
-    filmStrip: {
-        flexDirection: 'row',
-        justifyContent: 'space-evenly',
-        paddingHorizontal: 5,
-    },
-    filmHole: {
-        width: 12,
-        height: 8,
-        backgroundColor: theme.colors.primary,
-        borderRadius: 2,
-        opacity: 0.8,
-    },
+        // Kodak Film Strip Decorations
+        filmHeader: {
+            width: '100%',
+            paddingTop: Platform.OS === 'ios' ? 60 : 40,
+        },
+        filmFooter: {
+            width: '100%',
+            paddingBottom: 20,
+        },
+        filmStrip: {
+            flexDirection: 'row',
+            justifyContent: 'space-evenly',
+            paddingHorizontal: 5,
+        },
+        filmHole: {
+            width: 12,
+            height: 8,
+            backgroundColor: theme.colors.primary,
+            borderRadius: 2,
+            opacity: 0.8,
+        },
 
-    scrollContent: {
-        padding: theme.spacing.xl,
-        alignItems: 'center',
-        paddingTop: 20,
-    },
-    title: {
-        fontSize: 44,
-        fontFamily: theme.fonts.header,
-        color: theme.colors.text,
-        letterSpacing: 6,
-        marginBottom: 30,
-        ...theme.textShadows.depth,
-    },
+        scrollContent: {
+            padding: theme.spacing.xl,
+            alignItems: 'center',
+            paddingTop: 20,
+        },
+        title: {
+            fontSize: 44,
+            fontFamily: theme.fonts.header,
+            color: theme.colors.text,
+            letterSpacing: 6,
+            marginBottom: 30,
+            ...theme.textShadows.depth,
+        },
 
-    inputSection: {
-        width: '100%',
-        marginBottom: 30,
-    },
-    label: {
-        color: theme.colors.tertiary,
-        fontFamily: theme.fonts.bold,
-        fontSize: 14,
-        letterSpacing: 4,
-        marginBottom: 10,
-        marginLeft: 4,
-    },
-    input: {
-        backgroundColor: theme.colors.surface,
-        height: 65,
-        borderRadius: 16,
-        paddingHorizontal: 24,
-        fontSize: 28,
-        fontFamily: theme.fonts.header,
-        borderWidth: 2,
-        borderColor: theme.colors.primary,
-        color: theme.colors.text,
-        marginBottom: 20,
-        letterSpacing: 8,
-        textAlign: 'center',
-    },
+        inputSection: {
+            width: '100%',
+            marginBottom: 30,
+        },
+        label: {
+            color: theme.colors.tertiary,
+            fontFamily: theme.fonts.bold,
+            fontSize: 14,
+            letterSpacing: 4,
+            marginBottom: 10,
+            marginLeft: 4,
+        },
+        input: {
+            backgroundColor: theme.colors.surface,
+            height: 65,
+            borderRadius: 16,
+            paddingHorizontal: 24,
+            fontSize: 28,
+            fontFamily: theme.fonts.header,
+            borderWidth: 2,
+            borderColor: theme.colors.primary,
+            color: theme.colors.text,
+            marginBottom: 20,
+            letterSpacing: 8,
+            textAlign: 'center',
+        },
 
-    buttonRow: {
-        flexDirection: 'row',
-        width: '100%',
-        gap: 15,
-        marginBottom: 30,
-    },
-    modeButton: {
-        flex: 1,
-    },
+        buttonRow: {
+            flexDirection: 'row',
+            width: '100%',
+            gap: 15,
+            marginBottom: 30,
+        },
+        modeButton: {
+            flex: 1,
+        },
 
-    scannerContainer: {
-        flex: 1,
-        backgroundColor: 'black',
-    },
-    scannerOverlay: {
-        flex: 1,
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 40,
-        backgroundColor: 'rgba(0,0,0,0.6)',
-    },
-    scannerText: {
-        color: theme.colors.text,
-        fontSize: 24,
-        fontFamily: theme.fonts.header,
-        letterSpacing: 4,
-        marginTop: 100,
-        ...theme.textShadows.depth,
-    },
+        scannerContainer: {
+            flex: 1,
+            backgroundColor: 'black',
+        },
+        scannerOverlay: {
+            flex: 1,
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: 40,
+            backgroundColor: 'rgba(0,0,0,0.6)',
+        },
+        scannerText: {
+            color: theme.colors.text,
+            fontSize: 24,
+            fontFamily: theme.fonts.header,
+            letterSpacing: 4,
+            marginTop: 100,
+            ...theme.textShadows.depth,
+        },
 
-    profileCard: {
-        alignItems: 'center',
-        marginBottom: 30,
-        backgroundColor: theme.colors.surface,
-        padding: 25,
-        borderRadius: 20,
-        borderWidth: 2,
-        borderColor: theme.colors.primary,
-    },
-    profileName: {
-        color: theme.colors.text,
-        fontSize: 24,
-        fontFamily: theme.fonts.bold,
-        marginTop: 12,
-        marginBottom: 8,
-        letterSpacing: 2,
-        ...theme.textShadows.softDepth,
-    },
-    loggedInBadge: {
-        backgroundColor: theme.colors.primary,
-        paddingHorizontal: 14,
-        paddingVertical: 5,
-        borderRadius: 10,
-    },
-    loggedInText: {
-        color: theme.colors.secondary,
-        fontSize: 11,
-        fontFamily: theme.fonts.bold,
-        letterSpacing: 3,
-    },
-    cancelScanBtn: {
-        width: '100%',
-        marginBottom: 40,
-    }
-});
+        profileCard: {
+            alignItems: 'center',
+            marginBottom: 30,
+            backgroundColor: theme.colors.surface,
+            padding: 25,
+            borderRadius: 20,
+            borderWidth: 2,
+            borderColor: theme.colors.primary,
+        },
+        profileName: {
+            color: theme.colors.text,
+            fontSize: 24,
+            fontFamily: theme.fonts.bold,
+            marginTop: 12,
+            marginBottom: 8,
+            letterSpacing: 2,
+            ...theme.textShadows.softDepth,
+        },
+        loggedInBadge: {
+            backgroundColor: theme.colors.primary,
+            paddingHorizontal: 14,
+            paddingVertical: 5,
+            borderRadius: 10,
+        },
+        loggedInText: {
+            color: theme.colors.secondary,
+            fontSize: 11,
+            fontFamily: theme.fonts.bold,
+            letterSpacing: 3,
+        },
+        cancelScanBtn: {
+            width: '100%',
+            marginBottom: 40,
+        }
+    });
+}
