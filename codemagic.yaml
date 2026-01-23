@@ -109,6 +109,56 @@ workflows:
     artifacts:
       - android/app/build/outputs/apk/**/*.apk
 
+  android-apk-unsigned:
+    name: Android Production APK (Unsigned - Quick Test)
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    environment:
+      groups:
+        - imposter
+      node: 20
+      java: 17
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: codemagic
+          include: true
+
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm install
+
+      - name: Prebuild Android native project
+        script: |
+          npx expo prebuild --platform android --clean
+
+      - name: Build Release APK (Unsigned)
+        script: |
+          cd android
+          ./gradlew assembleRelease
+
+      - name: Print APK Info
+        script: |
+          echo "=== UNSIGNED PRODUCTION APK BUILD COMPLETE ==="
+          echo "APK location: android/app/build/outputs/apk/release/"
+          ls -la android/app/build/outputs/apk/release/
+          echo ""
+          echo "⚠️ This is an UNSIGNED release APK"
+          echo "Good for: Testing app functionality"
+          echo "NOT suitable for: Play Store submission"
+          echo ""
+          echo "To create a SIGNED APK for Play Store:"
+          echo "1. Set up keystore environment variables in Codemagic"
+          echo "2. Use 'android-apk-test' workflow instead"
+          echo "=========================================="
+
+    artifacts:
+      - android/app/build/outputs/apk/**/*.apk
+
   android-release:
     name: Android Play Store Build (AAB)
     max_build_duration: 60
