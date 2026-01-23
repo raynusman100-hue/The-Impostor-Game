@@ -551,8 +551,21 @@ export default function ProfileScreen({ navigation }) {
             // 3. Navigate Immediately
             console.log('Local save done, navigating home...');
             playHaptic('success');
-            navigation.navigate('Home');
+            
+            // Check if we should show premium (every 3rd save)
+            const saveCountStr = await AsyncStorage.getItem('profile_save_count');
+            const saveCount = saveCountStr ? parseInt(saveCountStr, 10) : 0;
+            const newSaveCount = saveCount + 1;
+            await AsyncStorage.setItem('profile_save_count', newSaveCount.toString());
+            console.log('Profile saved ' + newSaveCount + ' times');
 
+            // Show premium every 3rd save
+            if (newSaveCount % 3 === 0 && newSaveCount > 0) {
+                console.log('Navigating to Premium (save counter triggered)');
+                navigation.navigate('Premium');
+            } else {
+                navigation.navigate('Home');
+            }
         } catch (error) {
             console.error('Local save failed:', error);
             playHaptic('error');
@@ -828,3 +841,4 @@ function getStyles(theme) {
         },
     });
 }
+

@@ -45,12 +45,13 @@ const filmStyles = StyleSheet.create({
     },
 });
 
-// Simple Menu Button - Clean and minimal
-const SimpleMenuButton = ({ title, onPress, isPrimary }) => {
+// Premium Crystal Glass Button - Clean and sophisticated
+const GlassmorphicButton = ({ title, onPress, isPrimary }) => {
     const scaleAnim = useRef(new Animated.Value(1)).current;
+    const { theme } = useTheme();
 
     const handlePressIn = () => {
-        Animated.spring(scaleAnim, { toValue: 0.95, friction: 8, useNativeDriver: true }).start();
+        Animated.spring(scaleAnim, { toValue: 0.98, friction: 8, useNativeDriver: true }).start();
     };
 
     const handlePressOut = () => {
@@ -58,53 +59,94 @@ const SimpleMenuButton = ({ title, onPress, isPrimary }) => {
     };
 
     return (
-        <Animated.View style={[{ transform: [{ scale: scaleAnim }], flex: 1 }]}>
+        <Animated.View style={[glassStyles.container, { transform: [{ scale: scaleAnim }] }]}>
             <TouchableOpacity
                 onPressIn={handlePressIn}
                 onPressOut={handlePressOut}
                 onPress={() => { playHaptic('medium'); onPress(); }}
-                activeOpacity={0.8}
-                style={[
-                    simpleButtonStyles.button,
-                    isPrimary ? simpleButtonStyles.primaryButton : simpleButtonStyles.secondaryButton
-                ]}
+                activeOpacity={0.9}
+                style={glassStyles.touchable}
             >
-                <Text style={[
-                    simpleButtonStyles.buttonText,
-                    isPrimary ? simpleButtonStyles.primaryText : simpleButtonStyles.secondaryText
-                ]}>
-                    {title}
-                </Text>
+                {/* Crystal glass background */}
+                <LinearGradient
+                    colors={isPrimary 
+                        ? [theme.colors.primary, theme.colors.primary]
+                        : ['rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.05)']
+                    }
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                    style={[
+                        glassStyles.glass,
+                        {
+                            borderColor: isPrimary 
+                                ? 'rgba(255, 255, 255, 0.3)'
+                                : 'rgba(255, 255, 255, 0.15)',
+                        }
+                    ]}
+                >
+                    {/* Subtle top shine - very minimal */}
+                    <View style={glassStyles.shineTop} />
+                    
+                    {/* Bottom subtle glow */}
+                    <View style={glassStyles.glowBottom} />
+                    
+                    <Text style={[
+                        glassStyles.title,
+                        { 
+                            color: isPrimary ? theme.colors.secondary : theme.colors.text,
+                        }
+                    ]}>
+                        {title}
+                    </Text>
+                </LinearGradient>
             </TouchableOpacity>
         </Animated.View>
     );
 };
 
-const simpleButtonStyles = StyleSheet.create({
-    button: {
-        height: 52,
-        borderRadius: 26,
+const glassStyles = StyleSheet.create({
+    container: {
+        width: '100%',
+        marginBottom: 10,
+    },
+    touchable: {
+        width: '100%',
+    },
+    glass: {
+        height: 48,
+        borderRadius: 24,
+        borderWidth: 1,
+        overflow: 'hidden',
         justifyContent: 'center',
         alignItems: 'center',
+        // Premium shadow
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.2,
+        shadowRadius: 16,
+        elevation: 8,
     },
-    primaryButton: {
-        backgroundColor: '#FFB800',
+    shineTop: {
+        position: 'absolute',
+        top: 0,
+        left: '10%',
+        right: '10%',
+        height: 1,
+        backgroundColor: 'rgba(255, 255, 255, 0.4)',
     },
-    secondaryButton: {
-        backgroundColor: 'transparent',
-        borderWidth: 2,
-        borderColor: '#FFB800',
+    glowBottom: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 1,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
     },
-    buttonText: {
-        fontSize: 14,
-        fontFamily: 'CabinetGrotesk-Black',
-        letterSpacing: 2,
-    },
-    primaryText: {
-        color: '#0a0a0a',
-    },
-    secondaryText: {
-        color: '#FFB800',
+    title: {
+        fontSize: 13,
+        fontFamily: 'Panchang-Bold',
+        letterSpacing: 1.5,
+        zIndex: 1,
     },
 });
 
@@ -233,6 +275,26 @@ export default function HomeScreen({ navigation }) {
                 )}
             </TouchableOpacity>
 
+            {/* Premium button - small icon next to profile */}
+            <TouchableOpacity
+                onPress={() => { 
+                    playHaptic('medium'); 
+                    navigation.navigate('Premium'); 
+                }}
+                style={styles.premiumButton}
+                activeOpacity={0.7}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+                <LinearGradient
+                    colors={['#FFD700', '#FFC700']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.premiumGradient}
+                >
+                    <Text style={styles.premiumIcon}>👑</Text>
+                </LinearGradient>
+            </TouchableOpacity>
+
             {/* Main content */}
             <Animated.View
                 style={[
@@ -257,26 +319,26 @@ export default function HomeScreen({ navigation }) {
                 {/* Character Image */}
                 <AnimatedCharacter theme={theme} />
 
-                {/* Menu - Simple and clean */}
+                {/* Menu - Glassmorphism Style */}
                 <View style={styles.menuContainer}>
                     <View style={styles.menuContent}>
                         <View style={styles.buttonColumn}>
-                            <SimpleMenuButton
+                            <GlassmorphicButton
                                 title="PASS & PLAY"
                                 onPress={() => navigation.navigate('Setup')}
                                 isPrimary={true}
                             />
-                            <SimpleMenuButton
+                            <GlassmorphicButton
                                 title="ONLINE MODE"
                                 onPress={() => navigation.navigate('WifiModeSelector')}
                                 isPrimary={true}
                             />
-                            <SimpleMenuButton
+                            <GlassmorphicButton
                                 title="THEMES"
                                 onPress={() => navigation.navigate('ThemeSelector')}
                                 isPrimary={false}
                             />
-                            <SimpleMenuButton
+                            <GlassmorphicButton
                                 title="HOW TO PLAY"
                                 onPress={() => navigation.navigate('HowToPlay')}
                                 isPrimary={false}
@@ -379,7 +441,7 @@ function getStyles(theme) {
     },
     settingsButton: {
         position: 'absolute',
-        top: Platform.OS === 'ios' ? 45 : 30, // Moved up above the frame text
+        top: Platform.OS === 'ios' ? 45 : 30,
         left: 22,
         zIndex: 10,
         width: 42,
@@ -418,7 +480,7 @@ function getStyles(theme) {
     },
     profileButton: {
         position: 'absolute',
-        top: Platform.OS === 'ios' ? 45 : 30, // Moved up above the frame text
+        top: Platform.OS === 'ios' ? 45 : 30,
         right: 22,
         zIndex: 10,
         width: 42,
@@ -429,6 +491,32 @@ function getStyles(theme) {
         justifyContent: 'center',
         borderWidth: 2,
         borderColor: theme.colors.primary + '50',
+    },
+    premiumButton: {
+        position: 'absolute',
+        top: Platform.OS === 'ios' ? 45 : 30,
+        right: 74,
+        width: 42,
+        height: 42,
+        zIndex: 10,
+        borderRadius: 21,
+        overflow: 'hidden',
+        borderWidth: 2,
+        borderColor: '#FFD700',
+        shadowColor: '#FFD700',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 4,
+    },
+    premiumGradient: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    premiumIcon: {
+        fontSize: 20,
+        lineHeight: 20,
     },
     profilePlaceholder: {
         alignItems: 'center',
@@ -498,7 +586,7 @@ function getStyles(theme) {
         fontFamily: 'BespokeStencil-Extrabold',
         letterSpacing: 2,
         ...theme.textShadows.depth,
-        zIndex: 1, // Above character
+        zIndex: 1,
     },
     titleSub: {
         fontSize: SCREEN_HEIGHT < 700 ? 36 : 40,
@@ -506,7 +594,7 @@ function getStyles(theme) {
         fontFamily: 'BespokeStencil-Extrabold',
         letterSpacing: 4,
         marginTop: -4,
-        zIndex: 1, // Above character
+        zIndex: 1,
     },
     // Menu - positioned at bottom, simple
     menuContainer: {

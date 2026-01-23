@@ -3,6 +3,8 @@ import { Platform, PermissionsAndroid, Alert } from 'react-native';
 import { createAgoraRtcEngine, ClientRoleType, ChannelProfileType } from 'react-native-agora';
 import { Audio } from 'expo-av';
 import { AGORA_APP_ID } from './constants';
+import { database } from './firebase';
+import { ref, get, child, onValue } from 'firebase/database';
 
 const VOICE_CHAT_ENABLED = true;
 
@@ -53,7 +55,43 @@ const FullVoiceChatProvider = ({ children }) => {
     const [initError, setInitError] = useState(null);
     const [joinError, setJoinError] = useState(null);
     const [currentAppId, setCurrentAppId] = useState(null); // Track the actual ID used
+    const [appIdLoading, setAppIdLoading] = useState(true); // Track if we're fetching from Firebase
     const currentChannelRef = useRef(null);
+
+    // Fetch current App ID from Firebase rotation pool
+    const fetchCurrentAppId = async () => {
+        try {
+            console.log('🎤 [FIREBASE] Fetching current Agora App ID from rotation pool...');
+            const dbRef = ref(database);
+            const snapshot = await get(child(dbRef, 'config/agoraAccounts'));
+
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                const accounts = data.accounts || [];
+                const currentIndex = data.currentIndex || 0;
+                const currentAccount = accounts[currentIndex];
+
+                if (currentAccount && currentAccount.id) {
+                    console.log(`🎤 [FIREBASE] ✅ Using App ID from: ${currentAccount.name}`);
+                    console.log(`🎤 [FIREBASE] App ID: ${currentAccount.id.slice(0, 8)}...${currentAccount.id.slice(-8)}`);
+                    console.log(`🎤 [FIREBASE] Pool position: ${currentIndex + 1}/${accounts.length}`);
+                    setCurrentAppId(currentAccount.id);
+                    setAppIdLoading(false);
+                    return currentAccount.id;
+                } else {
+                    throw new Error('No valid account found in rotation pool');
+                }
+            } else {
+                throw new Error('Agora rotation config not found in Firebase');
+            }
+        } catch (error) {
+            console.error('🎤 [FIREBASE] ❌ Error fetching from Firebase:', error.message);
+            console.log('🎤 [FIREBASE] ⚠️ Falling back to Account 1 from pool');
+            setCurrentAppId(AGORA_APP_ID); // Fallback to Account 1
+            setAppIdLoading(false);
+            return AGORA_APP_ID;
+        }
+    };
 
     // Initialize Engine Once
     useEffect(() => {
@@ -63,10 +101,14 @@ const FullVoiceChatProvider = ({ children }) => {
             console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
             try {
-                console.log('🎤 [TRAP 2] Checking App ID:', AGORA_APP_ID);
-                console.log('🎤 [TRAP 2] App ID length:', AGORA_APP_ID?.length);
+                // STEP 1: Fetch App ID from Firebase FIRST
+                console.log('🎤 [TRAP 2] Fetching App ID from Firebase rotation pool...');
+                const appId = await fetchCurrentAppId();
 
-                if (!AGORA_APP_ID || AGORA_APP_ID.includes('placeholder')) {
+                console.log('🎤 [TRAP 2] Using App ID:', appId);
+                console.log('🎤 [TRAP 2] App ID length:', appId?.length);
+
+                if (!appId || appId.includes('placeholder')) {
                     const error = 'Invalid Agora App ID';
                     console.error('🎤 [TRAP 2] ❌ FAILED:', error);
                     setInitError(error);
@@ -92,8 +134,8 @@ const FullVoiceChatProvider = ({ children }) => {
                 agoraEngineRef.current = engine;
                 console.log('🎤 [TRAP 4] ✅ Engine created successfully');
 
-                console.log('🎤 [TRAP 5] Initializing engine with App ID...');
-                engine.initialize({ appId: AGORA_APP_ID });
+                console.log('🎤 [TRAP 5] Initializing engine with fetched App ID...');
+                engine.initialize({ appId: appId }); // Use fetched ID from Firebase
 
                 // FORCE SPEAKERPHONE
                 console.log('🎤 [TRAP 5.1] Forcing Speakerphone Output');
@@ -169,6 +211,40 @@ const FullVoiceChatProvider = ({ children }) => {
             }
         };
     }, []);
+
+    // Listen for rotation changes in Firebase
+    useEffect(() => {
+        console.log('🎤 [ROTATION LISTENER] Setting up real-time listener...');
+
+        const configRef = ref(database, 'config/agoraAccounts');
+
+        const unsubscribe = onValue(configRef, (snapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                const accounts = data.accounts || [];
+                const currentIndex = data.currentIndex || 0;
+                const newAppId = accounts[currentIndex]?.id;
+                const accountName = accounts[currentIndex]?.name;
+
+                if (newAppId && newAppId !== currentAppId) {
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    console.log('🎤 [ROTATION] 🔄 App ID rotation detected!');
+                    console.log(`🎤 [ROTATION] Previous: ${currentAppId?.slice(0, 8)}...${currentAppId?.slice(-8)}`);
+                    console.log(`🎤 [ROTATION] New: ${newAppId.slice(0, 8)}...${newAppId.slice(-8)}`);
+                    console.log(`🎤 [ROTATION] Account: ${accountName}`);
+                    console.log('🎤 [ROTATION] NOTE: Existing calls continue with old ID');
+                    console.log('🎤 [ROTATION] NOTE: New calls will use new ID');
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    setCurrentAppId(newAppId);
+                }
+            }
+        });
+
+        return () => {
+            console.log('🎤 [ROTATION LISTENER] Cleaning up listener');
+            unsubscribe();
+        };
+    }, [currentAppId]);
 
     const joinChannel = async (channelName, uid, specificAppId = null) => {
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');

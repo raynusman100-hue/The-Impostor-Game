@@ -1,40 +1,53 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Dimensions } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../utils/ThemeContext';
 import { playHaptic } from '../utils/haptics';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const PricingCard = ({ price, period, duration, isPopular, theme, styles }) => (
-    <View style={[styles.pricingCard, isPopular && styles.popularCard]}>
-        {isPopular && (
-            <View style={[styles.popularBadge, { backgroundColor: theme.colors.primary }]}>
-                <Text style={[styles.popularText, { color: '#000' }]}>BEST VALUE</Text>
-            </View>
-        )}
+const PricingCard = ({ price, period, duration, isSelected, onSelect, theme, styles }) => (
+    <TouchableOpacity
+        style={[styles.pricingCard, isSelected && styles.selectedCard]}
+        onPress={() => {
+            playHaptic('light');
+            onSelect();
+        }}
+        activeOpacity={0.8}
+    >
         <View style={styles.cardContent}>
-            <Text style={[styles.duration, { color: theme.colors.text }]}>{duration}</Text>
+            <Text style={[styles.duration, { color: isSelected ? theme.colors.primary : theme.colors.textMuted }]}>
+                {duration}
+            </Text>
             <View style={styles.priceRow}>
-                <Text style={[styles.currency, { color: theme.colors.primary }]}>$</Text>
-                <Text style={[styles.price, { color: theme.colors.text }]}>{price}</Text>
+                <Text style={[styles.currency, { color: isSelected ? theme.colors.primary : theme.colors.text }]}>$</Text>
+                <Text style={[styles.price, { color: isSelected ? theme.colors.primary : theme.colors.text }]}>{price}</Text>
             </View>
             <Text style={[styles.period, { color: theme.colors.textMuted }]}>/ {period}</Text>
-
-            {/* Decorative lines */}
-            <View style={[styles.decorLine, { backgroundColor: theme.colors.primary }]} />
         </View>
-    </View>
+        {isSelected && (
+            <View style={[styles.checkmark, { backgroundColor: theme.colors.primary }]}>
+                <Ionicons name="checkmark" size={16} color={theme.colors.secondary} />
+            </View>
+        )}
+    </TouchableOpacity>
 );
 
 export default function PremiumScreen({ navigation }) {
     const { theme } = useTheme();
     const styles = getStyles(theme);
+    const [selectedPlan, setSelectedPlan] = useState('monthly'); // 'weekly', 'monthly', 'yearly'
 
     const handleClose = () => {
         playHaptic('medium');
         navigation.goBack();
+    };
+
+    const handleSubscribe = () => {
+        playHaptic('medium');
+        // TODO: Implement payment
+        console.log('Selected plan:', selectedPlan);
     };
 
     return (
@@ -53,10 +66,7 @@ export default function PremiumScreen({ navigation }) {
                 <Ionicons name="close" size={24} color={theme.colors.text} />
             </TouchableOpacity>
 
-            <ScrollView
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-            >
+            <View style={styles.content}>
                 {/* Header */}
                 <View style={styles.header}>
                     <Text style={[styles.pretitle, { color: theme.colors.primary }]}>UPGRADE TO</Text>
@@ -69,67 +79,87 @@ export default function PremiumScreen({ navigation }) {
                     backgroundColor: theme.colors.surface,
                     borderColor: theme.colors.primary + '40'
                 }]}>
-                    <Text style={[styles.featuresTitle, { color: theme.colors.primary }]}>
-                        UNLOCK ALL FEATURES
-                    </Text>
                     <View style={styles.featuresList}>
-                        {['No Ads', 'Unlock Premium Categories', 'Priority Support', 'Advanced Features'].map((feature, i) => (
+                        {[
+                            { icon: 'close-circle', text: 'No Ads' },
+                            { icon: 'film', text: '12 Premium Categories' },
+                            { icon: 'color-palette', text: 'Custom Avatar Builder' },
+                            { icon: 'game-controller', text: 'Exclusive Game Modes' }
+                        ].map((feature, i) => (
                             <View key={i} style={styles.featureRow}>
-                                <Ionicons name="checkmark-circle" size={20} color={theme.colors.primary} />
-                                <Text style={[styles.featureText, { color: theme.colors.text }]}>{feature}</Text>
+                                <Ionicons 
+                                    name={feature.icon} 
+                                    size={20} 
+                                    color={theme.colors.primary} 
+                                />
+                                <Text style={[styles.featureText, { color: theme.colors.text }]}>{feature.text}</Text>
                             </View>
                         ))}
                     </View>
                 </View>
 
                 {/* Pricing Options */}
-                <Text style={[styles.choosePlanText, { color: theme.colors.textMuted }]}>
-                    CHOOSE YOUR PLAN
-                </Text>
+                <View>
+                    <Text style={[styles.choosePlanText, { color: theme.colors.textMuted }]}>
+                        CHOOSE YOUR PLAN
+                    </Text>
 
-                <View style={styles.pricingGrid}>
-                    <PricingCard
-                        price="2"
-                        period="WEEK"
-                        duration="WEEKLY"
-                        theme={theme}
-                        styles={styles}
-                    />
-                    <PricingCard
-                        price="6"
-                        period="MONTH"
-                        duration="MONTHLY"
-                        isPopular={true}
-                        theme={theme}
-                        styles={styles}
-                    />
-                    <PricingCard
-                        price="20"
-                        period="YEAR"
-                        duration="YEARLY"
-                        theme={theme}
-                        styles={styles}
-                    />
+                    <View style={styles.pricingRow}>
+                        <PricingCard
+                            price="2"
+                            period="WEEK"
+                            duration="WEEKLY"
+                            isSelected={selectedPlan === 'weekly'}
+                            onSelect={() => setSelectedPlan('weekly')}
+                            theme={theme}
+                            styles={styles}
+                        />
+                        <PricingCard
+                            price="6"
+                            period="MONTH"
+                            duration="MONTHLY"
+                            isSelected={selectedPlan === 'monthly'}
+                            onSelect={() => setSelectedPlan('monthly')}
+                            theme={theme}
+                            styles={styles}
+                        />
+                        <PricingCard
+                            price="20"
+                            period="YEAR"
+                            duration="YEARLY"
+                            isSelected={selectedPlan === 'yearly'}
+                            onSelect={() => setSelectedPlan('yearly')}
+                            theme={theme}
+                            styles={styles}
+                        />
+                    </View>
+
+                    {/* Subscribe Button */}
+                    <TouchableOpacity
+                        style={[styles.subscribeButton, { backgroundColor: theme.colors.primary }]}
+                        onPress={handleSubscribe}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={[styles.subscribeText, { color: theme.colors.secondary }]}>
+                            SUBSCRIBE NOW
+                        </Text>
+                    </TouchableOpacity>
+
+                    {/* Coming Soon Note */}
+                    <Text style={[styles.comingSoonText, { color: theme.colors.tertiary }]}>
+                        PAYMENT INTEGRATION COMING SOON
+                    </Text>
                 </View>
+            </View>
 
-                {/* CTA Note */}
-                <Text style={[styles.comingSoonText, { color: theme.colors.tertiary }]}>
-                    PAYMENT INTEGRATION COMING SOON
-                </Text>
-
-                <Text style={[styles.disclaimer, { color: theme.colors.textMuted }]}>
-                    Payment will be charged to your account at confirmation of purchase. Auto-renewal can be turned off at any time.
-                </Text>
-            </ScrollView>
-
-            {/* Film perforations for theme consistency */}
+            {/* Film perforations */}
             <View style={styles.filmLeft}>
-                {[...Array(20)].map((_, i) => (
+                {[...Array(15)].map((_, i) => (
                     <View key={i} style={[styles.filmHole, { backgroundColor: theme.colors.primary }]} />
                 ))}
             </View>
             <View style={styles.filmRight}>
-                {[...Array(20)].map((_, i) => (
+                {[...Array(15)].map((_, i) => (
                     <View key={i} style={[styles.filmHole, { backgroundColor: theme.colors.primary }]} />
                 ))}
             </View>
@@ -159,14 +189,15 @@ function getStyles(theme) {
             borderWidth: 1,
             borderColor: theme.colors.primary + '40',
         },
-        scrollContent: {
-            padding: 24,
+        content: {
+            flex: 1,
+            padding: 20,
             paddingTop: Platform.OS === 'ios' ? 100 : 80,
-            alignItems: 'center',
+            justifyContent: 'space-between',
         },
         header: {
             alignItems: 'center',
-            marginBottom: 32,
+            marginBottom: 16,
         },
         pretitle: {
             fontSize: 12,
@@ -175,7 +206,7 @@ function getStyles(theme) {
             marginBottom: 4,
         },
         title: {
-            fontSize: 52,
+            fontSize: 44,
             fontFamily: 'CabinetGrotesk-Extrabold',
             letterSpacing: 6,
             marginBottom: 8,
@@ -188,17 +219,10 @@ function getStyles(theme) {
         },
         featuresCard: {
             width: '100%',
-            borderRadius: 20,
-            padding: 24,
-            marginBottom: 32,
+            borderRadius: 16,
+            padding: 18,
+            marginBottom: 16,
             borderWidth: 2,
-        },
-        featuresTitle: {
-            fontSize: 16,
-            fontFamily: 'Panchang-Bold',
-            letterSpacing: 3,
-            marginBottom: 20,
-            textAlign: 'center',
         },
         featuresList: {
             gap: 12,
@@ -209,101 +233,98 @@ function getStyles(theme) {
             gap: 12,
         },
         featureText: {
-            fontSize: 16,
+            fontSize: 15,
             fontFamily: 'CabinetGrotesk-Bold',
             letterSpacing: 0.5,
+            flex: 1,
         },
         choosePlanText: {
             fontSize: 12,
             fontFamily: 'Teko-Medium',
             letterSpacing: 3,
-            marginBottom: 20,
+            marginBottom: 10,
+            textAlign: 'center',
         },
-        pricingGrid: {
-            width: '100%',
-            gap: 16,
-            marginBottom: 24,
+        pricingRow: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            gap: 8,
+            marginBottom: 16,
         },
         pricingCard: {
-            width: '100%',
-            borderRadius: 16,
+            flex: 1,
+            borderRadius: 12,
             borderWidth: 2,
             borderColor: theme.colors.primary + '40',
             backgroundColor: theme.colors.surface,
-            overflow: 'visible',
             position: 'relative',
+            minHeight: 110,
         },
-        popularCard: {
+        selectedCard: {
             borderColor: theme.colors.primary,
             borderWidth: 3,
-            transform: [{ scale: 1.02 }],
-        },
-        popularBadge: {
-            position: 'absolute',
-            top: -12,
-            left: '50%',
-            transform: [{ translateX: -50 }],
-            paddingHorizontal: 16,
-            paddingVertical: 4,
-            borderRadius: 12,
-            zIndex: 10,
-        },
-        popularText: {
-            fontSize: 10,
-            fontFamily: 'Panchang-Bold',
-            letterSpacing: 2,
+            backgroundColor: theme.colors.primary + '10',
         },
         cardContent: {
-            padding: 24,
+            padding: 12,
             alignItems: 'center',
+            justifyContent: 'center',
+            flex: 1,
         },
         duration: {
-            fontSize: 14,
+            fontSize: 10,
             fontFamily: 'Teko-Medium',
-            letterSpacing: 3,
-            marginBottom: 8,
+            letterSpacing: 2,
+            marginBottom: 4,
         },
         priceRow: {
             flexDirection: 'row',
             alignItems: 'flex-start',
-            marginBottom: 4,
+            marginBottom: 2,
         },
         currency: {
-            fontSize: 24,
+            fontSize: 14,
             fontFamily: 'CabinetGrotesk-Bold',
-            marginTop: 8,
-            marginRight: 2,
+            marginTop: 3,
+            marginRight: 1,
         },
         price: {
-            fontSize: 56,
+            fontSize: 32,
             fontFamily: 'CabinetGrotesk-Black',
-            lineHeight: 56,
+            lineHeight: 32,
         },
         period: {
-            fontSize: 14,
+            fontSize: 9,
             fontFamily: 'Teko-Medium',
-            letterSpacing: 2,
+            letterSpacing: 1,
         },
-        decorLine: {
-            width: 40,
-            height: 2,
-            marginTop: 16,
-            borderRadius: 1,
+        checkmark: {
+            position: 'absolute',
+            top: -8,
+            right: -8,
+            width: 24,
+            height: 24,
+            borderRadius: 12,
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        subscribeButton: {
+            width: '100%',
+            paddingVertical: 14,
+            borderRadius: 12,
+            alignItems: 'center',
+            marginBottom: 10,
+        },
+        subscribeText: {
+            fontSize: 15,
+            fontFamily: 'Panchang-Bold',
+            letterSpacing: 3,
         },
         comingSoonText: {
-            fontSize: 12,
+            fontSize: 10,
             fontFamily: 'Panchang-Bold',
             letterSpacing: 2,
-            marginBottom: 16,
             textAlign: 'center',
-        },
-        disclaimer: {
-            fontSize: 10,
-            fontFamily: 'Teko-Medium',
-            textAlign: 'center',
-            lineHeight: 14,
-            opacity: 0.6,
-            maxWidth: 300,
         },
         // Film perforations
         filmLeft: {

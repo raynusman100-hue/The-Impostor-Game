@@ -13,6 +13,7 @@ import { CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
 import ChatSystem from '../components/ChatSystem';
 import VoiceControl from '../components/VoiceControl';
 import { useVoiceChat } from '../utils/VoiceChatContext';
+import { useVoiceParticipantsTracker } from '../utils/VoiceParticipantsTracker';
 
 // Film perforation component for Kodak aesthetic (same as SetupScreen)
 const FilmPerforations = ({ side, theme }) => {
@@ -53,6 +54,9 @@ export default function WifiLobbyScreen({ route, navigation }) {
     const { theme } = useTheme();
     const styles = getStyles(theme);
     const { roomCode, playerId, playerName, stampedAppId } = route.params; // <--- RECEIVED STAMPED ID
+
+    console.log(`🎮 WIFI LOBBY: Player ${playerId} (${playerName}) joined room ${roomCode}`);
+
     const [players, setPlayers] = useState([]);
     const [roomStatus, setRoomStatus] = useState('lobby');
 
@@ -66,6 +70,16 @@ export default function WifiLobbyScreen({ route, navigation }) {
 
     // Voice Chat Integration
     const { isJoined, joinChannel, leaveChannel } = useVoiceChat();
+    const [voiceParticipants, setVoiceParticipants] = useState([]);
+
+    // Track voice participants in Firebase
+    useVoiceParticipantsTracker(
+        roomCode,
+        playerId,
+        { name: playerName, avatarId: 1, customAvatarConfig: null }, // Player data for non-host
+        isJoined,
+        setVoiceParticipants
+    );
     // Auto-join REMOVED - User must join manually via Voice tab
 
     // Disable Android back button
@@ -101,6 +115,13 @@ export default function WifiLobbyScreen({ route, navigation }) {
         if (activeTab !== 'chat') {
             setUnreadMessages(count);
         } else {
+            setUnreadMessages(0);
+        }
+    }, [activeTab]);
+
+    // Reset unread messages when switching to chat tab
+    useEffect(() => {
+        if (activeTab === 'chat') {
             setUnreadMessages(0);
         }
     }, [activeTab]);
@@ -244,75 +265,40 @@ export default function WifiLobbyScreen({ route, navigation }) {
             </View>
 
 
-            {/* Premium Clean Navigation */}
-            <View style={styles.navigationWrapper}>
-                {/* Main Tabs: Lobby & Chat */}
-                <View style={styles.mainTabs}>
-                    <TouchableOpacity
-                        style={[styles.mainTab, activeTab === 'lobby' && styles.mainTabActive]}
-                        onPress={() => {
-                            playHaptic('light');
-                            setActiveTab('lobby');
-                        }}
-                        activeOpacity={0.85}
-                    >
-                        <Text style={[styles.mainTabLabel, activeTab === 'lobby' && styles.mainTabLabelActive]}>LOBBY</Text>
-                        <Text style={[styles.mainTabMeta, activeTab === 'lobby' && { color: theme.colors.primary }]}>
-                            {players.length + 1} PLAYERS
-                        </Text>
-                        {activeTab === 'lobby' && <View style={[styles.activeBar, { backgroundColor: theme.colors.primary }]} />}
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.mainTab, activeTab === 'chat' && styles.mainTabActive]}
-                        onPress={() => {
-                            playHaptic('light');
-                            setActiveTab('chat');
-                            setUnreadMessages(0);
-                        }}
-                        activeOpacity={0.85}
-                    >
-                        <Text style={[styles.mainTabLabel, activeTab === 'chat' && styles.mainTabLabelActive]}>CHAT</Text>
-                        <Text style={[styles.mainTabMeta, activeTab === 'chat' && { color: theme.colors.primary }]}>
-                            {unreadMessages > 0 ? `${unreadMessages} NEW` : 'MESSAGES'}
-                        </Text>
-                        {activeTab === 'chat' && <View style={[styles.activeBar, { backgroundColor: theme.colors.primary }]} />}
-                        {unreadMessages > 0 && activeTab !== 'chat' && (
-                            <View style={[styles.unreadDot, { backgroundColor: theme.colors.error }]} />
-                        )}
-                    </TouchableOpacity>
-                </View>
-
-                {/* Voice Chat Section */}
+            {/* Tabs: Lobby | Chat | Voice - Matching Host UI */}
+            <View style={styles.tabContainer}>
                 <TouchableOpacity
-                    style={[styles.voiceCard, activeTab === 'voice' && styles.voiceCardActive]}
+                    style={[styles.tab, activeTab === 'lobby' && styles.activeTab]}
                     onPress={() => {
-                        playHaptic('medium');
+                        playHaptic('light');
+                        setActiveTab('lobby');
+                    }}
+                >
+                    <Text style={[styles.tabText, activeTab === 'lobby' && styles.activeTabText]}>LOBBY</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.tab, activeTab === 'chat' && styles.activeTab]}
+                    onPress={() => {
+                        playHaptic('light');
+                        setActiveTab('chat');
+                        setUnreadMessages(0);
+                    }}
+                >
+                    <View style={styles.tabContent}>
+                        <Text style={[styles.tabText, activeTab === 'chat' && styles.activeTabText]}>CHAT</Text>
+                        {unreadMessages > 0 && activeTab !== 'chat' && (
+                            <View style={styles.notificationDot} />
+                        )}
+                    </View>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.tab, activeTab === 'voice' && styles.activeTab]}
+                    onPress={() => {
+                        playHaptic('light');
                         setActiveTab('voice');
                     }}
-                    activeOpacity={0.9}
                 >
-                    <LinearGradient
-                        colors={activeTab === 'voice' ? [theme.colors.primary + '15', theme.colors.primary + '05'] : [theme.colors.surface, theme.colors.surface]}
-                        style={styles.voiceCardInner}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                    >
-                        <View style={styles.voiceCardContent}>
-                            <View style={styles.voiceCardLeft}>
-                                <Text style={[styles.voiceCardTitle, activeTab === 'voice' && { color: theme.colors.primary }]}>VOICE CHAT</Text>
-                                <Text style={[styles.voiceCardStatus, isJoined && { color: theme.colors.primary }]}>
-                                    {isJoined ? 'CONNECTED' : 'TAP TO JOIN'}
-                                </Text>
-                            </View>
-                            {isJoined && (
-                                <View style={styles.liveIndicator}>
-                                    <View style={[styles.livePulse, { backgroundColor: theme.colors.primary }]} />
-                                    <Text style={[styles.liveText, { color: theme.colors.primary }]}>LIVE</Text>
-                                </View>
-                            )}
-                        </View>
-                    </LinearGradient>
+                    <Text style={[styles.tabText, activeTab === 'voice' && styles.activeTabText]}>VOICE</Text>
                 </TouchableOpacity>
             </View>
 
@@ -331,9 +317,15 @@ export default function WifiLobbyScreen({ route, navigation }) {
                                 <Text style={styles.voiceInstructions}>
                                     VOICE CHAT
                                 </Text>
-                                <Text style={styles.voiceSubInstructions}>
-                                    Tap below to join the voice channel
-                                </Text>
+                                {voiceParticipants.length > 0 ? (
+                                    <Text style={styles.voiceSubInstructions}>
+                                        {voiceParticipants.length} {voiceParticipants.length === 1 ? 'MEMBER' : 'MEMBERS'} IN CALL
+                                    </Text>
+                                ) : (
+                                    <Text style={styles.voiceSubInstructions}>
+                                        No one in voice chat yet
+                                    </Text>
+                                )}
                                 <TouchableOpacity
                                     style={styles.joinVoiceBtn}
                                     onPress={() => {
@@ -356,11 +348,25 @@ export default function WifiLobbyScreen({ route, navigation }) {
                         ) : (
                             <>
                                 <Text style={styles.voiceInstructions}>
-                                    CONNECTED
+                                    IN VOICE CHAT
                                 </Text>
-                                <Text style={styles.voiceSubInstructions}>
-                                    You are live in the channel
-                                </Text>
+
+                                {/* Participants List */}
+                                <View style={styles.voiceParticipantsList}>
+                                    {voiceParticipants.map((participant) => (
+                                        <View key={participant.id} style={styles.voiceParticipantRow}>
+                                            {participant.customAvatarConfig ? (
+                                                <CustomBuiltAvatar config={participant.customAvatarConfig} size={32} />
+                                            ) : (
+                                                <CustomAvatar id={participant.avatarId || 1} size={32} />
+                                            )}
+                                            <Text style={styles.voiceParticipantName} numberOfLines={1}>
+                                                {participant.id === playerId ? 'You' : participant.name}
+                                            </Text>
+                                        </View>
+                                    ))}
+                                </View>
+
                                 <Text style={[styles.voiceSubInstructions, { marginTop: 20, color: theme.colors.tertiary }]}>
                                     Use the floating mic button to mute/unmute
                                 </Text>
@@ -516,6 +522,49 @@ function getStyles(theme) {
             fontFamily: theme.fonts.header,
             letterSpacing: 10,
             ...theme.textShadows.depth,
+        },
+
+        tabContainer: {
+            flexDirection: 'row',
+            marginBottom: 12,
+            backgroundColor: theme.colors.surface,
+            borderRadius: 25,
+            padding: 4,
+            borderWidth: 2,
+            borderColor: theme.colors.primary,
+            alignSelf: 'center',
+        },
+        tab: {
+            paddingVertical: 8,
+            paddingHorizontal: 30,
+            borderRadius: 20,
+        },
+        activeTab: {
+            backgroundColor: theme.colors.primary,
+        },
+        tabText: {
+            color: theme.colors.textMuted,
+            fontFamily: theme.fonts.bold,
+            fontSize: 13,
+            letterSpacing: 2,
+        },
+        activeTabText: {
+            color: theme.colors.secondary,
+        },
+        tabContent: {
+            flexDirection: 'row',
+            alignItems: 'center',
+        },
+        notificationDot: {
+            position: 'absolute',
+            top: -6,
+            right: -8,
+            backgroundColor: theme.colors.error,
+            borderRadius: 6,
+            width: 12,
+            height: 12,
+            borderWidth: 2,
+            borderColor: theme.colors.background,
         },
 
         // Version 2: Horizontal Tabs + Premium Voice
@@ -726,6 +775,30 @@ function getStyles(theme) {
             opacity: 0.8,
             marginBottom: 30,
         },
+        voiceParticipantsList: {
+            width: '100%',
+            maxWidth: 300,
+            marginVertical: 20,
+            gap: 12,
+        },
+        voiceParticipantRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+            paddingVertical: 8,
+            paddingHorizontal: 16,
+            borderRadius: 12,
+            backgroundColor: theme.colors.surface,
+            borderWidth: 1,
+            borderColor: theme.colors.primary + '30',
+        },
+        voiceParticipantName: {
+            fontSize: 16,
+            fontFamily: theme.fonts.medium,
+            color: theme.colors.text,
+            letterSpacing: 1,
+            flex: 1,
+        },
         joinVoiceBtn: {
             width: 120,
             height: 120,
@@ -745,14 +818,14 @@ function getStyles(theme) {
             height: 110,
             borderRadius: 55,
             borderWidth: 2,
-            borderColor: '#000',
+            borderColor: theme.colors.secondary,
             justifyContent: 'center',
             alignItems: 'center',
             backgroundColor: theme.colors.primary,
         },
         joinVoiceText: {
             fontFamily: theme.fonts.bold,
-            color: '#000',
+            color: theme.colors.secondary,
             fontSize: 18,
             textAlign: 'center',
         },

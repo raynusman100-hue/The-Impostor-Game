@@ -4,9 +4,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import PurchaseManager from '../utils/PurchaseManager';
+import { useTheme } from '../utils/ThemeContext';
 
 const ProVersionScreen = () => {
     const navigation = useNavigation();
+    const { theme } = useTheme();
     const [loading, setLoading] = useState(false);
     const [isPro, setIsPro] = useState(false);
     const [packageInfo, setPackageInfo] = useState(null);
@@ -56,6 +58,8 @@ const ProVersionScreen = () => {
         }
     };
 
+    const styles = getStyles(theme);
+
     if (isPro) {
         return (
             <LinearGradient
@@ -92,9 +96,9 @@ const ProVersionScreen = () => {
                 </View>
 
                 <View style={styles.card}>
-                    <FeatureRow icon="remove-circle-outline" text="Remove All Ads" />
-                    <FeatureRow icon="color-palette-outline" text="Unlock All Themes (Coming Soon)" />
-                    <FeatureRow icon="heart-outline" text="Support the Developer" />
+                    <FeatureRow icon="remove-circle-outline" text="Remove All Ads" theme={theme} />
+                    <FeatureRow icon="color-palette-outline" text="Unlock All Themes (Coming Soon)" theme={theme} />
+                    <FeatureRow icon="heart-outline" text="Support the Developer" theme={theme} />
                 </View>
 
                 <View style={styles.footer}>
@@ -124,16 +128,19 @@ const ProVersionScreen = () => {
     );
 };
 
-const FeatureRow = ({ icon, text }) => (
-    <View style={styles.featureRow}>
-        <View style={styles.iconContainer}>
-            <Ionicons name={icon} size={24} color="#FFD700" />
+const FeatureRow = ({ icon, text, theme }) => {
+    const styles = getStyles(theme);
+    return (
+        <View style={styles.featureRow}>
+            <View style={styles.iconContainer}>
+                <Ionicons name={icon} size={24} color="#FFD700" />
+            </View>
+            <Text style={styles.featureText}>{text}</Text>
         </View>
-        <Text style={styles.featureText}>{text}</Text>
-    </View>
-);
+    );
+};
 
-const styles = StyleSheet.create({
+const getStyles = (theme) => StyleSheet.create({
     container: {
         flex: 1,
     },
@@ -218,11 +225,11 @@ const styles = StyleSheet.create({
     buttonText: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#000000',
+        color: theme.colors.secondary,
     },
     priceText: {
         fontSize: 12,
-        color: 'rgba(0,0,0,0.6)',
+        color: theme.colors.textMuted,
         marginTop: 2,
     },
     restoreButton: {

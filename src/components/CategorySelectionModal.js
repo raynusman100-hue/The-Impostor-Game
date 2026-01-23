@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, Dimensions, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CATEGORY_LABELS } from '../utils/words';
 import { useTheme } from '../utils/ThemeContext';
 import { playHaptic } from '../utils/haptics';
+import { checkPremiumStatus } from '../utils/PremiumManager';
+import { auth } from '../utils/firebase';
 
 const { width } = Dimensions.get('window');
 
-const CategoryCard = ({ item, isSelected, onPress, theme, styles, isPremium }) => {
+const CategoryCard = ({ item, isSelected, onPress, theme, styles, isPremium, isLocked = false }) => {
     // Format labels with proper line breaks for compound words
     const formatLabel = (label) => {
         const twoLineLabels = {
@@ -26,9 +28,10 @@ const CategoryCard = ({ item, isSelected, onPress, theme, styles, isPremium }) =
             style={[
                 styles.cardContainer,
                 isSelected && styles.cardSelected,
+                isLocked && styles.cardLocked,
             ]}
-            onPress={onPress}
-            activeOpacity={0.8}
+            onPress={onPress} // Always allow press (locked cards go to premium)
+            activeOpacity={isLocked ? 0.9 : 0.8} // Slightly different feedback for locked
         >
             {/* Chromatic Aberration - Background layers only (not borders) */}
             <View style={[styles.chromaticLayer, { 
@@ -107,10 +110,24 @@ const CategoryCard = ({ item, isSelected, onPress, theme, styles, isPremium }) =
     );
 };
 
-export default function CategorySelectionModal({ visible, onClose, selectedCategories, onSelectCategory }) {
+export default function CategorySelectionModal({ visible, onClose, selectedCategories, onSelectCategory, navigation }) {
     const { theme } = useTheme();
     const styles = getStyles(theme);
     const [expandedBallKnowledge, setExpandedBallKnowledge] = useState(false);
+    const [hasPremium, setHasPremium] = useState(false);
+
+    useEffect(() => {
+        const checkPremium = async () => {
+            const user = auth.currentUser;
+            if (user) {
+                const premium = await checkPremiumStatus(user.email, user.uid);
+                setHasPremium(premium);
+            }
+        };
+        if (visible) {
+            checkPremium();
+        }
+    }, [visible]);
 
     const handleSelect = (key) => {
         playHaptic('selection');
@@ -118,9 +135,11 @@ export default function CategorySelectionModal({ visible, onClose, selectedCateg
     };
 
     const handlePremiumPress = () => {
-        playHaptic('selection');
-        // TODO: Navigate to transaction/purchase screen
-        console.log('Navigate to Premium Purchase Screen');
+        playHaptic('medium');
+        onClose(); // Close the modal first
+        if (navigation) {
+            navigation.navigate('Premium');
+        }
     };
 
     const isAllSelected = selectedCategories.includes('all');
@@ -169,48 +188,52 @@ export default function CategorySelectionModal({ visible, onClose, selectedCateg
                         contentContainerStyle={styles.scrollContent}
                         showsVerticalScrollIndicator={false}
                     >
-                        {/* Premium Card - Single body, non-interactive with categories */}
-                        <TouchableOpacity
-                            style={styles.premiumCard}
-                            onPress={handlePremiumPress}
-                            activeOpacity={0.9}
-                        >
-                            {/* Chromatic aberration on premium card */}
-                            <View style={[styles.premiumChromaticLayer, { 
-                                backgroundColor: '#FF000020',
-                                transform: [{ translateX: 3 }]
-                            }]} />
-                            <View style={[styles.premiumChromaticLayer, { 
-                                backgroundColor: '#0000FF20',
-                                transform: [{ translateX: -3 }]
-                            }]} />
-                            
-                            <LinearGradient
-                                colors={['#FFC700', '#FFB800']}
-                                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                                style={styles.premiumGradient}
+                        {/* Premium Card - Only show for non-premium users */}
+                        {!hasPremium && (
+                            <TouchableOpacity
+                                style={styles.premiumCard}
+                                onPress={handlePremiumPress}
+                                activeOpacity={0.9}
                             >
-                                <View style={styles.premiumContent}>
-                                    <View style={styles.premiumTextContainer}>
-                                        <View style={styles.premiumBadge}>
-                                            <Text style={styles.premiumBadgeText}>✨ PREMIUM</Text>
+                                {/* Chromatic aberration on premium card */}
+                                <View style={[styles.premiumChromaticLayer, { 
+                                    backgroundColor: '#FF000020',
+                                    transform: [{ translateX: 3 }]
+                                }]} />
+                                <View style={[styles.premiumChromaticLayer, { 
+                                    backgroundColor: '#0000FF20',
+                                    transform: [{ translateX: -3 }]
+                                }]} />
+                                
+                                <LinearGradient
+                                    colors={['#FFC700', '#FFB800']}
+                                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                                    style={styles.premiumGradient}
+                                >
+                                    <View style={styles.premiumContent}>
+                                        <View style={styles.premiumTextContainer}>
+                                            <View style={styles.premiumBadge}>
+                                                <Text style={styles.premiumBadgeText}>✨ PREMIUM</Text>
+                                            </View>
+                                            {/* Title with chromatic text effect */}
+                                            <View style={styles.premiumTitleContainer}>
+                                                <Text style={[styles.premiumTitle, styles.premiumTitleRed]}>EXPLORE MORE{'\n'}WITH PREMIUM</Text>
+                                                <Text style={[styles.premiumTitle, styles.premiumTitleBlue]}>EXPLORE MORE{'\n'}WITH PREMIUM</Text>
+                                                <Text style={styles.premiumTitle}>EXPLORE MORE{'\n'}WITH PREMIUM</Text>
+                                            </View>
+                                            <Text style={styles.premiumSubtitle}>Unlock all premium categories</Text>
                                         </View>
-                                        {/* Title with chromatic text effect */}
-                                        <View style={styles.premiumTitleContainer}>
-                                            <Text style={[styles.premiumTitle, styles.premiumTitleRed]}>EXPLORE MORE{'\n'}WITH PREMIUM</Text>
-                                            <Text style={[styles.premiumTitle, styles.premiumTitleBlue]}>EXPLORE MORE{'\n'}WITH PREMIUM</Text>
-                                            <Text style={styles.premiumTitle}>EXPLORE MORE{'\n'}WITH PREMIUM</Text>
+                                        <View style={styles.premiumArrow}>
+                                            <Text style={styles.premiumArrowText}>→</Text>
                                         </View>
-                                        <Text style={styles.premiumSubtitle}>Unlock all premium categories</Text>
                                     </View>
-                                    <View style={styles.premiumArrow}>
-                                        <Text style={styles.premiumArrowText}>→</Text>
-                                    </View>
-                                </View>
-                            </LinearGradient>
-                        </TouchableOpacity>
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        )}
 
-                        {/* Ball Knowledge - Expandable Full Width Card - BELOW PREMIUM */}
+                        <Text style={styles.sectionTitle}>SELECT CATEGORIES</Text>
+
+                        {/* Ball Knowledge - HOT category, first under SELECT CATEGORIES */}
                         {CATEGORY_LABELS.filter(c => c.key === 'ballKnowledge').map((cat) => {
                             const hasSubcategorySelected = cat.subcategories?.some(sub => selectedCategories.includes(sub.key));
                             return (
@@ -270,13 +293,13 @@ export default function CategorySelectionModal({ visible, onClose, selectedCateg
                                                         style={[
                                                             styles.subcategoryLabel, 
                                                             selectedCategories.includes(subcat.key) && styles.subcategoryLabelSelected,
-                                                            // Special handling for Basketball to prevent shrinking
-                                                            subcat.key === 'basketball' && styles.basketballLabel
                                                         ]}
-                                                        numberOfLines={2}
+                                                        numberOfLines={1}
+                                                        adjustsFontSizeToFit={true}
+                                                        minimumFontScale={0.5}
                                                         allowFontScaling={false}
                                                     >
-                                                        {subcat.key === 'basketball' ? 'BASKET\nBALL' : subcat.label.toUpperCase()}
+                                                        {subcat.label.toUpperCase()}
                                                     </Text>
                                                 </LinearGradient>
                                             </TouchableOpacity>
@@ -286,8 +309,6 @@ export default function CategorySelectionModal({ visible, onClose, selectedCateg
                             </View>
                         );
                         })}
-
-                        <Text style={styles.sectionTitle}>SELECT CATEGORIES</Text>
 
                         {/* Category Grid - Premium locked categories first, then free */}
                         <View style={styles.grid}>
@@ -315,16 +336,17 @@ export default function CategorySelectionModal({ visible, onClose, selectedCateg
                                 />
                             ))}
                             
-                            {/* Premium locked categories after free ones */}
+                            {/* Premium categories - unlocked for premium users, locked for free users */}
                             {premiumCategories.map((cat) => (
                                 <CategoryCard
                                     key={cat.key}
                                     item={cat}
-                                    isSelected={selectedCategories.includes(cat.key)}
-                                    onPress={() => handleSelect(cat.key)}
+                                    isSelected={hasPremium && selectedCategories.includes(cat.key)}
+                                    onPress={hasPremium ? () => handleSelect(cat.key) : handlePremiumPress}
                                     theme={theme}
                                     styles={styles}
-                                    isPremium={cat.premium}
+                                    isPremium={!hasPremium}
+                                    isLocked={!hasPremium}
                                 />
                             ))}
                         </View>
@@ -594,16 +616,11 @@ function getStyles(theme) {
         },
         subcategoryLabel: {
             color: theme.colors.text,
-            fontSize: Platform.OS === 'android' ? 16 : 15, // Consistent size for both
+            fontSize: Platform.OS === 'android' ? 17 : 16,
             fontFamily: theme.fonts.bold,
-            letterSpacing: 0,
+            letterSpacing: 0.5,
             textAlign: 'center',
-            lineHeight: Platform.OS === 'android' ? 18 : 17,
-            flexShrink: 1,
-        },
-        basketballLabel: {
-            fontSize: Platform.OS === 'android' ? 15 : 14, // Slightly smaller for 2-line layout
-            lineHeight: Platform.OS === 'android' ? 16 : 15,
+            flexShrink: 0,
         },
         subcategoryLabelSelected: {
             color: theme.colors.secondary,
@@ -640,6 +657,10 @@ function getStyles(theme) {
             borderWidth: 2,
             borderColor: theme.colors.primary,
             ...theme.shadows.soft,
+        },
+        cardLocked: {
+            opacity: 0.7, // Slightly dimmed but still clearly clickable
+            borderColor: theme.colors.primary + '60', // Subtle premium border hint
         },
         cardGradient: {
             flex: 1,

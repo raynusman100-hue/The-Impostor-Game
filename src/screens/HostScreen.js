@@ -18,6 +18,7 @@ import { useVoiceChat } from '../utils/VoiceChatContext';
 import { CustomAvatar } from '../utils/AvatarGenerator';
 import { CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
 import CategorySelectionModal from '../components/CategorySelectionModal';
+import { useVoiceParticipantsTracker } from '../utils/VoiceParticipantsTracker';
 
 // Film perforation component for Kodak aesthetic
 const FilmPerforations = ({ side, theme }) => {
@@ -238,11 +239,34 @@ export default function HostScreen({ navigation, route }) {
 
     // Voice Chat Integration - Manual join only
     const { isJoined, joinChannel, leaveChannel } = useVoiceChat();
+    const [voiceParticipants, setVoiceParticipants] = useState([]);
+
+    // Track voice participants in Firebase
+    useVoiceParticipantsTracker(
+        roomCode,
+        'host-id',
+        playerData,
+        isJoined,
+        setVoiceParticipants
+    );
 
     const toggleCategory = (key) => {
         playHaptic('light');
         setSelectedCategories(prev => {
-            if (key === 'all') return ['all'];
+            // If tapping 'Random (All)', select all FREE/unlocked categories
+            if (key === 'all') {
+                // Get all free categories (including subcategories)
+                const freeCategories = CATEGORY_LABELS
+                    .filter(c => c.key !== 'all' && (c.free === true || (!c.premium && !c.free)))
+                    .flatMap(c => {
+                        // If category has subcategories, include them instead of parent
+                        if (c.subcategories) {
+                            return c.subcategories.map(sub => sub.key);
+                        }
+                        return [c.key];
+                    });
+                return ['all', ...freeCategories];
+            }
             let newCategories = prev.includes('all') ? [] : [...prev];
             if (newCategories.includes(key)) {
                 newCategories = newCategories.filter(c => c !== key);
@@ -390,9 +414,15 @@ export default function HostScreen({ navigation, route }) {
                             <Text style={styles.voiceInstructions}>
                                 VOICE CHAT
                             </Text>
-                            <Text style={styles.voiceSubInstructions}>
-                                Tap below to join the voice channel
-                            </Text>
+                            {voiceParticipants.length > 0 ? (
+                                <Text style={styles.voiceSubInstructions}>
+                                    {voiceParticipants.length} {voiceParticipants.length === 1 ? 'MEMBER' : 'MEMBERS'} IN CALL
+                                </Text>
+                            ) : (
+                                <Text style={styles.voiceSubInstructions}>
+                                    No one in voice chat yet
+                                </Text>
+                            )}
                             <TouchableOpacity
                                 style={styles.joinVoiceBtn}
                                 onPress={() => {
@@ -414,11 +444,25 @@ export default function HostScreen({ navigation, route }) {
                     ) : (
                         <>
                             <Text style={styles.voiceInstructions}>
-                                CONNECTED
+                                IN VOICE CHAT
                             </Text>
-                            <Text style={styles.voiceSubInstructions}>
-                                You are live in the channel
-                            </Text>
+
+                            {/* Participants List */}
+                            <View style={styles.voiceParticipantsList}>
+                                {voiceParticipants.map((participant) => (
+                                    <View key={participant.id} style={styles.voiceParticipantRow}>
+                                        {participant.customAvatarConfig ? (
+                                            <CustomBuiltAvatar config={participant.customAvatarConfig} size={32} />
+                                        ) : (
+                                            <CustomAvatar id={participant.avatarId || 1} size={32} />
+                                        )}
+                                        <Text style={styles.voiceParticipantName} numberOfLines={1}>
+                                            {participant.id === 'host-id' ? 'You' : participant.name}
+                                        </Text>
+                                    </View>
+                                ))}
+                            </View>
+
                             <VoiceControl />
 
                             <TouchableOpacity
@@ -521,6 +565,7 @@ export default function HostScreen({ navigation, route }) {
                             onClose={() => setIsCategoriesOpen(false)}
                             selectedCategories={selectedCategories}
                             onSelectCategory={toggleCategory}
+                            navigation={navigation}
                         />
                     </View>
 
@@ -852,6 +897,30 @@ function getStyles(theme) {
             opacity: 0.8,
             marginBottom: 30,
         },
+        voiceParticipantsList: {
+            width: '100%',
+            maxWidth: 300,
+            marginVertical: 20,
+            gap: 12,
+        },
+        voiceParticipantRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+            paddingVertical: 8,
+            paddingHorizontal: 16,
+            borderRadius: 12,
+            backgroundColor: theme.colors.surface,
+            borderWidth: 1,
+            borderColor: theme.colors.primary + '30',
+        },
+        voiceParticipantName: {
+            fontSize: 16,
+            fontFamily: theme.fonts.medium,
+            color: theme.colors.text,
+            letterSpacing: 1,
+            flex: 1,
+        },
         joinVoiceBtn: {
             width: 120,
             height: 120,
@@ -871,14 +940,14 @@ function getStyles(theme) {
             height: 110,
             borderRadius: 55,
             borderWidth: 2,
-            borderColor: '#000',
+            borderColor: theme.colors.secondary,
             justifyContent: 'center',
             alignItems: 'center',
             backgroundColor: theme.colors.primary,
         },
         joinVoiceText: {
             fontFamily: theme.fonts.bold,
-            color: '#000',
+            color: theme.colors.secondary,
             fontSize: 18,
             textAlign: 'center',
         },

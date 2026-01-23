@@ -227,9 +227,19 @@ export default function SetupScreen({ navigation, route }) {
     const toggleCategory = (key) => {
         playHaptic('light');
         setSelectedCategories(prev => {
-            // If tapping 'Random (All)', reset to just ['all']
+            // If tapping 'Random (All)', select all FREE/unlocked categories
             if (key === 'all') {
-                return ['all'];
+                // Get all free categories (including subcategories)
+                const freeCategories = CATEGORY_LABELS
+                    .filter(c => c.key !== 'all' && (c.free === true || (!c.premium && !c.free)))
+                    .flatMap(c => {
+                        // If category has subcategories, include them instead of parent
+                        if (c.subcategories) {
+                            return c.subcategories.map(sub => sub.key);
+                        }
+                        return [c.key];
+                    });
+                return ['all', ...freeCategories];
             }
 
             let newCategories = [...prev];
@@ -488,6 +498,7 @@ export default function SetupScreen({ navigation, route }) {
                     onClose={() => setIsCategoriesOpen(false)}
                     selectedCategories={selectedCategories}
                     onSelectCategory={toggleCategory}
+                    navigation={navigation}
                 />
 
                 {/* Players Section - Film frame style */}

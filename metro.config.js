@@ -9,6 +9,31 @@ config.resolver.assetExts.push('lottie');
 // Android-specific fixes for bundle loading issues
 config.resolver.platforms = ['ios', 'android', 'native', 'web'];
 
+// Performance optimizations for faster bundling
+config.transformer = {
+  ...config.transformer,
+  minifierPath: 'metro-minify-terser',
+  minifierConfig: {
+    keep_fnames: true,
+    mangle: {
+      keep_fnames: true,
+    },
+    compress: {
+      // Drop console logs in production
+      drop_console: false,
+      // Reduce passes for faster bundling
+      passes: 1,
+    },
+  },
+  // Enable inline requires for faster startup
+  getTransformOptions: async () => ({
+    transform: {
+      experimentalImportSupport: false,
+      inlineRequires: true, // Critical for performance
+    },
+  }),
+};
+
 // Increase timeout for Android builds
 config.server = {
   ...config.server,
@@ -18,17 +43,6 @@ config.server = {
       res.setTimeout(300000); // 5 minutes
       return middleware(req, res, next);
     };
-  },
-};
-
-// Transformer options for better Android compatibility
-config.transformer = {
-  ...config.transformer,
-  minifierConfig: {
-    keep_fnames: true,
-    mangle: {
-      keep_fnames: true,
-    },
   },
 };
 

@@ -845,12 +845,28 @@ export function getRandomWord(categoryKeys = ['all']) {
     const addCategory = (list, cat) => list.map(w => ({ ...w, category: cat }));
 
     if (keys.includes('all') || keys.length === 0) {
-        Object.keys(wordCategories).forEach(key => {
-            availableWords = [...availableWords, ...addCategory(wordCategories[key], key)];
+        // When 'all' is selected, only include FREE/unlocked categories
+        const freeCategories = CATEGORY_LABELS
+            .filter(c => c.key !== 'all' && (c.free === true || (!c.premium && !c.free)))
+            .flatMap(c => {
+                // If category has subcategories, include them instead of parent
+                if (c.subcategories) {
+                    return c.subcategories.map(sub => sub.key);
+                }
+                return [c.key];
+            });
+        
+        // Only add words from free categories
+        freeCategories.forEach(key => {
+            if (wordCategories[key]) {
+                availableWords = [...availableWords, ...addCategory(wordCategories[key], key)];
+            }
         });
     } else {
+        // When specific categories are selected, use them directly
+        // (assumes the UI already filtered out premium categories)
         keys.forEach(key => {
-            if (wordCategories[key]) {
+            if (key !== 'all' && wordCategories[key]) {
                 availableWords = [...availableWords, ...addCategory(wordCategories[key], key)];
             }
         });

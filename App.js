@@ -113,7 +113,7 @@ function AppNavigator() {
           component={ProfileScreen}
           options={{
             headerShown: true,
-            headerTransparent: false, // Ensure content starts BELOW the header
+            headerTransparent: false,
             headerTitle: "PROFILE",
             headerStyle: {
               backgroundColor: theme.colors.background,

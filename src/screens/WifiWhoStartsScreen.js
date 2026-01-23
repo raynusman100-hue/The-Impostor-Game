@@ -14,13 +14,15 @@ export default function WifiWhoStartsScreen({ route, navigation }) {
     const styles = getStyles(theme);
     const { roomCode, playerId, playerCount } = route.params;
 
-
+    console.log(`🎯 WHO STARTS: Player ${playerId} entered screen for room ${roomCode}`);
 
     const [startPlayer, setStartPlayer] = useState(null);
     const isHost = playerId === 'host-id';
     const [countdown, setCountdown] = useState(5);
     const hasNavigated = useRef(false);
     const startPlayerSet = useRef(false);
+    
+    console.log(`🎯 WHO STARTS: isHost = ${isHost}, playerId = ${playerId}`);
 
     // Disable back button
     useEffect(() => {

@@ -275,7 +275,7 @@ export default function RoleCard({ player, category, hintsEnabled, onNext, langu
                             top: 0,
                             left: 0,
                         }}
-                        resizeMode="contain"
+                        resizeMode="cover"
                     />
 
                     <View style={styles.coverHeader}>
@@ -374,7 +374,8 @@ function getStyles(theme, CARD_WIDTH, CARD_HEIGHT, SLIDER_WIDTH) {
             zIndex: 10,
             overflow: 'hidden',
             borderRadius: theme.borderRadius.xl,
-            backgroundColor: theme.colors.background, // Fallback
+            // Match the card cover image background colors
+            backgroundColor: (theme.id === 'kodak-cinema' || theme.id === 'retro-pop') ? '#000000' : '#FFFFFF',
         },
         coverHeader: {
             marginTop: theme.spacing.l,
