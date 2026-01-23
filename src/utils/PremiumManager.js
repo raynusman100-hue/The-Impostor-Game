@@ -2,8 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Premium test users (for development/testing)
 const PREMIUM_TEST_USERS = [
-    // Add test emails here
-    // Example: 'test@example.com',
+    'zayanusman36@gmail.com', // Premium access granted
+    // Add more test emails here if needed
 ];
 
 /**
@@ -66,9 +66,9 @@ export function getAvailableCategories(hasPremium, allCategories) {
         // Premium users get all categories
         return allCategories;
     }
-    
+
     // Free users only get free categories
-    return allCategories.filter(cat => 
+    return allCategories.filter(cat =>
         cat.free === true || (!cat.premium && !cat.free)
     );
 }
@@ -82,10 +82,10 @@ export function getAvailableCategories(hasPremium, allCategories) {
  */
 export function isCategoryAvailable(categoryKey, hasPremium, allCategories) {
     if (hasPremium) return true;
-    
+
     const category = allCategories.find(cat => cat.key === categoryKey);
     if (!category) return false;
-    
+
     return category.free === true || (!category.premium && !category.free);
 }
 
@@ -104,7 +104,7 @@ export function getPremiumStyling(hasPremium, theme) {
             borderColor: theme.colors.primary + '50',
         };
     }
-    
+
     return {
         usernameColor: '#FFD700', // Gold
         usernameShadow: {
