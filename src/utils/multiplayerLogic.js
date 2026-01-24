@@ -39,7 +39,8 @@ export const startWifiGame = async (roomCode, players, settings) => {
             translatedHint,
             malayalamData,
             randomWord.word,
-            randomWord.hint
+            randomWord.hint,
+            randomWord.impostorHint // Pass impostor hint (group name)
         );
 
         // 4. Map back to Firebase structure

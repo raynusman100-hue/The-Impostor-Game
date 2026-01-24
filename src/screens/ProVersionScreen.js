@@ -39,7 +39,7 @@ const ProVersionScreen = () => {
         setLoading(false);
 
         if (result.success) {
-            Alert.alert('Success', 'You are now a Pro user! Ads have been removed.');
+            Alert.alert('Success', 'You are now a Pro user! Voice chat unlocked & ads removed.');
             navigation.goBack();
         } else if (result.error !== 'User cancelled') {
             Alert.alert('Error', result.error);
@@ -67,12 +67,14 @@ const ProVersionScreen = () => {
                 style={styles.container}
             >
                 <View style={styles.content}>
-                    <Ionicons name="checkmark-circle" size={80} color="#4CAF50" />
-                    <Text style={styles.title}>You are a Pro User!</Text>
-                    <Text style={styles.description}>Thank you for your support. Enjoy the ad-free experience.</Text>
+                    <Ionicons name="checkmark-circle" size={100} color="#FFD700" />
+                    <Text style={[styles.title, { marginTop: 20 }]}>PREMIUM UNLOCKED</Text>
+                    <Text style={styles.description}>
+                        You have full access to Voice Chat and an Ad-Free experience. Thank you for your support!
+                    </Text>
 
                     <TouchableOpacity style={styles.closeButton} onPress={() => navigation.goBack()}>
-                        <Text style={styles.buttonText}>Close</Text>
+                        <Text style={styles.buttonText}>CLOSE</Text>
                     </TouchableOpacity>
                 </View>
             </LinearGradient>
@@ -81,61 +83,117 @@ const ProVersionScreen = () => {
 
     return (
         <LinearGradient
-            colors={['#0a0a0a', '#1a1a1a']}
+            colors={['#000000', '#1a1a1a', '#000000']}
             style={styles.container}
         >
             <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-                <Ionicons name="arrow-back" size={24} color="#ffffff" />
+                <Ionicons name="close" size={28} color="#ffffff" />
             </TouchableOpacity>
 
-            <ScrollView contentContainerStyle={styles.scrollContent}>
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+
+                {/* Header Section */}
                 <View style={styles.header}>
-                    <Ionicons name="star" size={60} color="#FFD700" />
-                    <Text style={styles.title}>Go Pro</Text>
-                    <Text style={styles.subtitle}>Unlock the ultimate experience</Text>
+                    <LinearGradient
+                        colors={['#FFD700', '#FFA500']}
+                        style={styles.iconBackground}
+                    >
+                        <Ionicons name="diamond" size={48} color="#000" />
+                    </LinearGradient>
+                    <Text style={styles.title}>GO PREMIUM</Text>
+                    <Text style={styles.subtitle}>Unlock the Full Experience</Text>
                 </View>
 
-                <View style={styles.card}>
-                    <FeatureRow icon="remove-circle-outline" text="Remove All Ads" theme={theme} />
-                    <FeatureRow icon="color-palette-outline" text="Unlock All Themes (Coming Soon)" theme={theme} />
-                    <FeatureRow icon="heart-outline" text="Support the Developer" theme={theme} />
+                {/* Main Feature Card - Highly Visible */}
+                <View style={styles.mainCard}>
+                    <View style={styles.cardHeader}>
+                        <Text style={styles.cardRank}>PRO ACCESS</Text>
+                    </View>
+
+                    <View style={styles.featuresContainer}>
+                        <FeatureRow
+                            icon="mic"
+                            title="Access to Voice Chat"
+                            subtitle="Talk with friends in real-time"
+                            isPremium={true}
+                            theme={theme}
+                        />
+                        <FeatureRow
+                            icon="ban"
+                            title="Remove All Ads"
+                            subtitle="No more interruptions"
+                            isPremium={true}
+                            theme={theme}
+                        />
+                        <FeatureRow
+                            icon="color-palette"
+                            title="Premium Themes"
+                            subtitle="Customize your experience (Soon)"
+                            theme={theme}
+                        />
+                        <FeatureRow
+                            icon="heart"
+                            title="Support Development"
+                            subtitle="Help us make the game better"
+                            theme={theme}
+                        />
+                    </View>
                 </View>
 
+                {/* Purchase Button Area */}
                 <View style={styles.footer}>
                     <TouchableOpacity
                         style={styles.purchaseButton}
                         onPress={handlePurchase}
                         disabled={loading}
+                        activeOpacity={0.8}
                     >
-                        {loading ? (
-                            <ActivityIndicator color="#000" />
-                        ) : (
-                            <>
-                                <Text style={styles.buttonText}>
-                                    {packageInfo ? `Upgrade for ${packageInfo.product.priceString}` : 'Upgrade Now'}
-                                </Text>
-                                <Text style={styles.priceText}>One-time purchase</Text>
-                            </>
-                        )}
+                        <LinearGradient
+                            colors={['#FFD700', '#FDB931']}
+                            style={styles.gradientButton}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                        >
+                            {loading ? (
+                                <ActivityIndicator color="#000" />
+                            ) : (
+                                <View style={styles.priceContainer}>
+                                    <Text style={styles.buttonText}>
+                                        UNLOCK NOW
+                                    </Text>
+                                    <Text style={styles.priceText}>
+                                        {packageInfo ? packageInfo.product.priceString : 'Loading Price...'} • One-time Purchase
+                                    </Text>
+                                </View>
+                            )}
+                        </LinearGradient>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.restoreButton} onPress={handleRestore} disabled={loading}>
                         <Text style={styles.restoreText}>Restore Purchases</Text>
                     </TouchableOpacity>
                 </View>
+
+                <Text style={styles.disclaimer}>
+                    Secure payment via Google Play. No recurring subscription.
+                </Text>
+
             </ScrollView>
         </LinearGradient>
     );
 };
 
-const FeatureRow = ({ icon, text, theme }) => {
+const FeatureRow = ({ icon, title, subtitle, isPremium, theme }) => {
     const styles = getStyles(theme);
     return (
         <View style={styles.featureRow}>
-            <View style={styles.iconContainer}>
-                <Ionicons name={icon} size={24} color="#FFD700" />
+            <View style={[styles.iconContainer, isPremium && styles.iconContainerPremium]}>
+                <Ionicons name={icon} size={24} color={isPremium ? "#000" : "#FFD700"} />
             </View>
-            <Text style={styles.featureText}>{text}</Text>
+            <View style={styles.textContainer}>
+                <Text style={[styles.featureTitle, isPremium && styles.featureTitlePremium]}>{title}</Text>
+                <Text style={styles.featureSubtitle}>{subtitle}</Text>
+            </View>
         </View>
     );
 };
@@ -145,119 +203,188 @@ const getStyles = (theme) => StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        flexGrow: 1,
-        padding: 24,
-        justifyContent: 'center',
-    },
-    content: {
-        flex: 1,
-        justifyContent: 'center',
+        paddingVertical: 60,
+        paddingHorizontal: 20,
         alignItems: 'center',
-        padding: 24,
-    },
-    header: {
-        alignItems: 'center',
-        marginBottom: 40,
-    },
-    title: {
-        fontSize: 32,
-        fontWeight: 'bold',
-        color: '#ffffff',
-        marginTop: 16,
-        fontFamily: 'Inter_700Bold', // Assuming this font is available
-    },
-    subtitle: {
-        fontSize: 16,
-        color: '#888888',
-        marginTop: 8,
-        fontFamily: 'Inter_400Regular',
-    },
-    description: {
-        fontSize: 16,
-        color: '#cccccc',
-        textAlign: 'center',
-        marginTop: 16,
-        marginBottom: 32,
-        lineHeight: 24,
-    },
-    card: {
-        backgroundColor: 'rgba(255,255,255,0.05)',
-        borderRadius: 24,
-        padding: 24,
-        marginBottom: 40,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
-    },
-    featureRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    iconContainer: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: 'rgba(255, 215, 0, 0.1)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 16,
-    },
-    featureText: {
-        fontSize: 16,
-        color: '#ffffff',
-        fontWeight: '600',
-    },
-    footer: {
-        width: '100%',
-    },
-    purchaseButton: {
-        backgroundColor: '#FFD700',
-        paddingVertical: 18,
-        borderRadius: 16,
-        alignItems: 'center',
-        marginBottom: 16,
-        elevation: 5,
-        shadowColor: '#FFD700',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-    },
-    buttonText: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: theme.colors.secondary,
-    },
-    priceText: {
-        fontSize: 12,
-        color: theme.colors.textMuted,
-        marginTop: 2,
-    },
-    restoreButton: {
-        padding: 12,
-        alignItems: 'center',
-    },
-    restoreText: {
-        color: '#888888',
-        fontSize: 14,
     },
     backButton: {
         position: 'absolute',
         top: 50,
-        left: 20,
-        zIndex: 10,
-        width: 40,
-        height: 40,
-        backgroundColor: 'rgba(0,0,0,0.3)',
-        borderRadius: 20,
+        right: 20,
+        zIndex: 50,
+        width: 44,
+        height: 44,
+        backgroundColor: 'rgba(255,255,255,0.1)',
+        borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
     },
+    header: {
+        alignItems: 'center',
+        marginBottom: 30,
+    },
+    iconBackground: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16,
+        elevation: 10,
+        shadowColor: '#FFD700',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.5,
+        shadowRadius: 20,
+    },
+    title: {
+        fontSize: 36,
+        fontFamily: 'Panchang-Bold', // Assuming font exists
+        color: '#ffffff',
+        textAlign: 'center',
+        letterSpacing: 1,
+    },
+    subtitle: {
+        fontSize: 14,
+        color: '#aaaaaa',
+        marginTop: 8,
+        letterSpacing: 2,
+        fontFamily: 'Teko-Medium', // Assuming font exists
+        textTransform: 'uppercase',
+    },
+    mainCard: {
+        width: '100%',
+        backgroundColor: '#111',
+        borderRadius: 24,
+        padding: 4, // for border effect
+        marginBottom: 30,
+        borderWidth: 1,
+        borderColor: '#333',
+    },
+    cardHeader: {
+        alignItems: 'center',
+        paddingVertical: 10,
+        backgroundColor: '#1a1a1a',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#333',
+    },
+    cardRank: {
+        fontSize: 12,
+        color: '#FFD700',
+        fontWeight: '900',
+        letterSpacing: 2,
+    },
+    featuresContainer: {
+        padding: 20,
+        backgroundColor: '#0a0a0a',
+        borderBottomLeftRadius: 20,
+        borderBottomRightRadius: 20,
+    },
+    featureRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    iconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 16,
+    },
+    iconContainerPremium: {
+        backgroundColor: '#FFD700',
+    },
+    textContainer: {
+        flex: 1,
+    },
+    featureTitle: {
+        fontSize: 18,
+        color: '#ffffff',
+        fontWeight: '700',
+        marginBottom: 2,
+    },
+    featureTitlePremium: {
+        color: '#FFD700',
+    },
+    featureSubtitle: {
+        fontSize: 13,
+        color: '#666666',
+    },
+    footer: {
+        width: '100%',
+        alignItems: 'center',
+    },
+    purchaseButton: {
+        width: '100%',
+        borderRadius: 16,
+        overflow: 'hidden',
+        marginBottom: 16,
+        elevation: 8,
+        shadowColor: '#FFD700',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 12,
+    },
+    gradientButton: {
+        paddingVertical: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    priceContainer: {
+        alignItems: 'center',
+    },
+    buttonText: {
+        fontSize: 22,
+        fontFamily: 'Panchang-Bold',
+        color: '#000',
+        marginBottom: 4,
+    },
+    priceText: {
+        fontSize: 12,
+        color: '#333',
+        fontWeight: '600',
+    },
+    restoreButton: {
+        padding: 10,
+    },
+    restoreText: {
+        color: '#666',
+        fontSize: 12,
+        textDecorationLine: 'underline',
+    },
+    disclaimer: {
+        marginTop: 20,
+        color: '#444',
+        fontSize: 10,
+        textAlign: 'center',
+    },
+    // Success Screen Styles
+    content: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 30,
+    },
+    description: {
+        fontSize: 16,
+        color: '#ccc',
+        textAlign: 'center',
+        marginTop: 16,
+        marginBottom: 40,
+        lineHeight: 24,
+    },
     closeButton: {
-        backgroundColor: '#333',
-        paddingHorizontal: 32,
+        backgroundColor: '#222',
+        paddingHorizontal: 40,
         paddingVertical: 16,
-        borderRadius: 12,
-    }
+        borderRadius: 30,
+        borderWidth: 1,
+        borderColor: '#444',
+    },
 });
 
 export default ProVersionScreen;

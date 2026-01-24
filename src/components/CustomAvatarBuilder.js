@@ -68,8 +68,13 @@ export const CustomBuiltAvatar = ({ config, size = 100 }) => {
                 const spikeW = FW * 0.12, spikeH = isSquare ? FH * 0.28 : FH * 0.32, spikeTop = isSquare ? hairTop - FH * 0.05 : hairTop - FH * 0.08;
                 return <View style={{ position: 'absolute', left: 0, top: spikeTop, width: FW, height: FH * 0.5 }}>{[-2, -1, 0, 1, 2].map(i => <View key={i} style={{ position: 'absolute', left: FACE_CENTER_X + (i * FW * 0.14) - spikeW/2, top: Math.abs(i) * FH * 0.04, width: spikeW, height: spikeH, backgroundColor: hairColor, borderRadius: spikeW / 2, transform: [{ rotate: `${i * 10}deg` }] }} />)}</View>;
             case 'curly':
-                const curlSize = FW * 0.18, curlTop = isSquare ? hairTop : hairTop - FH * 0.05;
-                return <View style={{ position: 'absolute', left: 0, top: curlTop, width: FW, height: FH * 0.4 }}>{[0,1,2,3,4,5,6].map(i => <View key={i} style={{ position: 'absolute', left: (i * FW * 0.14) - sideExtend, top: (i % 2) * FH * 0.06, width: curlSize, height: curlSize, backgroundColor: hairColor, borderRadius: curlSize / 2 }} />)}</View>;
+                const curlSize = FW * 0.18;
+                const curlTop = isSquare ? hairTop + FH * 0.05 : hairTop;
+                const curlSpacing = FW * 0.14;
+                const totalCurls = 6;
+                const totalWidth = totalCurls * curlSpacing;
+                const startX = (FW - totalWidth) / 2;
+                return <View style={{ position: 'absolute', left: 0, top: curlTop, width: FW, height: FH * 0.4 }}>{[0,1,2,3,4,5].map(i => <View key={i} style={{ position: 'absolute', left: startX + (i * curlSpacing), top: (i % 2) * FH * 0.05, width: curlSize, height: curlSize, backgroundColor: hairColor, borderRadius: curlSize / 2 }} />)}</View>;
             case 'wavy':
                 return <View style={{ position: 'absolute', left: -sideExtend, top: hairTop, width: FW + sideExtend * 2, height: FH * 0.6, backgroundColor: hairColor, borderTopLeftRadius: isSquare ? FW * 0.2 : FW * 0.5, borderTopRightRadius: isSquare ? FW * 0.2 : FW * 0.5, borderBottomLeftRadius: FW * 0.15, borderBottomRightRadius: FW * 0.15 }} />;
             case 'long':

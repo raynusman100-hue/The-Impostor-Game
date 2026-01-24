@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import HomeScreen from './HomeScreen';
 import PremiumScreen from './PremiumScreen';
-import { checkPremiumStatus } from '../utils/PremiumManager';
+import { checkPremiumStatus, cleanupLegacyPremiumCache } from '../utils/PremiumManager';
 import AdManager from '../utils/AdManager';
 import { auth } from '../utils/firebase';
 
@@ -13,6 +13,9 @@ export default function AppInitializer({ navigation }) {
     useEffect(() => {
         const checkPremiumShow = async () => {
             try {
+                // Clean up legacy premium cache that was shared across accounts
+                await cleanupLegacyPremiumCache();
+                
                 // Check premium status first
                 const user = auth.currentUser;
                 if (user) {

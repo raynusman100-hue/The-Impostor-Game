@@ -23,15 +23,14 @@ export default function HowToPlayScreen({ navigation }) {
             style={styles.container}
         >
             <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-                <Text style={styles.title}>
-                    HOW TO PLAY
-                </Text>
-
                 <ScrollView
                     style={styles.scrollView}
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                 >
+                    <Text style={styles.title}>
+                        HOW TO PLAY
+                    </Text>
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>
                             GAME OVERVIEW
@@ -74,6 +73,17 @@ export default function HowToPlayScreen({ navigation }) {
                         <Text style={[styles.text, { color: theme.colors.text }]}>
                             • Citizens win if they correctly identify and vote out the Impostor{'\n'}
                             • Impostor wins if they avoid detection or correctly guess the secret word
+                        </Text>
+                    </View>
+
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>
+                            WIFI MODE
+                        </Text>
+                        <Text style={[styles.text, { color: theme.colors.text }]}>
+                            • Play with friends nearby!{'\n'}
+                            • Requires an active Internet Connection{'\n'}
+                            • One player Hosts, others Join
                         </Text>
                     </View>
 

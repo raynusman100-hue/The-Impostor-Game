@@ -69,7 +69,7 @@ const GlassmorphicButton = ({ title, onPress, isPrimary }) => {
             >
                 {/* Crystal glass background */}
                 <LinearGradient
-                    colors={isPrimary 
+                    colors={isPrimary
                         ? [theme.colors.primary, theme.colors.primary]
                         : ['rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.05)']
                     }
@@ -78,7 +78,7 @@ const GlassmorphicButton = ({ title, onPress, isPrimary }) => {
                     style={[
                         glassStyles.glass,
                         {
-                            borderColor: isPrimary 
+                            borderColor: isPrimary
                                 ? 'rgba(255, 255, 255, 0.3)'
                                 : 'rgba(255, 255, 255, 0.15)',
                         }
@@ -86,13 +86,13 @@ const GlassmorphicButton = ({ title, onPress, isPrimary }) => {
                 >
                     {/* Subtle top shine - very minimal */}
                     <View style={glassStyles.shineTop} />
-                    
+
                     {/* Bottom subtle glow */}
                     <View style={glassStyles.glowBottom} />
-                    
+
                     <Text style={[
                         glassStyles.title,
-                        { 
+                        {
                             color: isPrimary ? theme.colors.secondary : theme.colors.text,
                         }
                     ]}>
@@ -165,9 +165,24 @@ export default function HomeScreen({ navigation }) {
                 try {
                     const savedProfile = await AsyncStorage.getItem('user_profile');
                     if (savedProfile) {
-                        setUserProfile(JSON.parse(savedProfile));
+                        const profile = JSON.parse(savedProfile);
+                        setUserProfile(profile);
+
+                        // Enforce Profile Completion
+                        if (!profile.hasCompletedProfile || !profile.username || profile.username.trim() === '') {
+                            Alert.alert(
+                                'Profile Incomplete',
+                                'You need a username to play! Please complete your profile.',
+                                [
+                                    { text: 'Go to Profile', onPress: () => navigation.navigate('Profile') },
+                                    { text: 'Cancel', style: 'cancel' }
+                                ]
+                            );
+                        }
                     } else {
                         setUserProfile(null);
+                        // Optional: Prompt new users to sign in?
+                        // For now, allow them to see the screen but maybe block buttons later
                     }
                 } catch (e) {
                     console.log('Failed to load profile');
@@ -219,6 +234,54 @@ export default function HomeScreen({ navigation }) {
             clearTimeout(animationTimeout);
             clearTimeout(flickerTimeout);
         };
+    }, []);
+
+    // Premium screen logic - show every 2nd app open
+    useEffect(() => {
+        const handlePremiumScreen = async () => {
+            try {
+                // Check if this is from navigation state (e.g., back button)
+                const isNavigating = navigation.getState().routes.length > 1;
+                if (isNavigating) {
+                    console.log('HomeScreen: Skipping premium check (navigation state detected)');
+                    return;
+                }
+
+                // Check if user has premium
+                const { checkPremiumStatus } = require('../utils/PremiumManager');
+                const { auth } = require('../utils/firebase');
+
+                const user = auth.currentUser;
+                if (user) {
+                    const hasPremium = await checkPremiumStatus(user.email, user.uid);
+                    if (hasPremium) {
+                        console.log('HomeScreen: User has premium, skipping screen');
+                        return;
+                    }
+                }
+
+                // Get and increment app open count
+                const countStr = await AsyncStorage.getItem('app_open_count');
+                const count = countStr ? parseInt(countStr, 10) : 0;
+                const newCount = count + 1;
+                await AsyncStorage.setItem('app_open_count', newCount.toString());
+
+                console.log('HomeScreen: App opened', newCount, 'times');
+
+                // Show premium on even numbers (every 2nd open)
+                if (newCount % 2 === 0 && newCount > 0) {
+                    console.log('HomeScreen: Showing premium screen (2nd open trigger)');
+                    // Small delay to ensure home screen is fully loaded
+                    setTimeout(() => {
+                        navigation.navigate('Premium');
+                    }, 800);
+                }
+            } catch (error) {
+                console.error('HomeScreen: Error in premium check:', error);
+            }
+        };
+
+        handlePremiumScreen();
     }, []);
 
     return (
@@ -277,9 +340,9 @@ export default function HomeScreen({ navigation }) {
 
             {/* Premium button - small icon next to profile */}
             <TouchableOpacity
-                onPress={() => { 
-                    playHaptic('medium'); 
-                    navigation.navigate('Premium'); 
+                onPress={() => {
+                    playHaptic('medium');
+                    navigation.navigate('Premium');
                 }}
                 style={styles.premiumButton}
                 activeOpacity={0.7}
@@ -436,191 +499,191 @@ const characterStyles = StyleSheet.create({
 
 function getStyles(theme) {
     return StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    settingsButton: {
-        position: 'absolute',
-        top: Platform.OS === 'ios' ? 45 : 30,
-        left: 22,
-        zIndex: 10,
-        width: 42,
-        height: 42,
-        borderRadius: 21,
-        backgroundColor: theme.colors.surface,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 2,
-        borderColor: theme.colors.primary + '50',
-    },
-    gearIcon: {
-        width: 22,
-        height: 22,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    gearTooth: {
-        position: 'absolute',
-        width: 4,
-        height: 22,
-        borderRadius: 2,
-    },
-    gearCenter: {
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-        borderWidth: 2,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    gearDot: {
-        width: 4,
-        height: 4,
-        borderRadius: 2,
-    },
-    profileButton: {
-        position: 'absolute',
-        top: Platform.OS === 'ios' ? 45 : 30,
-        right: 22,
-        zIndex: 10,
-        width: 42,
-        height: 42,
-        borderRadius: 21,
-        backgroundColor: theme.colors.surface,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 2,
-        borderColor: theme.colors.primary + '50',
-    },
-    premiumButton: {
-        position: 'absolute',
-        top: Platform.OS === 'ios' ? 45 : 30,
-        right: 74,
-        width: 42,
-        height: 42,
-        zIndex: 10,
-        borderRadius: 21,
-        overflow: 'hidden',
-        borderWidth: 2,
-        borderColor: '#FFD700',
-        shadowColor: '#FFD700',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 4,
-    },
-    premiumGradient: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    premiumIcon: {
-        fontSize: 20,
-        lineHeight: 20,
-    },
-    profilePlaceholder: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingTop: 5,
-    },
-    placeholderHead: {
-        width: 11,
-        height: 11,
-        borderRadius: 5.5,
-        marginBottom: 2,
-    },
-    placeholderBody: {
-        width: 18,
-        height: 9,
-        borderTopLeftRadius: 9,
-        borderTopRightRadius: 9,
-    },
-    content: {
-        flex: 1,
-        alignItems: 'center',
-        paddingTop: Platform.OS === 'ios' ? 50 : 35, // Moved up - no frame text needed
-        paddingHorizontal: 26,
-    },
-    // Film frame header
-    filmFrameTop: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        width: '100%',
-        paddingVertical: 6,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.primary + '30',
-        marginBottom: 8,
-    },
-    frameCode: {
-        opacity: 0.5,
-    },
-    frameCodeText: {
-        color: theme.colors.primary,
-        fontSize: 8,
-        fontFamily: 'Teko-Medium',
-        letterSpacing: 2,
-    },
-    kodakBadge: {
-        backgroundColor: theme.colors.primary,
-        paddingHorizontal: 12,
-        paddingVertical: 2,
-        borderRadius: 3,
-    },
-    kodakBadgeText: {
-        color: theme.colors.secondary,
-        fontSize: 9,
-        fontFamily: 'Panchang-Bold',
-        letterSpacing: 3,
-    },
-    // Title - below the line
-    titleContainer: {
-        alignItems: 'center',
-        marginTop: 8, // Space below the line
-        marginBottom: SCREEN_HEIGHT < 700 ? 50 : 60, // Space before character
-        zIndex: 1, // Above character
-    },
-    titleMain: {
-        fontSize: SCREEN_HEIGHT < 700 ? 48 : 52,
-        color: theme.colors.text,
-        fontFamily: 'BespokeStencil-Extrabold',
-        letterSpacing: 2,
-        ...theme.textShadows.depth,
-        zIndex: 1,
-    },
-    titleSub: {
-        fontSize: SCREEN_HEIGHT < 700 ? 36 : 40,
-        color: theme.colors.primary,
-        fontFamily: 'BespokeStencil-Extrabold',
-        letterSpacing: 4,
-        marginTop: -4,
-        zIndex: 1,
-    },
-    // Menu - positioned at bottom, simple
-    menuContainer: {
-        position: 'absolute',
-        bottom: Platform.OS === 'ios' ? 40 : 30, // Reduced bottom space
-        left: 26,
-        right: 26,
-    },
-    menuContent: {
-        paddingVertical: 8,
-    },
-    buttonColumn: {
-        gap: 12,
-    },
-    // Film frame footer
-    filmFrameBottom: {
-        position: 'absolute',
-        bottom: Platform.OS === 'ios' ? 20 : 12, // Reduced bottom space
-        alignItems: 'center',
-    },
-    frameFooterText: {
-        color: theme.colors.textMuted,
-        fontSize: 8,
-        fontFamily: 'Teko-Medium',
-        letterSpacing: 3,
-        opacity: 0.5,
-    },
+        container: {
+            flex: 1,
+        },
+        settingsButton: {
+            position: 'absolute',
+            top: Platform.OS === 'ios' ? 45 : 30,
+            left: 22,
+            zIndex: 10,
+            width: 42,
+            height: 42,
+            borderRadius: 21,
+            backgroundColor: theme.colors.surface,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 2,
+            borderColor: theme.colors.primary + '50',
+        },
+        gearIcon: {
+            width: 22,
+            height: 22,
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        gearTooth: {
+            position: 'absolute',
+            width: 4,
+            height: 22,
+            borderRadius: 2,
+        },
+        gearCenter: {
+            width: 12,
+            height: 12,
+            borderRadius: 6,
+            borderWidth: 2,
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        gearDot: {
+            width: 4,
+            height: 4,
+            borderRadius: 2,
+        },
+        profileButton: {
+            position: 'absolute',
+            top: Platform.OS === 'ios' ? 45 : 30,
+            right: 22,
+            zIndex: 10,
+            width: 42,
+            height: 42,
+            borderRadius: 21,
+            backgroundColor: theme.colors.surface,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 2,
+            borderColor: theme.colors.primary + '50',
+        },
+        premiumButton: {
+            position: 'absolute',
+            top: Platform.OS === 'ios' ? 45 : 30,
+            right: 74,
+            width: 42,
+            height: 42,
+            zIndex: 10,
+            borderRadius: 21,
+            overflow: 'hidden',
+            borderWidth: 2,
+            borderColor: '#FFD700',
+            shadowColor: '#FFD700',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.3,
+            shadowRadius: 4,
+            elevation: 4,
+        },
+        premiumGradient: {
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        premiumIcon: {
+            fontSize: 20,
+            lineHeight: 20,
+        },
+        profilePlaceholder: {
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingTop: 5,
+        },
+        placeholderHead: {
+            width: 11,
+            height: 11,
+            borderRadius: 5.5,
+            marginBottom: 2,
+        },
+        placeholderBody: {
+            width: 18,
+            height: 9,
+            borderTopLeftRadius: 9,
+            borderTopRightRadius: 9,
+        },
+        content: {
+            flex: 1,
+            alignItems: 'center',
+            paddingTop: Platform.OS === 'ios' ? 50 : 35, // Moved up - no frame text needed
+            paddingHorizontal: 26,
+        },
+        // Film frame header
+        filmFrameTop: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            width: '100%',
+            paddingVertical: 6,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.primary + '30',
+            marginBottom: 8,
+        },
+        frameCode: {
+            opacity: 0.5,
+        },
+        frameCodeText: {
+            color: theme.colors.primary,
+            fontSize: 8,
+            fontFamily: 'Teko-Medium',
+            letterSpacing: 2,
+        },
+        kodakBadge: {
+            backgroundColor: theme.colors.primary,
+            paddingHorizontal: 12,
+            paddingVertical: 2,
+            borderRadius: 3,
+        },
+        kodakBadgeText: {
+            color: theme.colors.secondary,
+            fontSize: 9,
+            fontFamily: 'Panchang-Bold',
+            letterSpacing: 3,
+        },
+        // Title - below the line
+        titleContainer: {
+            alignItems: 'center',
+            marginTop: 8, // Space below the line
+            marginBottom: SCREEN_HEIGHT < 700 ? 50 : 60, // Space before character
+            zIndex: 1, // Above character
+        },
+        titleMain: {
+            fontSize: SCREEN_HEIGHT < 700 ? 48 : 52,
+            color: theme.colors.text,
+            fontFamily: 'BespokeStencil-Extrabold',
+            letterSpacing: 2,
+            ...theme.textShadows.depth,
+            zIndex: 1,
+        },
+        titleSub: {
+            fontSize: SCREEN_HEIGHT < 700 ? 36 : 40,
+            color: theme.colors.primary,
+            fontFamily: 'BespokeStencil-Extrabold',
+            letterSpacing: 4,
+            marginTop: -4,
+            zIndex: 1,
+        },
+        // Menu - positioned at bottom, simple
+        menuContainer: {
+            position: 'absolute',
+            bottom: Platform.OS === 'ios' ? 20 : 10, // Moved down (was 40/30)
+            left: 26,
+            right: 26,
+        },
+        menuContent: {
+            paddingVertical: 8,
+        },
+        buttonColumn: {
+            gap: 12,
+        },
+        // Film frame footer
+        filmFrameBottom: {
+            position: 'absolute',
+            bottom: Platform.OS === 'ios' ? 20 : 12, // Reduced bottom space
+            alignItems: 'center',
+        },
+        frameFooterText: {
+            color: theme.colors.textMuted,
+            fontSize: 8,
+            fontFamily: 'Teko-Medium',
+            letterSpacing: 3,
+            opacity: 0.5,
+        },
     });
 }

@@ -367,6 +367,12 @@ export default function SettingsScreen({ navigation }) {
                     onPress={handleContact}
                     theme={theme}
                 />
+                <SettingButton
+                    label="Remove Ads (Pro)"
+                    description="One-time purchase"
+                    onPress={() => navigation.navigate('ProVersion')}
+                    theme={theme}
+                />
 
                 {/* Legal */}
                 <SectionHeader title="LEGAL" theme={theme} />

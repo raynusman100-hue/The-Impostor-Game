@@ -6,9 +6,12 @@
  * @param {string} crewWord - The secret word for the Crew
  * @param {string} crewHint - The hint for the Crew
  * @param {Object} crewMl - Malayalam translation { word, hint } for the Crew
+ * @param {string} originalWord - Original English word
+ * @param {string} originalHint - Original English hint for citizens
+ * @param {string} impostorHint - Group name hint for impostors
  * @returns {Array<Object>} - Array of players with assigned roles, words, and hints.
  */
-export function assignRoles(players, impostorCount, crewWord, crewHint, crewMl, originalWord, originalHint) {
+export function assignRoles(players, impostorCount, crewWord, crewHint, crewMl, originalWord, originalHint, impostorHint) {
   // Create a deep copy to avoid mutating the original array
   let assignedPlayers = players.map(p => ({ ...p }));
 
@@ -22,8 +25,9 @@ export function assignRoles(players, impostorCount, crewWord, crewHint, crewMl, 
         ...p,
         role: "Impostor",
         word: "Imposter",
-        hint: "Blend in",
-        originalWord: "Imposter", // Imposters don't need translation toggle generally, or it's same
+        hint: impostorHint || "Blend in", // Use group name hint if available
+        originalWord: "Imposter",
+        impostorHint: impostorHint, // Store impostor hint for display
         ml: {
           word: "ചതിയൻ",
           hint: "കൂടിച്ചേരുക"

@@ -380,6 +380,7 @@ export default function RoleRevealScreen({ route, navigation }) {
                 key={`player-${currentIndex}`}
                 player={currentPlayer}
                 category={params.category || params.crewCategory}
+                impostorHint={params.impostorHint}
                 hintsEnabled={params.hintsEnabled}
                 onNext={handleNext}
                 language={isWifi ? gameLanguage : (params.language || 'en')}

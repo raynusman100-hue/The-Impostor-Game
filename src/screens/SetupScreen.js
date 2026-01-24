@@ -392,6 +392,7 @@ export default function SetupScreen({ navigation, route }) {
                 crewHint: finalHint,
                 originalWord: wordData.word, // Pass original word
                 originalHint: wordData.hint, // Pass original hint
+                impostorHint: wordData.impostorHint, // Pass impostor hint (group name)
                 crewCategory: wordData.category,
                 hintsEnabled,
                 language
