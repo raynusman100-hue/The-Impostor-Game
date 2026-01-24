@@ -838,12 +838,17 @@ export const wordCategories = {
         // Combined from football and basketball
     ],
     kpop: [
-        // Groups
+        // Groups - Legends
         { word: 'BTS', impostorHint: 'Groups', hint: 'Bangtan Boys' },
         { word: 'BLACKPINK', impostorHint: 'Groups', hint: 'Pink Venom' },
+        { word: 'BIGBANG', impostorHint: 'Groups', hint: 'Kings of K-pop' },
+        { word: 'Girls\' Generation', impostorHint: 'Groups', hint: 'Nation\'s Girl Group' },
+        { word: 'SHINee', impostorHint: 'Groups', hint: 'Princes of K-pop' },
         { word: 'TWICE', impostorHint: 'Groups', hint: 'One in a Million' },
         { word: 'EXO', impostorHint: 'Groups', hint: 'We Are One' },
         { word: 'SEVENTEEN', impostorHint: 'Groups', hint: '13 members' },
+        
+        // Groups - Current Gen
         { word: 'Stray Kids', impostorHint: 'Groups', hint: 'God\'s Menu' },
         { word: 'NewJeans', impostorHint: 'Groups', hint: 'Attention' },
         { word: 'aespa', impostorHint: 'Groups', hint: 'Next Level' },
@@ -854,44 +859,74 @@ export const wordCategories = {
         { word: 'TXT', impostorHint: 'Groups', hint: 'Tomorrow X Together' },
         { word: 'LE SSERAFIM', impostorHint: 'Groups', hint: 'Fearless' },
         { word: 'IVE', impostorHint: 'Groups', hint: 'I Am' },
+        { word: '(G)I-DLE', impostorHint: 'Groups', hint: 'Self-producing idols' },
+        { word: 'BABYMONSTER', impostorHint: 'Groups', hint: 'YG New Gen' },
+        { word: 'RIIZE', impostorHint: 'Groups', hint: 'Rising SM Group' },
         { word: 'ATEEZ', impostorHint: 'Groups', hint: 'Pirate Kings' },
         { word: 'TREASURE', impostorHint: 'Groups', hint: 'YG Boy Group' },
         { word: 'THE BOYZ', impostorHint: 'Groups', hint: 'Road to Kingdom' },
 
-        // Soloists
+        // Soloists - BTS Members
         { word: 'Jungkook', impostorHint: 'Soloists', hint: 'Golden Maknae' },
         { word: 'Jimin', impostorHint: 'Soloists', hint: 'BTS Vocalist' },
         { word: 'V', impostorHint: 'Soloists', hint: 'Kim Taehyung' },
+        { word: 'SUGA', impostorHint: 'Soloists', hint: 'BTS Producer' },
+        { word: 'RM', impostorHint: 'Soloists', hint: 'BTS Leader' },
+        
+        // Soloists - BLACKPINK Members
         { word: 'Jennie', impostorHint: 'Soloists', hint: 'BLACKPINK Solo' },
         { word: 'Rosé', impostorHint: 'Soloists', hint: 'On The Ground' },
         { word: 'Lisa', impostorHint: 'Soloists', hint: 'Money rapper' },
+        
+        // Soloists - Legends & Icons
         { word: 'IU', impostorHint: 'Soloists', hint: 'Nation\'s Little Sister' },
         { word: 'PSY', impostorHint: 'Soloists', hint: 'Gangnam Style' },
         { word: 'G-Dragon', impostorHint: 'Soloists', hint: 'BIGBANG Leader' },
         { word: 'Taeyang', impostorHint: 'Soloists', hint: 'Eyes Nose Lips' },
+        { word: 'Baekhyun', impostorHint: 'Soloists', hint: 'EXO Main Vocal' },
+        { word: 'ZICO', impostorHint: 'Soloists', hint: 'Any Song' },
+        { word: 'Jay Park', impostorHint: 'Soloists', hint: 'K-HipHop Icon' },
+        { word: 'HyunA', impostorHint: 'Soloists', hint: 'Sexy Solo Queen' },
         { word: 'CL', impostorHint: 'Soloists', hint: '2NE1 Leader' },
         { word: 'Sunmi', impostorHint: 'Soloists', hint: 'Gashina' },
         { word: 'Taeyeon', impostorHint: 'Soloists', hint: 'SNSD Leader' },
         { word: 'Hwasa', impostorHint: 'Soloists', hint: 'MAMAMOO Solo' },
 
-        // Songs
+        // Songs - Iconic Classics
+        { word: 'Gangnam Style', impostorHint: 'Songs', hint: 'Viral horse dance' },
+        { word: 'Gee', impostorHint: 'Songs', hint: 'SNSD Legend' },
+        { word: 'Growl', impostorHint: 'Songs', hint: 'EXO Breakthrough' },
         { word: 'Dynamite', impostorHint: 'Songs', hint: 'BTS English Hit' },
         { word: 'Butter', impostorHint: 'Songs', hint: 'Smooth like' },
+        { word: 'Boy With Luv', impostorHint: 'Songs', hint: 'BTS Pop Era' },
+        
+        // Songs - Recent Hits
         { word: 'How You Like That', impostorHint: 'Songs', hint: 'BLACKPINK Hit' },
         { word: 'DDU-DU DDU-DU', impostorHint: 'Songs', hint: 'Gun sound song' },
         { word: 'Kill This Love', impostorHint: 'Songs', hint: 'BLACKPINK Anthem' },
+        { word: 'Love Dive', impostorHint: 'Songs', hint: 'IVE Hit' },
+        { word: 'OMG', impostorHint: 'Songs', hint: 'NewJeans Viral' },
         { word: 'Fancy', impostorHint: 'Songs', hint: 'TWICE Colorful' },
         { word: 'Cheer Up', impostorHint: 'Songs', hint: 'Shy shy shy' },
         { word: 'Love Scenario', impostorHint: 'Songs', hint: 'iKON Hit' },
         { word: 'Spring Day', impostorHint: 'Songs', hint: 'BTS Emotional' },
         { word: 'Fake Love', impostorHint: 'Songs', hint: 'BTS Dark' },
 
-        // Terms
+        // Terms - Fan Culture
         { word: 'Comeback', impostorHint: 'Terms', hint: 'New release' },
         { word: 'Bias', impostorHint: 'Terms', hint: 'Favorite member' },
+        { word: 'Stan', impostorHint: 'Terms', hint: 'Dedicated fan' },
+        { word: 'Ult Bias', impostorHint: 'Terms', hint: 'Top favorite' },
         { word: 'Maknae', impostorHint: 'Terms', hint: 'Youngest member' },
+        { word: 'Visual', impostorHint: 'Terms', hint: 'Face of the group' },
+        { word: 'Main Vocal', impostorHint: 'Terms', hint: 'Lead singer' },
+        { word: 'Trainee', impostorHint: 'Terms', hint: 'Pre-debut idol' },
+        
+        // Terms - Industry
         { word: 'Aegyo', impostorHint: 'Terms', hint: 'Cute act' },
         { word: 'Daesang', impostorHint: 'Terms', hint: 'Grand Prize' },
+        { word: 'All-Kill', impostorHint: 'Terms', hint: 'Chart domination' },
+        { word: 'Sub-unit', impostorHint: 'Terms', hint: 'Group subdivision' },
         { word: 'Fancam', impostorHint: 'Terms', hint: 'Individual performance video' },
         { word: 'Lightstick', impostorHint: 'Terms', hint: 'Official fan light' },
         { word: 'Photocard', impostorHint: 'Terms', hint: 'Collectible card' },
