@@ -54,7 +54,7 @@ workflows:
 
     environment:
       groups:
-        - impostor
+        - imposter
       node: 20
       java: 17
 
