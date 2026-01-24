@@ -111,7 +111,7 @@ workflows:
 
   android-apk-unsigned:
     name: Android Production APK (Unsigned - Quick Test)
-    max_build_duration: 60
+    max_build_duration: 90
     instance_type: mac_mini_m2
 
     environment:
@@ -139,7 +139,14 @@ workflows:
       - name: Build Release APK (Unsigned)
         script: |
           cd android
-          ./gradlew assembleRelease
+          # Kill any existing Gradle daemons
+          ./gradlew --stop
+          # Build with more memory and parallel execution
+          ./gradlew assembleRelease \
+            --no-daemon \
+            --max-workers=4 \
+            -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m" \
+            --stacktrace
 
       - name: Print APK Info
         script: |
