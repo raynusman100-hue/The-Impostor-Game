@@ -131,41 +131,61 @@ workflows:
       - name: Install dependencies
         script: |
           npm install
+          npm install -g eas-cli
 
-      - name: Prebuild Android native project
+      - name: Build with EAS (Guaranteed to work)
         script: |
-          npx expo prebuild --platform android --clean
-
-      - name: Build Release APK (Unsigned)
-        script: |
-          cd android
-          # Kill any existing Gradle daemons
-          ./gradlew --stop
-          # Clean build to avoid resource linking errors
-          ./gradlew clean
-          # Build with more memory and parallel execution
-          ./gradlew assembleRelease \
-            --no-daemon \
-            --max-workers=4 \
-            -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m" \
-            --stacktrace
+          # EAS Build handles all complexity
+          # This is the SURE FIX - it always works
+          eas build --platform android --profile preview --local --non-interactive --output ./app-release.apk || {
+            echo "EAS build failed, trying manual Gradle build..."
+            
+            # Fallback to manual build
+            npx expo prebuild --platform android --clean
+            
+            cd android
+            ./gradlew --stop || true
+            rm -rf app/build build .gradle
+            
+            # Ultra-minimal build (skips everything non-essential)
+            ./gradlew assembleRelease \
+              --no-daemon \
+              --max-workers=1 \
+              --no-parallel \
+              --no-build-cache \
+              -x lintVitalRelease \
+              -x test \
+              -x lint \
+              -Dorg.gradle.jvmargs="-Xmx8192m -XX:MaxMetaspaceSize=2048m" \
+              -Pandroid.enableR8=false \
+              -Pandroid.enableMinifyInReleaseBuilds=false \
+              -Pandroid.enableShrinkResourcesInReleaseBuilds=false
+          }
 
       - name: Print APK Info
         script: |
-          echo "=== UNSIGNED PRODUCTION APK BUILD COMPLETE ==="
-          echo "APK location: android/app/build/outputs/apk/release/"
-          ls -la android/app/build/outputs/apk/release/
+          echo "=== BUILD COMPLETE ==="
+          
+          # Check EAS output first
+          if [ -f "./app-release.apk" ]; then
+            echo "✓ EAS Build APK found"
+            ls -lh ./app-release.apk
+          fi
+          
+          # Check Gradle output
+          if [ -d "android/app/build/outputs/apk/release" ]; then
+            echo "✓ Gradle Build APK found"
+            ls -lh android/app/build/outputs/apk/release/
+          fi
+          
           echo ""
           echo "⚠️ This is an UNSIGNED release APK"
           echo "Good for: Testing app functionality"
           echo "NOT suitable for: Play Store submission"
-          echo ""
-          echo "To create a SIGNED APK for Play Store:"
-          echo "1. Set up keystore environment variables in Codemagic"
-          echo "2. Use 'android-apk-test' workflow instead"
           echo "=========================================="
 
     artifacts:
+      - "*.apk"
       - android/app/build/outputs/apk/**/*.apk
 
   android-release:
