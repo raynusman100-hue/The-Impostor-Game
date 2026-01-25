@@ -256,7 +256,7 @@ export default function PremiumScreen({ navigation, route }) {
                     {/* Other Plans (Side by Side) */}
                     <View style={[styles.pricingRow, { flex: 1 }]}>
                         <PricingCard
-                            price="2"
+                            price="1.99"
                             period="WEEK"
                             duration="WEEKLY"
                             isSelected={selectedPlan === 'weekly'}

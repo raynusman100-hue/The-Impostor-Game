@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Platform, Animated, PanResponder, Modal, KeyboardAvoidingView, LayoutAnimation, UIManager, Dimensions, Image, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { onAuthStateChanged, signOut, signInWithCredential, GoogleAuthProvider, updateProfile } from 'firebase/auth'; // Added updateProfile
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../utils/firebase';
 import { useTheme } from '../utils/ThemeContext';
 import { playHaptic } from '../utils/haptics';
@@ -678,6 +678,30 @@ export default function ProfileScreen({ navigation }) {
         }
 
         setIsSaving(true);
+
+        // CHECK UNIQUENESS
+        if (trimmedUsername !== displayName) {
+            try {
+                const usersRef = collection(db, "users");
+                const q = query(usersRef, where("username", "==", trimmedUsername));
+                const querySnapshot = await getDocs(q);
+
+                if (!querySnapshot.empty) {
+                    // Check if the found user is NOT the current user (just in case)
+                    const isTaken = querySnapshot.docs.some(doc => doc.id !== user.uid);
+                    if (isTaken) {
+                        Alert.alert('Username Taken', 'This username is already in use. Please choose another.');
+                        setIsSaving(false);
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.error("Error checking username uniqueness:", error);
+                Alert.alert('Error', 'Could not verify username availability. Please check your connection.');
+                setIsSaving(false);
+                return;
+            }
+        }
         playHaptic('medium');
 
         const userProfile = {
