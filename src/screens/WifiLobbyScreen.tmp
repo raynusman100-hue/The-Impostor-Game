@@ -1,7 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, Animated, ActivityIndicator, TouchableOpacity, Alert, BackHandler, Platform, ScrollView, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../utils/ThemeContext';
 import Button from '../components/Button';
 import KodakButton from '../components/KodakButton';
@@ -15,9 +12,6 @@ import ChatSystem from '../components/ChatSystem';
 import VoiceControl from '../components/VoiceControl';
 import { useVoiceChat } from '../utils/VoiceChatContext';
 import { useVoiceParticipantsTracker } from '../utils/VoiceParticipantsTracker';
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const IS_SMALL_SCREEN = SCREEN_HEIGHT < 700;
 
 // Film perforation component for Kodak aesthetic (same as SetupScreen)
 const FilmPerforations = ({ side, theme }) => {
@@ -68,7 +62,6 @@ export default function WifiLobbyScreen({ route, navigation }) {
     const [hostName, setHostName] = useState('Waiting...');
     const [hostAvatar, setHostAvatar] = useState(1);
     const [hostAvatarConfig, setHostAvatarConfig] = useState(null);
-    const [hostIsPremium, setHostIsPremium] = useState(false);
 
     const [activeTab, setActiveTab] = useState('lobby'); // 'lobby' | 'chat' | 'voice'
     const [unreadMessages, setUnreadMessages] = useState(0);
@@ -171,7 +164,6 @@ export default function WifiLobbyScreen({ route, navigation }) {
                 setHostName(data.host || 'Unknown Host');
                 setHostAvatar(data.hostAvatar || 1);
                 setHostAvatarConfig(data.hostAvatarConfig || null);
-                setHostIsPremium(data.hostIsPremium || false); // <--- SYNC PREMIUM STATUS 🔒
 
                 if (!hasNavigated && (data.status === 'voting' || data.status === 'game' || data.status === 'roles' || data.status === 'reveal')) {
                     navigateToGame(data.status);
@@ -317,100 +309,84 @@ export default function WifiLobbyScreen({ route, navigation }) {
                         onUnreadChange={handleUnreadChange}
                     />
                 ) : activeTab === 'voice' ? (
-                    <ScrollView
-                        style={styles.voiceScrollView}
-                        contentContainerStyle={styles.voiceScrollContent}
-                        showsVerticalScrollIndicator={false}
-                    >
-                        <View style={styles.voiceContainer}>
-                            {!hostIsPremium ? (
-                                <View style={{ alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-                                    <Ionicons name="lock-closed" size={64} color={theme.colors.textMuted} style={{ marginBottom: 20 }} />
-                                    <Text style={[styles.voiceInstructions, { fontSize: 20 }]}>PREMIUM ONLY</Text>
-                                    <Text style={[styles.voiceSubInstructions, { maxWidth: 300 }]}>
-                                        Voice chat is locked because the host is not a Premium user.
+                    <View style={styles.voiceContainer}>
+                        {!isJoined ? (
+                            <>
+                                <Text style={styles.voiceInstructions}>
+                                    VOICE CHAT
+                                </Text>
+                                {voiceParticipants.length > 0 ? (
+                                    <Text style={styles.voiceSubInstructions}>
+                                        {voiceParticipants.length} {voiceParticipants.length === 1 ? 'MEMBER' : 'MEMBERS'} IN CALL
                                     </Text>
-                                </View>
-                            ) : !isJoined ? (
-                                <>
-                                    <Text style={[styles.voiceInstructions, IS_SMALL_SCREEN && styles.voiceInstructionsSmall]}>
-                                        VOICE CHAT
+                                ) : (
+                                    <Text style={styles.voiceSubInstructions}>
+                                        No one in voice chat yet
                                     </Text>
-                                    {voiceParticipants.length > 0 ? (
-                                        <Text style={[styles.voiceSubInstructions, IS_SMALL_SCREEN && styles.voiceSubInstructionsSmall]}>
-                                            {voiceParticipants.length} {voiceParticipants.length === 1 ? 'MEMBER' : 'MEMBERS'} IN CALL
-                                        </Text>
-                                    ) : (
-                                        <Text style={[styles.voiceSubInstructions, IS_SMALL_SCREEN && styles.voiceSubInstructionsSmall]}>
-                                            No one in voice chat yet
-                                        </Text>
-                                    )}
-                                    <TouchableOpacity
-                                        style={styles.joinVoiceBtn}
-                                        onPress={() => {
-                                            playHaptic('heavy');
-                                            console.log('🎤 WifiLobby: Joining with stamped App ID:', stampedAppId);
-                                            joinChannel(roomCode, 0, stampedAppId);
-                                        }}
-                                    >
-                                        <View style={styles.joinVoiceInner}>
-                                            <Text
-                                                style={styles.joinVoiceText}
-                                                numberOfLines={1}
-                                                adjustsFontSizeToFit
-                                            >
-                                                JOIN CALL
-                                            </Text>
-                                        </View>
-                                    </TouchableOpacity>
-                                </>
-                            ) : (
-                                <>
-                                    <Text style={[styles.voiceInstructions, IS_SMALL_SCREEN && styles.voiceInstructionsSmall]}>
-                                        IN VOICE CHAT
-                                    </Text>
-
-                                    {/* Participants List */}
-                                    <View style={[styles.voiceParticipantsList, IS_SMALL_SCREEN && styles.voiceParticipantsListSmall]}>
-                                        {voiceParticipants.map((participant) => (
-                                            <View key={participant.id} style={styles.voiceParticipantRow}>
-                                                {participant.customAvatarConfig ? (
-                                                    <CustomBuiltAvatar config={participant.customAvatarConfig} size={32} />
-                                                ) : (
-                                                    <CustomAvatar id={participant.avatarId || 1} size={32} />
-                                                )}
-                                                <Text style={styles.voiceParticipantName} numberOfLines={1}>
-                                                    {participant.id === playerId ? 'You' : participant.name}
-                                                </Text>
-                                            </View>
-                                        ))}
-                                    </View>
-
-                                    <Text style={[styles.voiceSubInstructions, { marginTop: IS_SMALL_SCREEN ? 10 : 20, color: theme.colors.tertiary }, IS_SMALL_SCREEN && styles.voiceSubInstructionsSmall]}>
-                                        Use the floating mic button to mute/unmute
-                                    </Text>
-
-                                    <TouchableOpacity
-                                        style={styles.leaveVoiceBtn}
-                                        onPress={() => {
-                                            playHaptic('medium');
-                                            leaveChannel();
-                                        }}
-                                    >
+                                )}
+                                <TouchableOpacity
+                                    style={styles.joinVoiceBtn}
+                                    onPress={() => {
+                                        playHaptic('heavy');
+                                        console.log('🎤 WifiLobby: Joining with stamped App ID:', stampedAppId);
+                                        joinChannel(roomCode, 0, stampedAppId);
+                                    }}
+                                >
+                                    <View style={styles.joinVoiceInner}>
                                         <Text
-                                            style={styles.leaveVoiceText}
+                                            style={styles.joinVoiceText}
                                             numberOfLines={1}
                                             adjustsFontSizeToFit
                                         >
-                                            LEAVE CALL
+                                            JOIN CALL
                                         </Text>
-                                    </TouchableOpacity>
-                                </>
-                            )}
-                        </View>
-                        {/* Spacer for bottom button visibility */}
-                        <View style={{ height: 100 }} />
-                    </ScrollView>
+                                    </View>
+                                </TouchableOpacity>
+                            </>
+                        ) : (
+                            <>
+                                <Text style={styles.voiceInstructions}>
+                                    IN VOICE CHAT
+                                </Text>
+
+                                {/* Participants List */}
+                                <View style={styles.voiceParticipantsList}>
+                                    {voiceParticipants.map((participant) => (
+                                        <View key={participant.id} style={styles.voiceParticipantRow}>
+                                            {participant.customAvatarConfig ? (
+                                                <CustomBuiltAvatar config={participant.customAvatarConfig} size={32} />
+                                            ) : (
+                                                <CustomAvatar id={participant.avatarId || 1} size={32} />
+                                            )}
+                                            <Text style={styles.voiceParticipantName} numberOfLines={1}>
+                                                {participant.id === playerId ? 'You' : participant.name}
+                                            </Text>
+                                        </View>
+                                    ))}
+                                </View>
+
+                                <Text style={[styles.voiceSubInstructions, { marginTop: 20, color: theme.colors.tertiary }]}>
+                                    Use the floating mic button to mute/unmute
+                                </Text>
+
+                                <TouchableOpacity
+                                    style={styles.leaveVoiceBtn}
+                                    onPress={() => {
+                                        playHaptic('medium');
+                                        leaveChannel();
+                                    }}
+                                >
+                                    <Text
+                                        style={styles.leaveVoiceText}
+                                        numberOfLines={1}
+                                        adjustsFontSizeToFit
+                                    >
+                                        LEAVE CALL
+                                    </Text>
+                                </TouchableOpacity>
+                            </>
+                        )}
+                    </View>
                 ) : (
                     <>
                         <View style={styles.loaderContainer}>
@@ -773,20 +749,11 @@ function getStyles(theme) {
         },
 
         // Voice Tab Styles
-        voiceScrollView: {
-            flex: 1,
-            width: '100%',
-        },
-        voiceScrollContent: {
-            alignItems: 'center',
-            paddingBottom: 40,
-        },
         voiceContainer: {
             flex: 1,
             justifyContent: 'center',
             alignItems: 'center',
             width: '100%',
-            paddingTop: IS_SMALL_SCREEN ? 10 : 0,
         },
         voiceInstructions: {
             fontSize: 24,
@@ -797,10 +764,6 @@ function getStyles(theme) {
             textAlign: 'center',
             ...theme.textShadows.glow,
         },
-        voiceInstructionsSmall: {
-            fontSize: 20, // Smaller font for small screens
-            marginBottom: 5,
-        },
         voiceSubInstructions: {
             fontSize: 14,
             fontFamily: theme.fonts.medium,
@@ -810,19 +773,11 @@ function getStyles(theme) {
             opacity: 0.8,
             marginBottom: 30,
         },
-        voiceSubInstructionsSmall: {
-            fontSize: 12,
-            marginBottom: 15, // Reduced margin
-        },
         voiceParticipantsList: {
             width: '100%',
             maxWidth: 300,
             marginVertical: 20,
             gap: 12,
-        },
-        voiceParticipantsListSmall: {
-            marginVertical: 10, // Reduced vertical space
-            gap: 8,
         },
         voiceParticipantRow: {
             flexDirection: 'row',

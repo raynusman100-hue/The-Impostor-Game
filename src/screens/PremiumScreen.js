@@ -44,7 +44,7 @@ const PricingCard = ({ price, period, duration, isSelected, onSelect, onPurchase
                         <Text style={[styles.period, { color: theme.colors.textMuted, alignSelf: 'flex-end', marginBottom: 8, marginLeft: 2 }]}>/ week</Text>
                     </View>
                     <Text style={[styles.subPriceText, { color: theme.colors.textMuted }]}>
-                        Billed ${price} / year
+                        Billed for 12 months
                     </Text>
                 </View>
             ) : (
@@ -58,20 +58,26 @@ const PricingCard = ({ price, period, duration, isSelected, onSelect, onPurchase
             {compact && <Text style={[styles.period, { color: theme.colors.textMuted }]}>/ {period}</Text>}
         </View>
 
-        {isSelected && (
-            <View style={[styles.checkmark, { backgroundColor: theme.colors.primary }]}>
-                <Ionicons name="checkmark" size={20} color={theme.colors.secondary} />
-            </View>
-        )}
+
     </TouchableOpacity>
 );
 
-export default function PremiumScreen({ navigation }) {
+export default function PremiumScreen({ navigation, route }) {
     const { theme } = useTheme();
     const styles = getStyles(theme);
     const [selectedPlan, setSelectedPlan] = useState('yearly');
     const [hasPremium, setHasPremium] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+
+    const returnToHome = route?.params?.returnToHome || false;
+
+    const performNavigation = () => {
+        if (returnToHome) {
+            navigation.navigate('Home');
+        } else {
+            navigation.goBack();
+        }
+    };
 
     useEffect(() => {
         const checkPremium = async () => {
@@ -81,7 +87,7 @@ export default function PremiumScreen({ navigation }) {
                 setHasPremium(premium);
                 if (premium) {
                     setTimeout(() => {
-                        navigation.goBack();
+                        performNavigation();
                     }, 1500);
                 }
             }
@@ -92,7 +98,7 @@ export default function PremiumScreen({ navigation }) {
 
     const handleClose = () => {
         playHaptic('medium');
-        navigation.goBack();
+        performNavigation();
     };
 
     const handleSubscribe = async (planType) => {
@@ -111,13 +117,26 @@ export default function PremiumScreen({ navigation }) {
             const result = await PurchaseManager.purchaseRemoveAds();
 
             if (result.success) {
-                await setPremiumStatus(true, user.uid, user.email);
+                // SECURITY: Don't call setPremiumStatus - it's disabled
+                // Instead, re-check premium status from source of truth
+                const premium = await checkPremiumStatus(user.email, user.uid);
+                setHasPremium(premium);
+
                 playHaptic('success');
-                Alert.alert(
-                    '🎉 Premium Activated!',
-                    `You subscribed to the ${planType} plan.`,
-                    [{ text: 'Awesome!', onPress: () => { setHasPremium(true); navigation.goBack(); } }]
-                );
+
+                if (premium) {
+                    Alert.alert(
+                        '🎉 Premium Activated!',
+                        `You subscribed to the ${planType} plan.`,
+                        [{ text: 'Awesome!', onPress: () => performNavigation() }]
+                    );
+                } else {
+                    Alert.alert(
+                        'Purchase Successful',
+                        'Your purchase was successful, but your account is not in the premium list yet. Please contact support.',
+                        [{ text: 'OK' }]
+                    );
+                }
             } else {
                 if (result.error !== 'User cancelled') {
                     Alert.alert('Purchase Failed', result.error || 'Could not verify payment.');
@@ -139,10 +158,17 @@ export default function PremiumScreen({ navigation }) {
         if (success) {
             const user = auth.currentUser;
             if (user) {
-                await setPremiumStatus(true, user.uid, user.email);
+                // SECURITY: Don't call setPremiumStatus - it's disabled
+                // Instead, re-check premium status from source of truth
+                const premium = await checkPremiumStatus(user.email, user.uid);
+                setHasPremium(premium);
+
+                if (premium) {
+                    Alert.alert('Success', 'Purchases restored!');
+                } else {
+                    Alert.alert('Not Premium', 'Your account is not in the premium list.');
+                }
             }
-            setHasPremium(true);
-            Alert.alert('Success', 'Purchases restored!');
         } else {
             Alert.alert('Not Found', 'No active premium subscription found to restore.');
         }
@@ -194,7 +220,7 @@ export default function PremiumScreen({ navigation }) {
                         {[
                             { icon: 'mic', text: 'Access to Voice Chat' },
                             { icon: 'game-controller', text: 'Access to All Game Modes' },
-                            { icon: 'color-palette', text: 'Custom Avatar Builder' },
+                            { icon: 'color-palette', text: 'Exclusive Avatar Parts & Effects' },
                             { icon: 'close-circle', text: 'No Ads' }
                         ].map((feature, i) => (
                             <View key={i} style={styles.featureRow}>
@@ -445,19 +471,7 @@ function getStyles(theme) {
             letterSpacing: 1,
             marginTop: 4,
         },
-        checkmark: {
-            position: 'absolute',
-            top: -8,
-            right: -8,
-            width: 24,
-            height: 24,
-            borderRadius: 12,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderWidth: 2,
-            borderColor: theme.colors.background,
-            elevation: 5,
-        },
+
         bestValueBadge: {
             position: 'absolute',
             top: -8,

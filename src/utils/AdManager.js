@@ -16,6 +16,7 @@ class AdManager {
         this.interstitial = null;
         this.loaded = false;
         this.hasPremium = false;
+        this.adShowCounter = 0;
     }
 
     static getInstance() {
@@ -27,7 +28,7 @@ class AdManager {
 
     async updatePremiumStatus(userEmail, userId) {
         this.hasPremium = await checkPremiumStatus(userEmail, userId);
-        console.log('AdManager: Premium status updated:', this.hasPremium);
+        console.log('📢 AdManager: Premium status updated:', this.hasPremium, 'for', userEmail);
     }
 
     loadInterstitial() {
@@ -39,11 +40,23 @@ class AdManager {
     }
 
     showInterstitial(onAdClosed) {
+        // Increment counter every time this is requested
+        this.adShowCounter++;
+        console.log(`AdManager: Request #${this.adShowCounter}`);
+
         if (!ADS_ENABLED || isWeb || !shouldShowAds(this.hasPremium)) {
             console.log('AdManager: DISABLED - showInterstitial called (Premium:', this.hasPremium, ')');
             onAdClosed?.();
             return;
         }
+
+        // SHOW AD ONLY EVERY 2ND TIME (2, 4, 6...)
+        if (this.adShowCounter % 2 !== 0) {
+            console.log('AdManager: Skipping ad (Frequency: Every 2nd game)');
+            onAdClosed?.();
+            return;
+        }
+
         this._showInterstitialFull(onAdClosed);
     }
 

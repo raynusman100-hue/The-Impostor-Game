@@ -23,7 +23,7 @@ import HowToPlayScreen from './src/screens/HowToPlayScreen';
 import ThemeSelectorScreen from './src/screens/ThemeSelectorScreen';
 import PrivacyPolicyScreen from './src/screens/PrivacyPolicyScreen';
 import TermsOfServiceScreen from './src/screens/TermsOfServiceScreen';
-import ProVersionScreen from './src/screens/ProVersionScreen';
+
 import PremiumScreen from './src/screens/PremiumScreen';
 import { ThemeProvider, useTheme } from './src/utils/ThemeContext';
 import { SettingsProvider } from './src/utils/SettingsContext';
@@ -139,7 +139,7 @@ function AppNavigator() {
         <Stack.Screen name="WifiWhoStarts" component={WifiWhoStartsScreen} options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="Discussion" component={DiscussionScreen} options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="Result" component={ResultScreen} options={{ headerShown: false, gestureEnabled: false }} />
-        <Stack.Screen name="ProVersion" component={ProVersionScreen} options={{ headerShown: false }} />
+
         <Stack.Screen name="Premium" component={PremiumScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>

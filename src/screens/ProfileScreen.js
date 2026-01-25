@@ -9,6 +9,8 @@ import { playHaptic } from '../utils/haptics';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { CustomAvatar, TOTAL_AVATARS } from '../utils/AvatarGenerator';
 import { AvatarBuilder, CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
+import { checkPremiumStatus, addPremiumListener } from '../utils/PremiumManager';
+import PurchaseManager from '../utils/PurchaseManager';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android') {
@@ -28,11 +30,15 @@ GoogleSignin.configure({
 
 // Spinning Avatar Wheel Component
 const AvatarWheel = ({ selectedId, onSelect, theme }) => {
-    // Increased Size for better fit in non-scrolling view
-    const WHEEL_SIZE = 320;
-    const CENTER_SIZE = 90;
-    const AVATAR_SIZE = 50;
-    const RADIUS = 110;
+    // Dynamic Size for iPhone 8 / Small Screens
+    const isSmallScreen = SCREEN_HEIGHT < 700;
+
+    // Scaled dimensions - Increased Sizes
+    const WHEEL_SIZE = isSmallScreen ? 300 : 350; // Increased
+    const CENTER_SIZE = isSmallScreen ? 90 : 110; // Increased
+    const AVATAR_SIZE = isSmallScreen ? 50 : 60;  // Increased
+    const RADIUS = isSmallScreen ? 105 : 125;     // Increased
+
     const DEGREES_PER_AVATAR = 360 / TOTAL_AVATARS;
     const FRICTION = 0.98;
     const MIN_VELOCITY = 0.2;
@@ -227,6 +233,7 @@ const AvatarWheel = ({ selectedId, onSelect, theme }) => {
             friction: 7,
             tension: 40,
             useNativeDriver: true,
+            useNativeDriver: true,
         }).start(() => {
             rotationRef.current = finalTarget;
             setSelected(avatarId);
@@ -369,7 +376,121 @@ export default function ProfileScreen({ navigation }) {
     const [selectedAvatarId, setSelectedAvatarId] = useState(1);
     const [username, setUsername] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const [isPremium, setIsPremium] = useState(false); // Track premium status locally
 
+    // Check premium status on mount and listen for updates
+    useEffect(() => {
+        const checkPremium = async () => {
+            if (user) {
+                const premium = await checkPremiumStatus(user.email, user.uid);
+                setIsPremium(premium);
+            }
+        };
+
+        checkPremium();
+
+        // Subscribe to real-time updates (handles instant purchase updates)
+        const unsubscribe = addPremiumListener((status) => {
+            setIsPremium(status);
+        });
+
+        return () => {
+            unsubscribe();
+        };
+    }, [user]);
+
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const initialStateRef = useRef(null);
+
+    // Track initial state when user loads or saves
+    useEffect(() => {
+        if (!user) {
+            initialStateRef.current = null;
+            return;
+        }
+
+        if (!initialStateRef.current) {
+            initialStateRef.current = {
+                username: displayName || '',
+                avatarId: selectedAvatarId,
+                avatarMode: avatarMode,
+                customAvatarConfig: customAvatarConfig
+            };
+        }
+    }, [user, displayName, selectedAvatarId, avatarMode, customAvatarConfig]);
+
+    // Detect unsaved changes across ALL fields
+    useEffect(() => {
+        if (!initialStateRef.current) {
+            setHasUnsavedChanges(false);
+            return;
+        }
+
+        const currentUsername = username.trim();
+        const initial = initialStateRef.current;
+
+        // Compare all fields
+        const usernameChanged = currentUsername !== initial.username && currentUsername !== '';
+        const avatarIdChanged = selectedAvatarId !== initial.avatarId;
+        const modeChanged = avatarMode !== initial.avatarMode;
+
+        // Deep comparison for custom config object
+        const configChanged = JSON.stringify(customAvatarConfig) !== JSON.stringify(initial.customAvatarConfig);
+
+        const hasChanges = usernameChanged || avatarIdChanged || modeChanged || configChanged;
+
+        setHasUnsavedChanges(hasChanges);
+    }, [username, selectedAvatarId, avatarMode, customAvatarConfig]);
+
+    // PREVENT SWIPE BUG: Disable gesture when dirty
+    useEffect(() => {
+        navigation.setOptions({
+            gestureEnabled: !hasUnsavedChanges
+        });
+    }, [navigation, hasUnsavedChanges]);
+
+    // Intercept back navigation
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+            // CRITICAL FIX: Only block navigation if the user is ACTUALLY on the profile screen.
+            // This prevents "Play Again" (navigation.reset) from triggering this popup from the background.
+            if (!navigation.isFocused()) {
+                return;
+            }
+
+            if (!hasUnsavedChanges || isSaving) {
+                return;
+            }
+
+            e.preventDefault();
+
+            Alert.alert(
+                'Unsaved Changes',
+                'You have unsaved changes. Do you want to discard them?',
+                [
+                    {
+                        text: 'Keep Editing',
+                        style: 'cancel',
+                        onPress: () => {
+                            // Fix for iOS Swipe Back: If user is halfway through swipe,
+                            // we need to ensure we snap back to the profile screen visually.
+                            // preventDefault() handles logic, but explicit navigate helps UI sync.
+                            navigation.navigate('Profile');
+                        }
+                    },
+                    {
+                        text: 'Discard',
+                        style: 'destructive',
+                        onPress: () => {
+                            setHasUnsavedChanges(false);
+                            navigation.dispatch(e.data.action);
+                        }
+                    }
+                ]
+            );
+        });
+        return unsubscribe;
+    }, [navigation, hasUnsavedChanges, isSaving]);
     // Custom Avatar State
     const [showBuilder, setShowBuilder] = useState(false);
     const [customAvatarConfig, setCustomAvatarConfig] = useState(null);
@@ -383,14 +504,23 @@ export default function ProfileScreen({ navigation }) {
                     if (localProfile) {
                         const parsed = JSON.parse(localProfile);
                         const name = parsed.username || currentUser.displayName || 'Player';
+                        const avatarId = parsed.avatarId || 1;
+                        const config = parsed.customAvatarConfig || parsed.customAvatar || null;
+                        const mode = parsed.useCustomAvatar ? 'custom' : 'premade';
+
                         setDisplayName(name);
                         setUsername(name);
-                        setSelectedAvatarId(parsed.avatarId || 1);
+                        setSelectedAvatarId(avatarId);
+                        setCustomAvatarConfig(config);
+                        setAvatarMode(mode);
 
-                        // Load config but don't force it to be active unless saved that way
-                        const loadedConfig = parsed.customAvatarConfig || parsed.customAvatar || null;
-                        setCustomAvatarConfig(loadedConfig);
-                        setAvatarMode(parsed.useCustomAvatar ? 'custom' : 'premade');
+                        // FIX: Set initial state immediately to match loaded data
+                        initialStateRef.current = {
+                            username: name,
+                            avatarId: avatarId,
+                            avatarMode: mode,
+                            customAvatarConfig: config
+                        };
 
                         setUser(currentUser);
                         return;
@@ -400,13 +530,23 @@ export default function ProfileScreen({ navigation }) {
                     if (userDoc.exists()) {
                         const userData = userDoc.data();
                         const name = userData.username || currentUser.displayName || 'Player';
+                        const avatarId = userData.avatarId || 1;
+                        const config = userData.customAvatarConfig || userData.customAvatar || null;
+                        const mode = userData.useCustomAvatar ? 'custom' : 'premade';
+
                         setDisplayName(name);
                         setUsername(name);
-                        setSelectedAvatarId(userData.avatarId || 1);
+                        setSelectedAvatarId(avatarId);
+                        setCustomAvatarConfig(config);
+                        setAvatarMode(mode);
 
-                        const loadedConfig = userData.customAvatarConfig || userData.customAvatar || null;
-                        setCustomAvatarConfig(loadedConfig);
-                        setAvatarMode(userData.useCustomAvatar ? 'custom' : 'premade');
+                        // FIX: Set initial state immediately to match loaded data
+                        initialStateRef.current = {
+                            username: name,
+                            avatarId: avatarId,
+                            avatarMode: mode,
+                            customAvatarConfig: config
+                        };
 
                         setUser(currentUser);
                         // Save back to local storage for faster next load
@@ -417,7 +557,26 @@ export default function ProfileScreen({ navigation }) {
                         setUsername(name);
                         setCustomAvatarConfig(null);
                         setAvatarMode('premade');
+
+                        // FIX: Set initial baseline for new user
+                        initialStateRef.current = {
+                            username: name,
+                            avatarId: 1,
+                            avatarMode: 'premade',
+                            customAvatarConfig: null
+                        };
+
                         setUser(currentUser);
+                    }
+
+                    // REVENUECAT LOGIN
+                    if (currentUser && currentUser.uid) {
+                        try {
+                            await PurchaseManager.loginUser(currentUser.uid);
+                            console.log('Synced with RevenueCat');
+                        } catch (err) {
+                            console.log('RC Sync Error:', err);
+                        }
                     }
                 } catch (e) {
                     console.log('Error loading profile:', e);
@@ -426,6 +585,14 @@ export default function ProfileScreen({ navigation }) {
                     setUsername(name);
                     setUser(currentUser);
                     setAvatarMode('premade');
+
+                    // FIX: Set baseline on error fallback
+                    initialStateRef.current = {
+                        username: name,
+                        avatarId: 1,
+                        avatarMode: 'premade',
+                        customAvatarConfig: null
+                    };
                 }
             } else {
                 setUser(null);
@@ -433,6 +600,7 @@ export default function ProfileScreen({ navigation }) {
                 setUsername('');
                 setCustomAvatarConfig(null);
                 setAvatarMode('premade');
+                initialStateRef.current = null;
             }
         });
         return unsubscribe;
@@ -469,6 +637,9 @@ export default function ProfileScreen({ navigation }) {
                 await AsyncStorage.setItem('user_profile', JSON.stringify(userProfile));
                 await AsyncStorage.setItem('displayName', newDisplayName);
                 await new Promise(resolve => setTimeout(resolve, 150));
+
+                // Sync with RevenueCat for cross-device premium access
+                await PurchaseManager.loginUser(user.uid);
 
                 setUser(user);
                 setDisplayName(newDisplayName);
@@ -551,7 +722,7 @@ export default function ProfileScreen({ navigation }) {
             // 3. Navigate Immediately
             console.log('Local save done, navigating home...');
             playHaptic('success');
-            
+
             // Check if we should show premium (every 3rd save)
             const saveCountStr = await AsyncStorage.getItem('profile_save_count');
             const saveCount = saveCountStr ? parseInt(saveCountStr, 10) : 0;
@@ -559,10 +730,26 @@ export default function ProfileScreen({ navigation }) {
             await AsyncStorage.setItem('profile_save_count', newSaveCount.toString());
             console.log('Profile saved ' + newSaveCount + ' times');
 
-            // Show premium every 3rd save
-            if (newSaveCount % 3 === 0 && newSaveCount > 0) {
+            // Reset unsaved changes flag
+            setHasUnsavedChanges(false);
+            // DO NOT set isSaving(false) here - keep it true until navigation is done to prevent double clicks
+
+            // Update initial state ref to current state
+            initialStateRef.current = {
+                username: trimmedUsername,
+                avatarId: selectedAvatarId,
+                avatarMode: avatarMode,
+                customAvatarConfig: customAvatarConfig
+            };
+
+            // Check Premium Status
+            const hasPremium = await checkPremiumStatus(user.email, user.uid);
+
+            // Show premium every 3rd save ONLY IF not already premium
+            if (!hasPremium && newSaveCount % 3 === 0 && newSaveCount > 0) {
                 console.log('Navigating to Premium (save counter triggered)');
-                navigation.navigate('Premium');
+                // Pass returnToHome: true so 'x' goes to Home, not Profile
+                navigation.navigate('Premium', { returnToHome: true });
             } else {
                 navigation.navigate('Home');
             }
@@ -576,8 +763,15 @@ export default function ProfileScreen({ navigation }) {
 
     const handleSignOut = async () => {
         try {
+            // Clear premium status BEFORE signing out acts to prevent UI flicker or race conditions
+            if (user && user.uid) {
+                const { clearPremiumCache } = require('../utils/PremiumManager');
+                await clearPremiumCache(user.uid);
+            }
+
             await GoogleSignin.signOut();
             await signOut(auth);
+            await PurchaseManager.logoutUser(); // Clear RevenueCat user
             setUser(null);
             setDisplayName('');
             setUsername('');
@@ -603,78 +797,82 @@ export default function ProfileScreen({ navigation }) {
                         // Signed In State
                         <View style={styles.signedInContainer}>
 
-                            {/* Top Section: Toggle */}
-                            <View style={styles.topSection}>
-                                <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>AVATAR</Text>
-                                <View style={styles.toggleContainer}>
-                                    <TouchableOpacity
-                                        style={[styles.toggleBtn, avatarMode === 'premade' && styles.toggleBtnActive]}
-                                        onPress={() => {
-                                            playHaptic('light');
-                                            setAvatarMode('premade');
-                                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                                        }}
-                                    >
-                                        <Text style={[styles.toggleBtnText, avatarMode === 'premade' && styles.toggleBtnTextActive]}>PRE MADE</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[styles.toggleBtn, avatarMode === 'custom' && styles.toggleBtnActive]}
-                                        onPress={() => {
-                                            playHaptic('light');
-                                            setAvatarMode('custom');
-                                            if (!customAvatarConfig) setShowBuilder(true);
-                                        }}
-                                    >
-                                        <Text style={[styles.toggleBtnText, avatarMode === 'custom' && styles.toggleBtnTextActive]}>CUSTOM</Text>
-                                    </TouchableOpacity>
-                                </View>
+                            {/* Top Section: Username Form (Moved to Top) */}
+                            <View style={styles.formContainer}>
+                                <Text style={[styles.label, { color: theme.colors.textMuted }]}>USERNAME</Text>
+                                <TextInput
+                                    style={[styles.input, {
+                                        color: theme.colors.text,
+                                        borderColor: theme.colors.primary + '50',
+                                        backgroundColor: theme.colors.surface
+                                    }]}
+                                    value={username}
+                                    onChangeText={setUsername}
+                                    placeholder="Enter username"
+                                    placeholderTextColor={theme.colors.textMuted + '80'}
+                                    maxLength={12}
+                                />
+                                <Text style={[styles.email, { color: theme.colors.textMuted }]}>{user.email}</Text>
                             </View>
 
-                            {/* Middle Section: Avatar Display (Flexible) */}
-                            <View style={styles.avatarDisplayArea}>
-                                {avatarMode === 'custom' && customAvatarConfig ? (
-                                    <View style={styles.customUrlContainer}>
-                                        <View style={[styles.customAvatarPreview, { borderColor: theme.colors.primary }]}>
-                                            <CustomBuiltAvatar
-                                                config={customAvatarConfig}
-                                                size={150} // Larger custom avatar
-                                            />
-                                        </View>
+                            {/* Middle Section: Avatar Toggle & Display */}
+                            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                                {/* Toggle */}
+                                <View style={styles.topSection}>
+                                    <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>AVATAR</Text>
+                                    <View style={styles.toggleContainer}>
                                         <TouchableOpacity
-                                            style={styles.editCustomBtn}
-                                            onPress={() => setShowBuilder(true)}
+                                            style={[styles.toggleBtn, avatarMode === 'premade' && styles.toggleBtnActive]}
+                                            onPress={() => {
+                                                playHaptic('light');
+                                                setAvatarMode('premade');
+                                                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                            }}
                                         >
-                                            <Text style={styles.editCustomBtnText}>EDIT CUSTOM AVATAR</Text>
+                                            <Text style={[styles.toggleBtnText, avatarMode === 'premade' && styles.toggleBtnTextActive]}>PRE MADE</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={[styles.toggleBtn, avatarMode === 'custom' && styles.toggleBtnActive]}
+                                            onPress={() => {
+                                                playHaptic('light');
+                                                setAvatarMode('custom');
+                                                if (!customAvatarConfig) setShowBuilder(true);
+                                            }}
+                                        >
+                                            <Text style={[styles.toggleBtnText, avatarMode === 'custom' && styles.toggleBtnTextActive]}>CUSTOM</Text>
                                         </TouchableOpacity>
                                     </View>
-                                ) : (
-                                    <AvatarWheel
-                                        selectedId={selectedAvatarId}
-                                        onSelect={setSelectedAvatarId}
-                                        theme={theme}
-                                    />
-                                )}
-                            </View>
-
-                            {/* Bottom Section: Form & Buttons */}
-                            <View style={styles.bottomSection}>
-                                <View style={styles.formContainer}>
-                                    <Text style={[styles.label, { color: theme.colors.textMuted }]}>USERNAME</Text>
-                                    <TextInput
-                                        style={[styles.input, {
-                                            color: theme.colors.text,
-                                            borderColor: theme.colors.primary + '50',
-                                            backgroundColor: theme.colors.surface
-                                        }]}
-                                        value={username}
-                                        onChangeText={setUsername}
-                                        placeholder="Enter username"
-                                        placeholderTextColor={theme.colors.textMuted + '80'}
-                                        maxLength={12}
-                                    />
-                                    <Text style={[styles.email, { color: theme.colors.textMuted }]}>{user.email}</Text>
                                 </View>
 
+                                {/* Avatar Wheel / Display */}
+                                <View style={styles.avatarDisplayArea}>
+                                    {avatarMode === 'custom' && customAvatarConfig ? (
+                                        <View style={styles.customUrlContainer}>
+                                            <View style={[styles.customAvatarPreview, { borderColor: theme.colors.primary }]}>
+                                                <CustomBuiltAvatar
+                                                    config={customAvatarConfig}
+                                                    size={160} // Larger custom avatar
+                                                />
+                                            </View>
+                                            <TouchableOpacity
+                                                style={styles.editCustomBtn}
+                                                onPress={() => setShowBuilder(true)}
+                                            >
+                                                <Text style={styles.editCustomBtnText}>EDIT CUSTOM AVATAR</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    ) : (
+                                        <AvatarWheel
+                                            selectedId={selectedAvatarId}
+                                            onSelect={setSelectedAvatarId}
+                                            theme={theme}
+                                        />
+                                    )}
+                                </View>
+                            </View>
+
+                            {/* Bottom Section: Buttons */}
+                            <View style={styles.bottomSection}>
                                 <View style={styles.buttonRow}>
                                     <TouchableOpacity
                                         style={[styles.saveButton, { backgroundColor: theme.colors.primary }]}
@@ -737,15 +935,23 @@ export default function ProfileScreen({ navigation }) {
                     onRequestClose={() => setShowBuilder(false)}
                 >
                     <View style={styles.builderContainer}>
+                        {/* Header with Safe Area spacing */}
                         <View style={styles.builderHeader}>
                             <Text style={styles.builderTitle}>DESIGN YOUR AVATAR</Text>
-                            <TouchableOpacity onPress={() => setShowBuilder(false)} style={styles.closeBtn}>
+                            <TouchableOpacity
+                                onPress={() => setShowBuilder(false)}
+                                style={styles.closeBtn}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            >
                                 <Text style={styles.closeBtnText}>CLOSE</Text>
                             </TouchableOpacity>
                         </View>
+
                         <AvatarBuilder
                             initialConfig={customAvatarConfig}
                             theme={theme}
+                            hasPremium={isPremium}
+                            navigation={navigation}
                             onCancel={() => setShowBuilder(false)}
                             onSave={(config) => {
                                 setCustomAvatarConfig(config);
@@ -768,7 +974,7 @@ function getStyles(theme) {
         // Signed In Styles - Flexbox Layout
         signedInContainer: { flex: 1, paddingHorizontal: 20, paddingBottom: 20, paddingTop: 10, justifyContent: 'space-between' },
 
-        topSection: { alignItems: 'center', marginTop: 10 },
+        topSection: { alignItems: 'center', marginTop: 10, zIndex: 60 },
         sectionTitle: { fontSize: 14, fontFamily: 'Panchang-Bold', letterSpacing: 4, marginBottom: 12 },
         toggleContainer: { flexDirection: 'row', backgroundColor: theme.colors.surface, borderRadius: 12, padding: 4, borderWidth: 1, borderColor: theme.colors.primary + '30' },
         toggleBtn: { paddingVertical: 6, paddingHorizontal: 16, borderRadius: 8 },
@@ -776,14 +982,14 @@ function getStyles(theme) {
         toggleBtnText: { fontSize: 11, fontFamily: 'Teko-Bold', color: theme.colors.textMuted, letterSpacing: 1 },
         toggleBtnTextActive: { color: theme.colors.secondary },
 
-        avatarDisplayArea: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+        avatarDisplayArea: { flex: 1, alignItems: 'center', justifyContent: 'center', zIndex: 10 },
 
         customUrlContainer: { alignItems: 'center', gap: 16 },
         customAvatarPreview: { width: 170, height: 170, borderRadius: 85, borderWidth: 4, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface },
         editCustomBtn: { paddingVertical: 8, paddingHorizontal: 16, borderWidth: 1, borderColor: theme.colors.primary, borderRadius: 8 },
         editCustomBtnText: { color: theme.colors.primary, fontFamily: 'Teko-Medium', fontSize: 14, letterSpacing: 1 },
 
-        bottomSection: { width: '100%', gap: 10 },
+        bottomSection: { width: '100%', gap: 10, zIndex: 100 },
         formContainer: { width: '100%', marginBottom: 10 },
         label: { fontSize: 11, fontFamily: 'Panchang-Bold', letterSpacing: 2, marginBottom: 6, marginLeft: 4 },
         input: { width: '100%', height: 48, borderRadius: 12, borderWidth: 1, paddingHorizontal: 16, fontSize: 18, fontFamily: 'Amulya-Bold' },
@@ -804,7 +1010,7 @@ function getStyles(theme) {
         googleIconPlaceholder: { width: 20, height: 20, backgroundColor: 'red', marginRight: 10, borderRadius: 10 },
 
         // Builder Modal
-        builderContainer: { flex: 1, paddingTop: Platform.OS === 'ios' ? 20 : 0, backgroundColor: theme.colors.background },
+        builderContainer: { flex: 1, paddingTop: Platform.OS === 'ios' ? 20 : 40, backgroundColor: theme.colors.background },
         builderHeader: { flexDirection: 'row', justifyContent: 'space-between', padding: 20, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: theme.colors.primary + '20' },
         builderTitle: { fontSize: 18, fontFamily: 'Panchang-Bold', letterSpacing: 2, color: theme.colors.text },
         closeBtn: { padding: 8 },
@@ -841,4 +1047,5 @@ function getStyles(theme) {
         },
     });
 }
+
 

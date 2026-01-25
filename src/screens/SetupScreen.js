@@ -7,8 +7,10 @@ import { useTheme } from '../utils/ThemeContext';
 import { getRandomWord, CATEGORY_LABELS } from '../utils/words';
 import { translateText, SUPPORTED_LANGUAGES } from '../utils/translationService';
 import LanguageSelectorModal from '../components/LanguageSelectorModal';
-import CategorySelectionModal from '../components/CategorySelectionModal';
 import { playHaptic } from '../utils/haptics';
+import { checkPremiumStatus } from '../utils/PremiumManager';
+import { auth } from '../utils/firebase';
+import CategorySelectionModal from '../components/CategorySelectionModal';
 
 // Enable LayoutAnimation for Android
 // LayoutAnimation experimental enable removed for New Architecture compatibility
@@ -92,6 +94,18 @@ export default function SetupScreen({ navigation, route }) {
     const [isStarting, setIsStarting] = useState(false);
     const [showOfflineWarning, setShowOfflineWarning] = useState(false);
     const [settingsLoaded, setSettingsLoaded] = useState(false); // Flag to prevent save before load
+    const [isPremium, setIsPremium] = useState(false);
+
+    // Check Premium Status on Mount
+    useEffect(() => {
+        const checkPremium = async () => {
+            if (auth.currentUser) {
+                const premium = await checkPremiumStatus(auth.currentUser.email, auth.currentUser.uid);
+                setIsPremium(premium);
+            }
+        };
+        checkPremium();
+    }, []);
 
     // Load saved players on mount
     useEffect(() => {
@@ -224,22 +238,38 @@ export default function SetupScreen({ navigation, route }) {
         setIsCategoriesOpen(true);
     };
 
+    const getAvailableCategoriesList = () => {
+        const availableCategories = CATEGORY_LABELS
+            .filter(c => {
+                // Filter out 'all' itself
+                if (c.key === 'all') return false;
+
+                // If premium, include everything. If not, include only free.
+                if (isPremium) return true;
+                return c.free === true || (!c.premium && !c.free);
+            })
+            .flatMap(c => {
+                // If category has subcategories, include them instead of parent
+                if (c.subcategories) {
+                    return c.subcategories.map(sub => sub.key);
+                }
+                return [c.key];
+            });
+
+        return ['all', ...availableCategories];
+    };
+
     const toggleCategory = (key) => {
         playHaptic('light');
         setSelectedCategories(prev => {
-            // If tapping 'Random (All)', select all FREE/unlocked categories
+            // If tapping 'Random (All)'
             if (key === 'all') {
-                // Get all free categories (including subcategories)
-                const freeCategories = CATEGORY_LABELS
-                    .filter(c => c.key !== 'all' && (c.free === true || (!c.premium && !c.free)))
-                    .flatMap(c => {
-                        // If category has subcategories, include them instead of parent
-                        if (c.subcategories) {
-                            return c.subcategories.map(sub => sub.key);
-                        }
-                        return [c.key];
-                    });
-                return ['all', ...freeCategories];
+                // User Request: Clicking 'all' again results in 'dailyLife' only
+                if (prev.includes('all')) {
+                    return ['dailyLife'];
+                }
+                // Otherwise select everything
+                return getAvailableCategoriesList();
             }
 
             let newCategories = [...prev];
@@ -256,8 +286,8 @@ export default function SetupScreen({ navigation, route }) {
                 newCategories.push(key);
             }
 
-            // Fallback: If nothing selected, default to 'all' (Random)
-            return newCategories.length ? newCategories : ['all'];
+            // Fallback: If nothing selected, default to 'all' (Random) AND expand it
+            return newCategories.length ? newCategories : getAvailableCategoriesList();
         });
     };
 
@@ -344,16 +374,19 @@ export default function SetupScreen({ navigation, route }) {
             const wordData = getRandomWord(selectedCategories);
             let finalWord = wordData.word;
             let finalHint = wordData.hint;
+            let finalImpostorHint = wordData.impostorHint;
 
             // Live Translation if not English
             if (language !== 'en') {
                 try {
-                    const [translatedWord, translatedHint] = await Promise.all([
+                    const [translatedWord, translatedHint, translatedImpostorHint] = await Promise.all([
                         translateText(finalWord, language),
-                        translateText(finalHint, language)
+                        translateText(finalHint, language),
+                        translateText(finalImpostorHint, language)
                     ]);
                     finalWord = translatedWord;
                     finalHint = translatedHint;
+                    finalImpostorHint = translatedImpostorHint;
                 } catch (translationError) {
                     // Translation failed (timeout or network error)
                     console.error('Translation error:', translationError);
@@ -392,7 +425,8 @@ export default function SetupScreen({ navigation, route }) {
                 crewHint: finalHint,
                 originalWord: wordData.word, // Pass original word
                 originalHint: wordData.hint, // Pass original hint
-                impostorHint: wordData.impostorHint, // Pass impostor hint (group name)
+                impostorHint: finalImpostorHint, // Pass translated (or default) impostor hint
+                originalImpostorHint: wordData.impostorHint, // Pass original impostor hint
                 crewCategory: wordData.category,
                 hintsEnabled,
                 language

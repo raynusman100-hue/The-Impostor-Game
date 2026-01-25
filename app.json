@@ -5,11 +5,10 @@
     "version": "1.0.0",
     "scheme": "imposter-game",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/game-icon.jpeg",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0a0a0a",
     "splash": {
-      "image": "./assets/splash-logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#0a0a0a"
     },
@@ -29,7 +28,7 @@
       "package": "com.usman.impostergame",
       "versionCode": 2,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/game-icon.jpeg",
         "backgroundColor": "#0a0a0a"
       },
       "edgeToEdgeEnabled": true,
@@ -88,9 +87,5 @@
         "projectId": "c49fcb0a-1434-4154-b66e-469b1050a674"
       }
     }
-  },
-  "react-native-google-mobile-ads": {
-    "android_app_id": "ca-app-pub-3940256099942544~3347511713",
-    "ios_app_id": "ca-app-pub-3940256099942544~1458002511"
   }
 }

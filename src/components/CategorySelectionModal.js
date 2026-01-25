@@ -19,10 +19,10 @@ const CategoryCard = ({ item, isSelected, onPress, theme, styles, isPremium, isL
         };
         return twoLineLabels[label] || label.toUpperCase();
     };
-    
+
     const formattedLabel = formatLabel(item.label);
     const needsTwoLines = formattedLabel.includes('\n');
-    
+
     return (
         <TouchableOpacity
             style={[
@@ -34,23 +34,23 @@ const CategoryCard = ({ item, isSelected, onPress, theme, styles, isPremium, isL
             activeOpacity={isLocked ? 0.9 : 0.8} // Slightly different feedback for locked
         >
             {/* Chromatic Aberration - Background layers only (not borders) */}
-            <View style={[styles.chromaticLayer, { 
+            <View style={[styles.chromaticLayer, {
                 backgroundColor: isSelected ? '#FF000020' : '#FF000008',
                 transform: [{ translateX: isSelected ? 2 : 1 }]
             }]} />
-            <View style={[styles.chromaticLayer, { 
+            <View style={[styles.chromaticLayer, {
                 backgroundColor: isSelected ? '#0000FF20' : '#0000FF08',
                 transform: [{ translateX: isSelected ? -2 : -1 }]
             }]} />
-            <View style={[styles.chromaticLayer, { 
+            <View style={[styles.chromaticLayer, {
                 backgroundColor: isSelected ? '#00FF0015' : '#00FF0005',
                 transform: [{ translateY: isSelected ? 1 : 0.5 }]
             }]} />
 
             <LinearGradient
-                colors={isSelected 
-                    ? (theme.id === 'kodak-daylight' 
-                        ? ['#FFC700', '#FFB800'] 
+                colors={isSelected
+                    ? (theme.id === 'kodak-daylight'
+                        ? ['#FFC700', '#FFB800']
                         : [theme.colors.primary, theme.colors.tertiary])
                     : [theme.colors.surface + '60', theme.colors.surface + '60']}
                 start={{ x: 0, y: 0 }}
@@ -63,43 +63,43 @@ const CategoryCard = ({ item, isSelected, onPress, theme, styles, isPremium, isL
                         <Text style={styles.premiumLockIcon}>🔒</Text>
                     </View>
                 )}
-                
+
                 {/* Label with chromatic aberration text effect - always visible */}
                 <View style={styles.labelContainer}>
                     {/* Red ghost text - always visible */}
-                    <Text 
+                    <Text
                         style={[
-                            styles.cardLabel, 
+                            styles.cardLabel,
                             needsTwoLines && styles.cardLabelTwoLine,
                             styles.chromaticTextRed,
                             isSelected && styles.chromaticTextRedSelected,
                             isPremium && styles.cardLabelLocked
-                        ]} 
+                        ]}
                         numberOfLines={needsTwoLines ? 2 : 1}
                     >
                         {formattedLabel}
                     </Text>
                     {/* Blue ghost text - always visible */}
-                    <Text 
+                    <Text
                         style={[
-                            styles.cardLabel, 
+                            styles.cardLabel,
                             needsTwoLines && styles.cardLabelTwoLine,
                             styles.chromaticTextBlue,
                             isSelected && styles.chromaticTextBlueSelected,
                             isPremium && styles.cardLabelLocked
-                        ]} 
+                        ]}
                         numberOfLines={needsTwoLines ? 2 : 1}
                     >
                         {formattedLabel}
                     </Text>
                     {/* Main text */}
-                    <Text 
+                    <Text
                         style={[
-                            styles.cardLabel, 
+                            styles.cardLabel,
                             needsTwoLines && styles.cardLabelTwoLine,
                             isSelected && styles.cardLabelSelected,
                             isPremium && styles.cardLabelLocked
-                        ]} 
+                        ]}
                         numberOfLines={needsTwoLines ? 2 : 1}
                     >
                         {formattedLabel}
@@ -147,7 +147,7 @@ export default function CategorySelectionModal({ visible, onClose, selectedCateg
     // Separate categories into premium and free
     const premiumCategories = CATEGORY_LABELS.filter(c => c.premium === true && c.key !== 'all' && c.key !== 'ballKnowledge');
     const freeCategories = CATEGORY_LABELS.filter(c => (c.free === true || (!c.premium && !c.free)) && c.key !== 'all' && c.key !== 'ballKnowledge');
-    
+
     // Debug logging
     console.log('Premium categories:', premiumCategories.map(c => c.label));
     console.log('Free categories:', freeCategories.map(c => c.label));
@@ -161,7 +161,7 @@ export default function CategorySelectionModal({ visible, onClose, selectedCateg
         >
             <View style={styles.modalContainer}>
                 <LinearGradient
-                    colors={theme.colors.background === '#F5F0E6' 
+                    colors={theme.colors.background === '#F5F0E6'
                         ? ['#F5F0E6', '#EDE5D8']
                         : ['rgba(0,0,0,0.95)', 'rgba(0,0,0,0.98)']}
                     style={StyleSheet.absoluteFill}
@@ -196,15 +196,15 @@ export default function CategorySelectionModal({ visible, onClose, selectedCateg
                                 activeOpacity={0.9}
                             >
                                 {/* Chromatic aberration on premium card */}
-                                <View style={[styles.premiumChromaticLayer, { 
+                                <View style={[styles.premiumChromaticLayer, {
                                     backgroundColor: '#FF000020',
                                     transform: [{ translateX: 3 }]
                                 }]} />
-                                <View style={[styles.premiumChromaticLayer, { 
+                                <View style={[styles.premiumChromaticLayer, {
                                     backgroundColor: '#0000FF20',
                                     transform: [{ translateX: -3 }]
                                 }]} />
-                                
+
                                 <LinearGradient
                                     colors={['#FFC700', '#FFB800']}
                                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -237,77 +237,77 @@ export default function CategorySelectionModal({ visible, onClose, selectedCateg
                         {CATEGORY_LABELS.filter(c => c.key === 'ballKnowledge').map((cat) => {
                             const hasSubcategorySelected = cat.subcategories?.some(sub => selectedCategories.includes(sub.key));
                             return (
-                            <View key={cat.key} style={{ marginBottom: 20 }}>
-                                <TouchableOpacity
-                                    style={[styles.fullWidthCard, hasSubcategorySelected && styles.fullWidthCardSelected]}
-                                    onPress={() => setExpandedBallKnowledge(!expandedBallKnowledge)}
-                                    activeOpacity={0.8}
-                                >
-                                    {/* Badge */}
-                                    <View style={styles.fullWidthBadge}>
-                                        <Text style={styles.fullWidthBadgeText}>🔥 HOT</Text>
-                                    </View>
-                                    
-                                    <LinearGradient
-                                        colors={hasSubcategorySelected
-                                            ? (theme.id === 'kodak-daylight' 
-                                                ? ['#FFC700', '#FFB800'] 
-                                                : [theme.colors.primary, theme.colors.tertiary])
-                                            : [theme.colors.surface + '60', theme.colors.surface + '60']}
-                                        start={{ x: 0, y: 0 }}
-                                        end={{ x: 1, y: 0 }}
-                                        style={styles.fullWidthGradient}
+                                <View key={cat.key} style={{ marginBottom: 20 }}>
+                                    <TouchableOpacity
+                                        style={[styles.fullWidthCard, hasSubcategorySelected && styles.fullWidthCardSelected]}
+                                        onPress={() => setExpandedBallKnowledge(!expandedBallKnowledge)}
+                                        activeOpacity={0.8}
                                     >
-                                        <View style={styles.fullWidthContent}>
-                                            <Text style={[styles.fullWidthLabel, hasSubcategorySelected && styles.fullWidthLabelSelected]}>
-                                                {cat.label.toUpperCase()}
-                                            </Text>
-                                            <Text style={[styles.dropdownIcon, expandedBallKnowledge && styles.dropdownIconExpanded]}>
-                                                ▼
-                                            </Text>
+                                        {/* Badge */}
+                                        <View style={styles.fullWidthBadge}>
+                                            <Text style={styles.fullWidthBadgeText}>🔥 HOT</Text>
                                         </View>
-                                    </LinearGradient>
-                                </TouchableOpacity>
-                                
-                                {/* Subcategories */}
-                                {expandedBallKnowledge && cat.subcategories && (
-                                    <View style={styles.subcategoriesContainer}>
-                                        {cat.subcategories.map((subcat) => (
-                                            <TouchableOpacity
-                                                key={subcat.key}
-                                                style={[styles.subcategoryCard, selectedCategories.includes(subcat.key) && styles.subcategoryCardSelected]}
-                                                onPress={() => handleSelect(subcat.key)}
-                                                activeOpacity={0.8}
-                                            >
-                                                <LinearGradient
-                                                    colors={selectedCategories.includes(subcat.key)
-                                                        ? (theme.id === 'kodak-daylight' 
-                                                            ? ['#FFC700', '#FFB800'] 
-                                                            : [theme.colors.primary, theme.colors.tertiary])
-                                                        : [theme.colors.surface + '80', theme.colors.surface + '80']}
-                                                    start={{ x: 0, y: 0 }}
-                                                    end={{ x: 1, y: 0 }}
-                                                    style={styles.subcategoryGradient}
+
+                                        <LinearGradient
+                                            colors={hasSubcategorySelected
+                                                ? (theme.id === 'kodak-daylight'
+                                                    ? ['#FFC700', '#FFB800']
+                                                    : [theme.colors.primary, theme.colors.tertiary])
+                                                : [theme.colors.surface + '60', theme.colors.surface + '60']}
+                                            start={{ x: 0, y: 0 }}
+                                            end={{ x: 1, y: 0 }}
+                                            style={styles.fullWidthGradient}
+                                        >
+                                            <View style={styles.fullWidthContent}>
+                                                <Text style={[styles.fullWidthLabel, hasSubcategorySelected && styles.fullWidthLabelSelected]}>
+                                                    {cat.label.toUpperCase()}
+                                                </Text>
+                                                <Text style={[styles.dropdownIcon, expandedBallKnowledge && styles.dropdownIconExpanded]}>
+                                                    ▼
+                                                </Text>
+                                            </View>
+                                        </LinearGradient>
+                                    </TouchableOpacity>
+
+                                    {/* Subcategories */}
+                                    {expandedBallKnowledge && cat.subcategories && (
+                                        <View style={styles.subcategoriesContainer}>
+                                            {cat.subcategories.map((subcat) => (
+                                                <TouchableOpacity
+                                                    key={subcat.key}
+                                                    style={[styles.subcategoryCard, selectedCategories.includes(subcat.key) && styles.subcategoryCardSelected]}
+                                                    onPress={() => handleSelect(subcat.key)}
+                                                    activeOpacity={0.8}
                                                 >
-                                                    <Text 
-                                                        style={[
-                                                            styles.subcategoryLabel, 
-                                                            selectedCategories.includes(subcat.key) && styles.subcategoryLabelSelected,
-                                                        ]}
-                                                        numberOfLines={1}
-                                                        adjustsFontSizeToFit={true}
-                                                        minimumFontScale={0.5}
-                                                        allowFontScaling={false}
+                                                    <LinearGradient
+                                                        colors={selectedCategories.includes(subcat.key)
+                                                            ? (theme.id === 'kodak-daylight'
+                                                                ? ['#FFC700', '#FFB800']
+                                                                : [theme.colors.primary, theme.colors.tertiary])
+                                                            : [theme.colors.surface + '80', theme.colors.surface + '80']}
+                                                        start={{ x: 0, y: 0 }}
+                                                        end={{ x: 1, y: 0 }}
+                                                        style={styles.subcategoryGradient}
                                                     >
-                                                        {subcat.label.toUpperCase()}
-                                                    </Text>
-                                                </LinearGradient>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </View>
-                                )}
-                            </View>
-                        );
+                                                        <Text
+                                                            style={[
+                                                                styles.subcategoryLabel,
+                                                                selectedCategories.includes(subcat.key) && styles.subcategoryLabelSelected,
+                                                            ]}
+                                                            numberOfLines={1}
+                                                            adjustsFontSizeToFit={true}
+                                                            minimumFontScale={0.5}
+                                                            allowFontScaling={false}
+                                                        >
+                                                            {subcat.label.toUpperCase()}
+                                                        </Text>
+                                                    </LinearGradient>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </View>
+                                    )}
+                                </View>
+                            );
                         })}
 
                         {/* Category Grid - Premium locked categories first, then free */}
@@ -322,7 +322,7 @@ export default function CategorySelectionModal({ visible, onClose, selectedCateg
                                 styles={styles}
                                 isPremium={false}
                             />
-                            
+
                             {/* Free categories first - at the top for easy access */}
                             {freeCategories.map((cat) => (
                                 <CategoryCard
@@ -335,7 +335,7 @@ export default function CategorySelectionModal({ visible, onClose, selectedCateg
                                     isPremium={false}
                                 />
                             ))}
-                            
+
                             {/* Premium categories - unlocked for premium users, locked for free users */}
                             {premiumCategories.map((cat) => (
                                 <CategoryCard

@@ -50,11 +50,21 @@ export default function RoleRevealScreen({ route, navigation }) {
 
     // Voice Chat
     const { joinChannel } = useVoiceChat();
+    const [hostIsPremium, setHostIsPremium] = useState(false);
+
     useEffect(() => {
         if (isWifi && params.roomCode) {
-            joinChannel(params.roomCode, 0);
+            get(ref(database, `rooms/${params.roomCode}/hostIsPremium`)).then(snap => {
+                setHostIsPremium(snap.val() || false);
+            });
         }
     }, [isWifi, params.roomCode]);
+
+    useEffect(() => {
+        if (isWifi && params.roomCode && hostIsPremium) {
+            joinChannel(params.roomCode, 0);
+        }
+    }, [isWifi, params.roomCode, hostIsPremium]);
 
     // Disable Android back button in WiFi mode
     useEffect(() => {
@@ -365,7 +375,7 @@ export default function RoleRevealScreen({ route, navigation }) {
             )}
 
             {/* Voice Control for Wifi Mode */}
-            {isWifi && <VoiceControl />}
+            {isWifi && hostIsPremium && <VoiceControl />}
 
             <Text
                 style={[styles.header, isWifi && styles.kodakHeader]}
@@ -381,6 +391,7 @@ export default function RoleRevealScreen({ route, navigation }) {
                 player={currentPlayer}
                 category={params.category || params.crewCategory}
                 impostorHint={params.impostorHint}
+                originalImpostorHint={params.originalImpostorHint}
                 hintsEnabled={params.hintsEnabled}
                 onNext={handleNext}
                 language={isWifi ? gameLanguage : (params.language || 'en')}

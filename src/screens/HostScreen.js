@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Share, Alert, ActivityIndicator, Platform, TouchableOpacity, LayoutAnimation, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
 import { useTheme } from '../utils/ThemeContext';
 import KodakButton from '../components/KodakButton';
@@ -19,6 +20,7 @@ import { CustomAvatar } from '../utils/AvatarGenerator';
 import { CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
 import CategorySelectionModal from '../components/CategorySelectionModal';
 import { useVoiceParticipantsTracker } from '../utils/VoiceParticipantsTracker';
+import { checkPremiumStatus } from '../utils/PremiumManager';
 
 // Film perforation component for Kodak aesthetic
 const FilmPerforations = ({ side, theme }) => {
@@ -62,6 +64,7 @@ export default function HostScreen({ navigation, route }) {
 
     const [roomCode, setRoomCode] = useState(existingRoomCode || '');
     const [players, setPlayers] = useState([]);
+    const [isHostPremium, setIsHostPremium] = useState(false); // Added for local UI check
 
     // Game Settings
     const [impostorCount, setImpostorCount] = useState(1);
@@ -163,12 +166,16 @@ export default function HostScreen({ navigation, route }) {
                 // 1. Fetch current Agora App ID from pool
                 let stampedAppId = null;
                 try {
-                    const { fetchCurrentAgoraAppId } = require('../utils/remoteConfig');
                     stampedAppId = await fetchCurrentAgoraAppId();
                     console.log("🔄 HOST: Stamped room with App ID:", stampedAppId);
                 } catch (err) {
                     console.warn("🔄 HOST: Failed to fetch App ID for stamp, using default/fallback logic");
                 }
+
+                // Check Premium Status
+                const premiumStatus = await checkPremiumStatus(playerData.email, playerData.uid);
+                console.log("🔄 HOST: Host is premium?", premiumStatus);
+                setIsHostPremium(premiumStatus);
 
                 await set(roomRef, {
                     status: 'lobby',
@@ -177,7 +184,8 @@ export default function HostScreen({ navigation, route }) {
                     hostId: playerData.uid,
                     hostAvatar: playerData.avatarId,
                     hostAvatarConfig: playerData.customAvatarConfig || null,
-                    agoraAppId: stampedAppId // <--- THE LOBBY STAMP 🏷️
+                    agoraAppId: stampedAppId, // <--- THE LOBBY STAMP 🏷️
+                    hostIsPremium: premiumStatus // <--- LOCK VOICE CHAT 🔒
                 });
             }
 
@@ -408,8 +416,22 @@ export default function HostScreen({ navigation, route }) {
                     />
                 </View>
             ) : activeTab === 'voice' ? (
-                <View style={styles.voiceContainer}>
-                    {!isJoined ? (
+                <View style={[styles.voiceContainer, !isHostPremium && { justifyContent: 'center' }]}>
+                    {!isHostPremium ? (
+                        <View style={{ alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+                            <Ionicons name="lock-closed" size={64} color={theme.colors.textMuted} style={{ marginBottom: 20 }} />
+                            <Text style={[styles.voiceInstructions, { fontSize: 20 }]}>PREMIUM ONLY</Text>
+                            <Text style={[styles.voiceSubInstructions, { maxWidth: 300 }]}>
+                                You need Premium to enable Voice Chat for this room.
+                            </Text>
+                            <KodakButton
+                                title="GET PREMIUM"
+                                onPress={() => navigation.navigate('Premium')}
+                                variant="primary"
+                                style={{ width: 200, marginTop: 20 }}
+                            />
+                        </View>
+                    ) : !isJoined ? (
                         <>
                             <Text style={styles.voiceInstructions}>
                                 VOICE CHAT

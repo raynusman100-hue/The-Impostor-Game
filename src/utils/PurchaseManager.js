@@ -13,6 +13,7 @@ class PurchaseManager {
     constructor() {
         this.isPro = false;
         this.listeners = [];
+        this.isConfigured = false;
     }
 
     static getInstance() {
@@ -22,13 +23,18 @@ class PurchaseManager {
         return PurchaseManager.instance;
     }
 
-    async initialize() {
+    async initialize(userId = null) {
+        if (this.isConfigured) return;
+
         try {
             if (Platform.OS === 'ios') {
-                await Purchases.configure({ apiKey: API_KEYS.apple });
+                await Purchases.configure({ apiKey: API_KEYS.apple, appUserID: userId });
             } else if (Platform.OS === 'android') {
-                await Purchases.configure({ apiKey: API_KEYS.google });
+                await Purchases.configure({ apiKey: API_KEYS.google, appUserID: userId });
             }
+
+            this.isConfigured = true;
+            console.log('✅ RevenueCat configured with user:', userId);
 
             await this.checkProStatus();
         } catch (error) {
@@ -36,8 +42,57 @@ class PurchaseManager {
         }
     }
 
+    async ensureInit() {
+        if (!this.isConfigured) {
+            console.log('⚠️ PurchaseManager not initialized, lazy loading...');
+            await this.initialize();
+        }
+    }
+
+    /**
+     * Login user to RevenueCat - syncs purchases across devices
+     * @param {string} userId - User's unique ID (Firebase UID)
+     */
+    async loginUser(userId) {
+        try {
+            await this.ensureInit();
+
+            if (!userId) {
+                console.warn('⚠️ No userId provided to loginUser');
+                return;
+            }
+
+            console.log('🔐 Logging in user to RevenueCat:', userId);
+            await Purchases.logIn(userId);
+
+            // Check premium status after login
+            const isPremium = await this.checkProStatus();
+            console.log('✅ User logged in to RevenueCat. Premium status:', isPremium);
+
+            return isPremium;
+        } catch (error) {
+            console.error('❌ Error logging in user to RevenueCat:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Logout user from RevenueCat
+     */
+    async logoutUser() {
+        try {
+            console.log('👋 Logging out user from RevenueCat');
+            await Purchases.logOut();
+            this.setProStatus(false);
+        } catch (error) {
+            console.error('Error logging out from RevenueCat:', error);
+        }
+    }
+
     async checkProStatus() {
         try {
+            await this.ensureInit();
+
             const customerInfo = await Purchases.getCustomerInfo();
             // "pro_version" should be the Entitlement ID configured in RevenueCat
             if (typeof customerInfo.entitlements.active['pro_version'] !== "undefined") {

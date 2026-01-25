@@ -977,10 +977,20 @@ export default function WifiVotingScreen({ route, navigation }) {
         }
     };
 
+    // Check Premium Status for Voice Chat
+    const [hostIsPremium, setHostIsPremium] = useState(false);
+    useEffect(() => {
+        if (roomCode) {
+            get(ref(database, `rooms/${roomCode}/hostIsPremium`)).then(snap => {
+                setHostIsPremium(snap.val() || false);
+            });
+        }
+    }, [roomCode]);
+
     return (
         <LinearGradient style={styles.container} colors={theme.colors.backgroundGradient || [theme.colors.background, theme.colors.background, theme.colors.background]}>
-            {/* Voice Control */}
-            <VoiceControl />
+            {/* Voice Control - Premium Only */}
+            {hostIsPremium && <VoiceControl />}
 
             {/* Kodak Film Header */}
             <View style={styles.filmHeader}>
@@ -1149,261 +1159,261 @@ export default function WifiVotingScreen({ route, navigation }) {
 
 function getStyles(theme) {
     return StyleSheet.create({
-    container: { flex: 1, alignItems: 'center' },
-    // Kodak Film Strip Decorations
-    filmHeader: {
-        width: '100%',
-        paddingTop: 50,
-    },
-    filmFooter: {
-        width: '100%',
-        paddingBottom: 10,
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-    },
-    filmStrip: {
-        flexDirection: 'row',
-        justifyContent: 'space-evenly',
-        paddingHorizontal: 5,
-    },
-    filmHole: {
-        width: 12,
-        height: 8,
-        backgroundColor: theme.colors.primary,
-        borderRadius: 2,
-        opacity: 0.8,
-    },
-    header: { marginTop: 10, alignItems: 'center', marginBottom: 10, width: '100%' },
-    title: {
-        fontSize: 40,
-        color: theme.colors.text,
-        fontFamily: theme.fonts.header,
-        letterSpacing: 4,
-        ...theme.textShadows.depth,
-    },
-    subtitle: {
-        fontSize: 14,
-        color: theme.colors.tertiary,
-        fontFamily: theme.fonts.medium,
-        letterSpacing: 3,
-        marginBottom: 5,
-        textAlign: 'center'
-    },
-    scrollContent: { padding: 20, width: '100%' },
-    playerGrid: { gap: 10, width: '100%' },
-    playerCard: {
-        padding: 18,
-        borderRadius: 10,
-        borderWidth: 2,
-        borderColor: theme.colors.textMuted,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        width: '100%',
-        backgroundColor: theme.colors.surface,
-    },
-    selectedCard: {
-        borderColor: theme.colors.primary,
-        backgroundColor: theme.colors.surface,
-        ...theme.shadows.medium,
-    },
-    selfCard: { opacity: 0.5 },
-    playerName: { fontSize: 18, fontFamily: theme.fonts.header, letterSpacing: 2, color: theme.colors.text },
-    voteMarker: { color: theme.colors.text, fontFamily: theme.fonts.bold, fontSize: 13, letterSpacing: 2 },
-    footer: { padding: 20, gap: 10, marginBottom: 20, width: '100%' },
-    statusText: {
-        textAlign: 'center',
-        color: theme.colors.tertiary,
-        fontFamily: theme.fonts.medium,
-        fontSize: 14,
-        letterSpacing: 3
-    },
-    submitBtn: { width: '100%' },
-    timerBadge: {
-        position: 'absolute',
-        top: -30,
-        right: 20,
-        backgroundColor: theme.colors.surface,
-        paddingHorizontal: 16,
-        paddingVertical: 6,
-        borderRadius: 20,
-        borderWidth: 2,
-        borderColor: theme.colors.primary
-    },
-    timerText: {
-        color: theme.colors.text,
-        fontFamily: theme.fonts.bold,
-        fontSize: 18,
-        letterSpacing: 2
-    },
-    connectionBadge: {
-        position: 'absolute',
-        top: -30,
-        left: 20,
-        backgroundColor: 'rgba(255, 165, 0, 0.8)',
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        borderRadius: 15,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.3)'
-    },
-    connectionText: {
-        color: '#fff',
-        fontFamily: theme.fonts.bold,
-        fontSize: 12,
-        letterSpacing: 1
-    },
-    votingStatusContainer: {
-        width: '100%',
-        marginBottom: 20,
-        backgroundColor: theme.colors.surface,
-        borderRadius: 12,
-        padding: 15,
-        borderWidth: 2,
-        borderColor: theme.colors.textMuted
-    },
-    // NEW PLAYER STATUS STYLES
-    playerStatusContainer: {
-        width: '100%',
-        alignItems: 'center',
-        marginBottom: 25,
-        backgroundColor: theme.colors.surface,
-        borderRadius: 12,
-        padding: 15,
-        borderWidth: 2,
-        borderColor: theme.colors.textMuted,
-    },
-    playerStatusTitle: {
-        color: theme.colors.tertiary,
-        fontFamily: theme.fonts.header,
-        fontSize: 14,
-        marginBottom: 12,
-        letterSpacing: 4,
-        textTransform: 'uppercase'
-    },
-    playerStatusRow: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-        gap: 16,
-        marginBottom: 12
-    },
-    playerStatusAvatarContainer: {
-        position: 'relative',
-        width: 54,
-        height: 54,
-    },
-    playerAvatarCircle: {
-        width: 54,
-        height: 54,
-        borderRadius: 27,
-        borderWidth: 3,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: theme.colors.surface
-    },
-    avatarActive: {
-        borderColor: theme.colors.textMuted
-    },
-    avatarVoted: {
-        borderColor: theme.colors.primary,
-        ...theme.shadows.soft,
-    },
-    avatarText: {
-        color: theme.colors.text,
-        fontFamily: theme.fonts.bold,
-        fontSize: 22
-    },
-    statusBadge: {
-        position: 'absolute',
-        bottom: -2,
-        right: -4,
-        width: 22,
-        height: 22,
-        borderRadius: 11,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 2,
-        borderColor: theme.colors.background
-    },
-    statusBadgeVoted: {
-        backgroundColor: theme.colors.primary
-    },
-    statusBadgePending: {
-        backgroundColor: theme.colors.textMuted,
-        width: 18,
-        height: 18,
-        bottom: 0,
-        right: -2
-    },
-    checkmarkIcon: {
-        color: theme.colors.secondary,
-        fontSize: 12,
-        fontWeight: 'bold'
-    },
-    pendingDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: theme.colors.secondary
-    },
-    readyText: {
-        color: theme.colors.text,
-        fontFamily: theme.fonts.header,
-        fontSize: 20,
-        letterSpacing: 3,
-        ...theme.textShadows.softDepth,
-    },
-    // TAB STYLES
-    tabContainer: {
-        flexDirection: 'row',
-        marginTop: 10,
-        backgroundColor: theme.colors.surface,
-        borderRadius: 25,
-        padding: 4,
-        borderWidth: 2,
-        borderColor: theme.colors.primary,
-        alignSelf: 'center',
-    },
-    tab: {
-        paddingVertical: 8,
-        paddingHorizontal: 28,
-        borderRadius: 20,
-    },
-    activeTab: {
-        backgroundColor: theme.colors.primary,
-    },
-    tabContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    tabText: {
-        color: theme.colors.textMuted,
-        fontFamily: theme.fonts.bold,
-        fontSize: 13,
-        letterSpacing: 2,
-    },
-    activeTabText: {
-        color: theme.colors.secondary,
-        fontFamily: theme.fonts.bold,
-    },
-    notificationBadge: {
-        position: 'absolute',
-        top: -12,
-        right: -25,
-        backgroundColor: theme.colors.error,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 10,
-        borderWidth: 2,
-        borderColor: theme.colors.background
-    },
-    notificationText: {
-        color: '#fff',
-        fontSize: 9,
-        fontFamily: theme.fonts.bold
-    }
-});
+        container: { flex: 1, alignItems: 'center' },
+        // Kodak Film Strip Decorations
+        filmHeader: {
+            width: '100%',
+            paddingTop: 50,
+        },
+        filmFooter: {
+            width: '100%',
+            paddingBottom: 10,
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+        },
+        filmStrip: {
+            flexDirection: 'row',
+            justifyContent: 'space-evenly',
+            paddingHorizontal: 5,
+        },
+        filmHole: {
+            width: 12,
+            height: 8,
+            backgroundColor: theme.colors.primary,
+            borderRadius: 2,
+            opacity: 0.8,
+        },
+        header: { marginTop: 10, alignItems: 'center', marginBottom: 10, width: '100%' },
+        title: {
+            fontSize: 40,
+            color: theme.colors.text,
+            fontFamily: theme.fonts.header,
+            letterSpacing: 4,
+            ...theme.textShadows.depth,
+        },
+        subtitle: {
+            fontSize: 14,
+            color: theme.colors.tertiary,
+            fontFamily: theme.fonts.medium,
+            letterSpacing: 3,
+            marginBottom: 5,
+            textAlign: 'center'
+        },
+        scrollContent: { padding: 20, width: '100%' },
+        playerGrid: { gap: 10, width: '100%' },
+        playerCard: {
+            padding: 18,
+            borderRadius: 10,
+            borderWidth: 2,
+            borderColor: theme.colors.textMuted,
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            width: '100%',
+            backgroundColor: theme.colors.surface,
+        },
+        selectedCard: {
+            borderColor: theme.colors.primary,
+            backgroundColor: theme.colors.surface,
+            ...theme.shadows.medium,
+        },
+        selfCard: { opacity: 0.5 },
+        playerName: { fontSize: 18, fontFamily: theme.fonts.header, letterSpacing: 2, color: theme.colors.text },
+        voteMarker: { color: theme.colors.text, fontFamily: theme.fonts.bold, fontSize: 13, letterSpacing: 2 },
+        footer: { padding: 20, gap: 10, marginBottom: 20, width: '100%' },
+        statusText: {
+            textAlign: 'center',
+            color: theme.colors.tertiary,
+            fontFamily: theme.fonts.medium,
+            fontSize: 14,
+            letterSpacing: 3
+        },
+        submitBtn: { width: '100%' },
+        timerBadge: {
+            position: 'absolute',
+            top: -30,
+            right: 20,
+            backgroundColor: theme.colors.surface,
+            paddingHorizontal: 16,
+            paddingVertical: 6,
+            borderRadius: 20,
+            borderWidth: 2,
+            borderColor: theme.colors.primary
+        },
+        timerText: {
+            color: theme.colors.text,
+            fontFamily: theme.fonts.bold,
+            fontSize: 18,
+            letterSpacing: 2
+        },
+        connectionBadge: {
+            position: 'absolute',
+            top: -30,
+            left: 20,
+            backgroundColor: 'rgba(255, 165, 0, 0.8)',
+            paddingHorizontal: 12,
+            paddingVertical: 4,
+            borderRadius: 15,
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.3)'
+        },
+        connectionText: {
+            color: '#fff',
+            fontFamily: theme.fonts.bold,
+            fontSize: 12,
+            letterSpacing: 1
+        },
+        votingStatusContainer: {
+            width: '100%',
+            marginBottom: 20,
+            backgroundColor: theme.colors.surface,
+            borderRadius: 12,
+            padding: 15,
+            borderWidth: 2,
+            borderColor: theme.colors.textMuted
+        },
+        // NEW PLAYER STATUS STYLES
+        playerStatusContainer: {
+            width: '100%',
+            alignItems: 'center',
+            marginBottom: 25,
+            backgroundColor: theme.colors.surface,
+            borderRadius: 12,
+            padding: 15,
+            borderWidth: 2,
+            borderColor: theme.colors.textMuted,
+        },
+        playerStatusTitle: {
+            color: theme.colors.tertiary,
+            fontFamily: theme.fonts.header,
+            fontSize: 14,
+            marginBottom: 12,
+            letterSpacing: 4,
+            textTransform: 'uppercase'
+        },
+        playerStatusRow: {
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            gap: 16,
+            marginBottom: 12
+        },
+        playerStatusAvatarContainer: {
+            position: 'relative',
+            width: 54,
+            height: 54,
+        },
+        playerAvatarCircle: {
+            width: 54,
+            height: 54,
+            borderRadius: 27,
+            borderWidth: 3,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: theme.colors.surface
+        },
+        avatarActive: {
+            borderColor: theme.colors.textMuted
+        },
+        avatarVoted: {
+            borderColor: theme.colors.primary,
+            ...theme.shadows.soft,
+        },
+        avatarText: {
+            color: theme.colors.text,
+            fontFamily: theme.fonts.bold,
+            fontSize: 22
+        },
+        statusBadge: {
+            position: 'absolute',
+            bottom: -2,
+            right: -4,
+            width: 22,
+            height: 22,
+            borderRadius: 11,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 2,
+            borderColor: theme.colors.background
+        },
+        statusBadgeVoted: {
+            backgroundColor: theme.colors.primary
+        },
+        statusBadgePending: {
+            backgroundColor: theme.colors.textMuted,
+            width: 18,
+            height: 18,
+            bottom: 0,
+            right: -2
+        },
+        checkmarkIcon: {
+            color: theme.colors.secondary,
+            fontSize: 12,
+            fontWeight: 'bold'
+        },
+        pendingDot: {
+            width: 6,
+            height: 6,
+            borderRadius: 3,
+            backgroundColor: theme.colors.secondary
+        },
+        readyText: {
+            color: theme.colors.text,
+            fontFamily: theme.fonts.header,
+            fontSize: 20,
+            letterSpacing: 3,
+            ...theme.textShadows.softDepth,
+        },
+        // TAB STYLES
+        tabContainer: {
+            flexDirection: 'row',
+            marginTop: 10,
+            backgroundColor: theme.colors.surface,
+            borderRadius: 25,
+            padding: 4,
+            borderWidth: 2,
+            borderColor: theme.colors.primary,
+            alignSelf: 'center',
+        },
+        tab: {
+            paddingVertical: 8,
+            paddingHorizontal: 28,
+            borderRadius: 20,
+        },
+        activeTab: {
+            backgroundColor: theme.colors.primary,
+        },
+        tabContent: {
+            flexDirection: 'row',
+            alignItems: 'center',
+        },
+        tabText: {
+            color: theme.colors.textMuted,
+            fontFamily: theme.fonts.bold,
+            fontSize: 13,
+            letterSpacing: 2,
+        },
+        activeTabText: {
+            color: theme.colors.secondary,
+            fontFamily: theme.fonts.bold,
+        },
+        notificationBadge: {
+            position: 'absolute',
+            top: -12,
+            right: -25,
+            backgroundColor: theme.colors.error,
+            paddingHorizontal: 6,
+            paddingVertical: 2,
+            borderRadius: 10,
+            borderWidth: 2,
+            borderColor: theme.colors.background
+        },
+        notificationText: {
+            color: '#fff',
+            fontSize: 9,
+            fontFamily: theme.fonts.bold
+        }
+    });
 }

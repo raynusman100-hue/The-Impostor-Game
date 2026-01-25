@@ -79,7 +79,7 @@ const THEME_COVER_IMAGES = {
 };
 
 
-export default function RoleCard({ player, category, impostorHint, hintsEnabled, onNext, language, buttonTitle = "NEXT PLAYER", disabled = false, isWifi = false, playerIndex = 0 }) {
+export default function RoleCard({ player, category, impostorHint, originalImpostorHint, hintsEnabled, onNext, language, buttonTitle = "NEXT PLAYER", disabled = false, isWifi = false, playerIndex = 0 }) {
     const { theme } = useTheme();
 
     // Use dynamic dimensions hook to handle orientation changes and get accurate sizes
@@ -249,7 +249,9 @@ export default function RoleCard({ player, category, impostorHint, hintsEnabled,
                                         YOU ARE THE IMPOSTOR
                                     </Text>
                                     {hintsEnabled && impostorHint && (
-                                        <Text style={styles.hintText}>HINT: {impostorHint.toUpperCase()}</Text>
+                                        <Text style={styles.hintText}>
+                                            HINT: {(showOriginal && originalImpostorHint ? originalImpostorHint : impostorHint).toUpperCase()}
+                                        </Text>
                                     )}
                                 </View>
                             </>
@@ -348,7 +350,7 @@ export default function RoleCard({ player, category, impostorHint, hintsEnabled,
                 )}
 
             </View>
-        </View>
+        </View >
     );
 }
 

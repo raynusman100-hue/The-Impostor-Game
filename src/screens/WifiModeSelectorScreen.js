@@ -109,6 +109,7 @@ export default function WifiModeSelectorScreen({ navigation }) {
         navigation.navigate(targetScreen, {
             playerData: {
                 name: profileData.username,
+                email: profileData.email, // Added for premium check
                 avatarId: profileData.avatarId || 1,
                 uid: user.uid,
                 customAvatarConfig: profileData.customAvatarConfig || profileData.customAvatar || null,
@@ -161,50 +162,50 @@ export default function WifiModeSelectorScreen({ navigation }) {
 
 function getStyles(theme) {
     return StyleSheet.create({
-    container: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    content: {
-        width: '100%',
-        padding: theme.spacing.xl,
-        alignItems: 'center',
-    },
-    header: {
-        alignItems: 'center',
-        marginBottom: 60,
-        marginTop: Platform.OS === 'ios' ? 80 : 60, // Accommodate header
-    },
-    title: {
-        fontSize: 72,
-        color: theme.colors.tertiary, // Silver
-        fontFamily: theme.fonts.header,
-        letterSpacing: 2,
-        ...theme.textShadows.depth,
-    },
-    subtitle: {
-        fontSize: 24,
-        color: theme.colors.primary,
-        fontFamily: theme.fonts.medium,
-        letterSpacing: 8,
-        marginTop: -10,
-    },
-    buttonRow: {
-        flexDirection: 'row',
-        width: '100%',
-        gap: 12,
-        marginBottom: 30,
-    },
-    modeButton: {
-        flex: 1,
-    },
-    orText: {
-        color: theme.colors.textMuted,
-        fontFamily: theme.fonts.medium,
-        fontSize: 20,
-        textAlign: 'center',
-        letterSpacing: 4,
-    },
-});
+        container: {
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        content: {
+            width: '100%',
+            padding: theme.spacing.xl,
+            alignItems: 'center',
+        },
+        header: {
+            alignItems: 'center',
+            marginBottom: 60,
+            marginTop: Platform.OS === 'ios' ? 80 : 60, // Accommodate header
+        },
+        title: {
+            fontSize: 72,
+            color: theme.colors.tertiary, // Silver
+            fontFamily: theme.fonts.header,
+            letterSpacing: 2,
+            ...theme.textShadows.depth,
+        },
+        subtitle: {
+            fontSize: 24,
+            color: theme.colors.primary,
+            fontFamily: theme.fonts.medium,
+            letterSpacing: 8,
+            marginTop: -10,
+        },
+        buttonRow: {
+            flexDirection: 'row',
+            width: '100%',
+            gap: 12,
+            marginBottom: 30,
+        },
+        modeButton: {
+            flex: 1,
+        },
+        orText: {
+            color: theme.colors.textMuted,
+            fontFamily: theme.fonts.medium,
+            fontSize: 20,
+            textAlign: 'center',
+            letterSpacing: 4,
+        },
+    });
 }

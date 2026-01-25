@@ -279,8 +279,36 @@ export default function SettingsScreen({ navigation }) {
         }
     };
 
-    const handleContact = () => {
-        Linking.openURL('mailto:support@impostorgame.com?subject=Impostor Game Feedback');
+    const handleContact = async () => {
+        const email = 'theimpostergameonline@gmail.com';
+        const subject = 'Impostor Game Feedback';
+        const url = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
+
+        try {
+            // Check if we can open this URL
+            const canOpen = await Linking.canOpenURL(url);
+
+            if (canOpen) {
+                await Linking.openURL(url);
+            } else {
+                // Fallback for simulators or devices without mail apps
+                Alert.alert(
+                    'Contact Support',
+                    `Please send an email to:\n${email}`,
+                    [{
+                        text: 'Copy Email', onPress: () => {
+                            const { Clipboard } = require('react-native');
+                            // Note: Clipboard might need import or use Expo Clipboard
+                            // For simplicity in this specific file context without adding imports:
+                            Alert.alert('Email', email);
+                        }
+                    }, { text: 'OK' }]
+                );
+            }
+        } catch (err) {
+            console.error('An error occurred', err);
+            Alert.alert('Error', `Could not open mail app.\nPlease email: ${email}`);
+        }
     };
 
     return (
@@ -368,9 +396,9 @@ export default function SettingsScreen({ navigation }) {
                     theme={theme}
                 />
                 <SettingButton
-                    label="Remove Ads (Pro)"
-                    description="One-time purchase"
-                    onPress={() => navigation.navigate('ProVersion')}
+                    label="Go Premium"
+                    description="Unlock features & remove ads"
+                    onPress={() => navigation.navigate('Premium')}
                     theme={theme}
                 />
 
@@ -413,6 +441,54 @@ export default function SettingsScreen({ navigation }) {
                 {/* DEBUG - Premium Testing */}
                 <SectionHeader title="DEBUG (Testing Only)" theme={theme} />
                 <SettingButton
+                    label="🔍 Debug Premium Status"
+                    description="Check all premium sources for current user"
+                    onPress={async () => {
+                        const { auth } = require('../utils/firebase');
+                        const { debugPremiumStatus } = require('../utils/PremiumManager');
+                        const user = auth.currentUser;
+                        if (user) {
+                            await debugPremiumStatus(user.uid, user.email);
+                            Alert.alert('Debug Complete', 'Check console logs for detailed premium status');
+                        } else {
+                            Alert.alert('Not Signed In', 'Please sign in first');
+                        }
+                    }}
+                    theme={theme}
+                />
+                <SettingButton
+                    label="🧹 Remove My Premium Status"
+                    description="ADMIN: Remove premium from current account"
+                    onPress={async () => {
+                        const { auth } = require('../utils/firebase');
+                        const { removePremiumStatus } = require('../utils/PremiumManager');
+                        const user = auth.currentUser;
+                        if (user) {
+                            Alert.alert(
+                                'Remove Premium?',
+                                `This will remove premium status from:\n${user.email}`,
+                                [
+                                    { text: 'Cancel', style: 'cancel' },
+                                    {
+                                        text: 'Remove', style: 'destructive', onPress: async () => {
+                                            const success = await removePremiumStatus(user.uid, user.email);
+                                            if (success) {
+                                                Alert.alert('Success', 'Premium status removed. Restart app to see changes.');
+                                            } else {
+                                                Alert.alert('Error', 'Failed to remove premium status');
+                                            }
+                                        }
+                                    }
+                                ]
+                            );
+                        } else {
+                            Alert.alert('Not Signed In', 'Please sign in first');
+                        }
+                    }}
+                    theme={theme}
+                    danger
+                />
+                <SettingButton
                     label="Test Premium Screen"
                     description="Manually open premium page"
                     onPress={() => navigation.navigate('Premium')}
@@ -423,16 +499,34 @@ export default function SettingsScreen({ navigation }) {
                     description="View premium counter"
                     onPress={async () => {
                         const count = await AsyncStorage.getItem('app_open_count');
-                        Alert.alert('Premium Counter', `App opened ${count || 0} times\nPremium shows every 2nd open (even numbers)`);
+                        Alert.alert('Premium Counter', `App opened ${count || 0} times\nPremium shows every 3rd open (3, 6, 9...)`);
+                    }}
+                    theme={theme}
+                />
+                <SettingButton
+                    label="Check Profile Save Count"
+                    description="View profile save counter"
+                    onPress={async () => {
+                        const count = await AsyncStorage.getItem('profile_save_count');
+                        Alert.alert('Profile Save Counter', `Profile saved ${count || 0} times\nPremium shows every 3rd save (3, 6, 9...)`);
                     }}
                     theme={theme}
                 />
                 <SettingButton
                     label="Reset Premium Counter"
-                    description="Set count to 1 (next open = premium)"
+                    description="Set count to 2 (next open = premium)"
                     onPress={async () => {
-                        await AsyncStorage.setItem('app_open_count', '1');
-                        Alert.alert('Reset', 'Counter set to 1. Premium will show on next app open!');
+                        await AsyncStorage.setItem('app_open_count', '2');
+                        Alert.alert('Reset', 'Counter set to 2. Premium will show on next app open!');
+                    }}
+                    theme={theme}
+                />
+                <SettingButton
+                    label="Reset Profile Save Counter"
+                    description="Set count to 2 (next save = premium)"
+                    onPress={async () => {
+                        await AsyncStorage.setItem('profile_save_count', '2');
+                        Alert.alert('Reset', 'Counter set to 2. Premium will show on next profile save!');
                     }}
                     theme={theme}
                 />

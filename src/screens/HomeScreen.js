@@ -4,9 +4,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../utils/ThemeContext';
+import { useSettings } from '../utils/SettingsContext';
 import { playHaptic } from '../utils/haptics';
 import { CustomAvatar } from '../utils/AvatarGenerator';
 import { CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -255,8 +257,8 @@ export default function HomeScreen({ navigation }) {
                 if (user) {
                     const hasPremium = await checkPremiumStatus(user.email, user.uid);
                     if (hasPremium) {
-                        console.log('HomeScreen: User has premium, skipping screen');
-                        return;
+                        console.log('💎 HomeScreen: User is PREMIUM - SUPPRESSING POPUP');
+                        return; // EXIT IMMEDIATELY
                     }
                 }
 
@@ -299,23 +301,7 @@ export default function HomeScreen({ navigation }) {
                 style={styles.settingsButton}
             >
                 <View style={styles.gearIcon}>
-                    {/* Gear teeth */}
-                    {[0, 45, 90, 135].map((rotation) => (
-                        <View
-                            key={rotation}
-                            style={[
-                                styles.gearTooth,
-                                {
-                                    backgroundColor: theme.colors.primary,
-                                    transform: [{ rotate: `${rotation}deg` }]
-                                }
-                            ]}
-                        />
-                    ))}
-                    {/* Center circle */}
-                    <View style={[styles.gearCenter, { backgroundColor: theme.colors.surface, borderColor: theme.colors.primary }]}>
-                        <View style={[styles.gearDot, { backgroundColor: theme.colors.primary }]} />
-                    </View>
+                    <Ionicons name="settings-sharp" size={24} color={theme.colors.primary} />
                 </View>
             </TouchableOpacity>
 
@@ -415,11 +401,19 @@ export default function HomeScreen({ navigation }) {
 }
 
 function AnimatedCharacter({ theme }) {
+    const { settings } = useSettings();
     const scaleAnim = useRef(new Animated.Value(1)).current;
     const floatAnim = useRef(new Animated.Value(0)).current;
     const [imageError, setImageError] = useState(false);
 
     useEffect(() => {
+        // If reduced motion is on, don't run the animations
+        if (settings.reducedMotion) {
+            scaleAnim.setValue(1);
+            floatAnim.setValue(0);
+            return;
+        }
+
         const breathe = Animated.sequence([
             Animated.timing(scaleAnim, { toValue: 1.03, duration: 2500, useNativeDriver: true }),
             Animated.timing(scaleAnim, { toValue: 1, duration: 2500, useNativeDriver: true }),
@@ -430,8 +424,11 @@ function AnimatedCharacter({ theme }) {
             Animated.timing(floatAnim, { toValue: 0, duration: 2000, useNativeDriver: true }),
         ]);
 
-        Animated.loop(Animated.parallel([breathe, float])).start();
-    }, []);
+        const loop = Animated.loop(Animated.parallel([breathe, float]));
+        loop.start();
+
+        return () => loop.stop();
+    }, [settings.reducedMotion]);
 
     // Responsive sizing based on screen height
     const getCharacterSize = () => {
@@ -517,29 +514,10 @@ function getStyles(theme) {
             borderColor: theme.colors.primary + '50',
         },
         gearIcon: {
-            width: 22,
-            height: 22,
+            width: 42,
+            height: 42,
             alignItems: 'center',
             justifyContent: 'center',
-        },
-        gearTooth: {
-            position: 'absolute',
-            width: 4,
-            height: 22,
-            borderRadius: 2,
-        },
-        gearCenter: {
-            width: 12,
-            height: 12,
-            borderRadius: 6,
-            borderWidth: 2,
-            alignItems: 'center',
-            justifyContent: 'center',
-        },
-        gearDot: {
-            width: 4,
-            height: 4,
-            borderRadius: 2,
         },
         profileButton: {
             position: 'absolute',

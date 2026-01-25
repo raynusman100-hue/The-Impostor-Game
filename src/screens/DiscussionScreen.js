@@ -202,11 +202,22 @@ export default function DiscussionScreen({ route, navigation }) {
 
     // Voice Chat Integration
     const { joinChannel } = useVoiceChat();
+    const [hostIsPremium, setHostIsPremium] = useState(false);
+
+    // Fetch premium status once
     useEffect(() => {
         if (isWifi && roomCode) {
-            joinChannel(roomCode, 0);
+            get(ref(database, `rooms/${roomCode}/hostIsPremium`)).then(snap => {
+                setHostIsPremium(snap.val() || false);
+            });
         }
     }, [isWifi, roomCode]);
+
+    useEffect(() => {
+        if (isWifi && roomCode && hostIsPremium) {
+            joinChannel(roomCode, 0);
+        }
+    }, [isWifi, roomCode, hostIsPremium]);
 
     // 2. Main Game Stream Listener + Room Monitoring - OPTIMIZED TO PREVENT DOUBLE LOADING
     useEffect(() => {
@@ -616,8 +627,8 @@ export default function DiscussionScreen({ route, navigation }) {
                     </View>
                 </View>
 
-                {/* Voice Control for Wifi Mode */}
-                {isWifi && <VoiceControl />}
+                {/* Voice Control for Wifi Mode - Premium Only */}
+                {isWifi && hostIsPremium && <VoiceControl />}
 
                 {/* Header / Room Code */}
                 <View style={styles.header}>
@@ -782,229 +793,229 @@ const ControlButtons = memo(({ isPaused, isWifi, onPause, onEnd, endRequests, ne
 
 function getStyles(theme) {
     return StyleSheet.create({
-    container: { flex: 1 },
-    safeArea: { flex: 1, alignItems: 'center' },
+        container: { flex: 1 },
+        safeArea: { flex: 1, alignItems: 'center' },
 
-    // Kodak Film Strip Decorations
-    filmHeader: {
-        width: '100%',
-        paddingTop: 5,
-    },
-    filmFooter: {
-        width: '100%',
-        paddingBottom: 10,
-    },
-    filmStrip: {
-        flexDirection: 'row',
-        justifyContent: 'space-evenly',
-        paddingHorizontal: 5,
-    },
-    filmHole: {
-        width: 12,
-        height: 8,
-        backgroundColor: theme.colors.primary,
-        borderRadius: 2,
-        opacity: 0.8,
-    },
+        // Kodak Film Strip Decorations
+        filmHeader: {
+            width: '100%',
+            paddingTop: 5,
+        },
+        filmFooter: {
+            width: '100%',
+            paddingBottom: 10,
+        },
+        filmStrip: {
+            flexDirection: 'row',
+            justifyContent: 'space-evenly',
+            paddingHorizontal: 5,
+        },
+        filmHole: {
+            width: 12,
+            height: 8,
+            backgroundColor: theme.colors.primary,
+            borderRadius: 2,
+            opacity: 0.8,
+        },
 
-    header: {
-        width: '100%',
-        alignItems: 'center',
-        paddingVertical: 10,
-        flexDirection: 'row',
-        justifyContent: 'center',
-        paddingHorizontal: 20,
-    },
-    roomCodeContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: theme.colors.surface,
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-        borderRadius: 25,
-        borderWidth: 2,
-        borderColor: theme.colors.primary,
-    },
-    roomCodeLabel: {
-        color: theme.colors.tertiary,
-        fontSize: 12,
-        fontFamily: theme.fonts.bold,
-        marginRight: 10,
-        letterSpacing: 3,
-    },
-    roomCodeSmall: {
-        color: theme.colors.text,
-        fontSize: 20,
-        fontFamily: theme.fonts.header,
-        letterSpacing: 6,
-    },
+        header: {
+            width: '100%',
+            alignItems: 'center',
+            paddingVertical: 10,
+            flexDirection: 'row',
+            justifyContent: 'center',
+            paddingHorizontal: 20,
+        },
+        roomCodeContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: theme.colors.surface,
+            paddingHorizontal: 20,
+            paddingVertical: 10,
+            borderRadius: 25,
+            borderWidth: 2,
+            borderColor: theme.colors.primary,
+        },
+        roomCodeLabel: {
+            color: theme.colors.tertiary,
+            fontSize: 12,
+            fontFamily: theme.fonts.bold,
+            marginRight: 10,
+            letterSpacing: 3,
+        },
+        roomCodeSmall: {
+            color: theme.colors.text,
+            fontSize: 20,
+            fontFamily: theme.fonts.header,
+            letterSpacing: 6,
+        },
 
-    tabContainer: {
-        flexDirection: 'row',
-        marginBottom: 10,
-        backgroundColor: theme.colors.surface,
-        borderRadius: 25,
-        padding: 4,
-        borderWidth: 2,
-        borderColor: theme.colors.primary,
-        alignSelf: 'center',
-        zIndex: 50
-    },
-    tab: {
-        paddingVertical: 10,
-        paddingHorizontal: 35,
-        borderRadius: 20,
-    },
-    activeTab: {
-        backgroundColor: theme.colors.primary,
-    },
-    tabContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        position: 'relative',
-    },
-    tabText: {
-        color: theme.colors.textMuted,
-        fontFamily: theme.fonts.bold,
-        fontSize: 14,
-        letterSpacing: 2,
-    },
-    activeTabText: {
-        color: theme.colors.secondary,
-        fontFamily: theme.fonts.bold,
-    },
-    notificationDot: {
-        position: 'absolute',
-        top: -6,
-        right: -8,
-        backgroundColor: theme.colors.error,
-        borderRadius: 6,
-        width: 12,
-        height: 12,
-        borderWidth: 2,
-        borderColor: theme.colors.background,
-    },
+        tabContainer: {
+            flexDirection: 'row',
+            marginBottom: 10,
+            backgroundColor: theme.colors.surface,
+            borderRadius: 25,
+            padding: 4,
+            borderWidth: 2,
+            borderColor: theme.colors.primary,
+            alignSelf: 'center',
+            zIndex: 50
+        },
+        tab: {
+            paddingVertical: 10,
+            paddingHorizontal: 35,
+            borderRadius: 20,
+        },
+        activeTab: {
+            backgroundColor: theme.colors.primary,
+        },
+        tabContent: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            position: 'relative',
+        },
+        tabText: {
+            color: theme.colors.textMuted,
+            fontFamily: theme.fonts.bold,
+            fontSize: 14,
+            letterSpacing: 2,
+        },
+        activeTabText: {
+            color: theme.colors.secondary,
+            fontFamily: theme.fonts.bold,
+        },
+        notificationDot: {
+            position: 'absolute',
+            top: -6,
+            right: -8,
+            backgroundColor: theme.colors.error,
+            borderRadius: 6,
+            width: 12,
+            height: 12,
+            borderWidth: 2,
+            borderColor: theme.colors.background,
+        },
 
-    contentContainer: {
-        flex: 1,
-        width: '100%',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: theme.spacing.m,
-        paddingBottom: 15,
-        paddingTop: 10,
-    },
+        contentContainer: {
+            flex: 1,
+            width: '100%',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: theme.spacing.m,
+            paddingBottom: 15,
+            paddingTop: 10,
+        },
 
-    titleContainer: { alignItems: 'center', marginTop: 5 },
-    kodakTitle: {
-        fontSize: 42,
-        color: theme.colors.text,
-        fontFamily: theme.fonts.header,
-        letterSpacing: 3,
-    },
-    subtitle: {
-        fontSize: theme.fontSize.medium,
-        color: theme.colors.textSecondary,
-        marginTop: 5,
-        letterSpacing: 4,
-        fontFamily: theme.fonts.medium,
-        textTransform: 'uppercase'
-    },
-    kodakSubtitle: {
-        fontSize: 14,
-        color: theme.colors.textMuted,
-        letterSpacing: 5,
-        marginTop: 4,
-        fontFamily: theme.fonts.medium,
-    },
-    tiedText: {
-        color: theme.colors.error,
-        fontFamily: theme.fonts.bold,
-    },
+        titleContainer: { alignItems: 'center', marginTop: 5 },
+        kodakTitle: {
+            fontSize: 42,
+            color: theme.colors.text,
+            fontFamily: theme.fonts.header,
+            letterSpacing: 3,
+        },
+        subtitle: {
+            fontSize: theme.fontSize.medium,
+            color: theme.colors.textSecondary,
+            marginTop: 5,
+            letterSpacing: 4,
+            fontFamily: theme.fonts.medium,
+            textTransform: 'uppercase'
+        },
+        kodakSubtitle: {
+            fontSize: 14,
+            color: theme.colors.textMuted,
+            letterSpacing: 5,
+            marginTop: 4,
+            fontFamily: theme.fonts.medium,
+        },
+        tiedText: {
+            color: theme.colors.error,
+            fontFamily: theme.fonts.bold,
+        },
 
-    timerContainer: {
-        width: 280,
-        height: 280,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    timerCircle: {
-        width: 260,
-        height: 260,
-        borderRadius: 130,
-        borderWidth: 4,
-        borderColor: theme.colors.primary,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'transparent',
-        position: 'relative',
-    },
-    kodakTimerCircle: {
-        width: 260,
-        height: 260,
-        borderRadius: 130,
-        borderWidth: 3,
-        borderColor: theme.colors.primary,
-        backgroundColor: 'transparent',
-    },
-    timerCircleAlert: { borderColor: theme.colors.error },
-    hourglassPosition: {
-        position: 'absolute',
-        top: 55,
-        zIndex: 1,
-    },
-    timeTextContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 10,
-        position: 'absolute',
-        top: 25,
-    },
-    timer: { fontSize: 64, color: theme.colors.text, fontFamily: theme.fonts.header, letterSpacing: 4 },
-    kodakTimer: {
-        fontSize: 64,
-        color: theme.colors.text,
-        fontFamily: theme.fonts.header,
-        letterSpacing: 4,
-    },
-    timerLabel: { fontSize: theme.fontSize.small, color: theme.colors.textMuted, fontFamily: theme.fonts.medium, letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 },
-    kodakTimerLabel: {
-        fontSize: 12,
-        color: theme.colors.tertiary,
-        letterSpacing: 4,
-        fontFamily: theme.fonts.medium,
-        marginTop: 4,
-    },
+        timerContainer: {
+            width: 280,
+            height: 280,
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        timerCircle: {
+            width: 260,
+            height: 260,
+            borderRadius: 130,
+            borderWidth: 4,
+            borderColor: theme.colors.primary,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'transparent',
+            position: 'relative',
+        },
+        kodakTimerCircle: {
+            width: 260,
+            height: 260,
+            borderRadius: 130,
+            borderWidth: 3,
+            borderColor: theme.colors.primary,
+            backgroundColor: 'transparent',
+        },
+        timerCircleAlert: { borderColor: theme.colors.error },
+        hourglassPosition: {
+            position: 'absolute',
+            top: 55,
+            zIndex: 1,
+        },
+        timeTextContainer: {
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10,
+            position: 'absolute',
+            top: 25,
+        },
+        timer: { fontSize: 64, color: theme.colors.text, fontFamily: theme.fonts.header, letterSpacing: 4 },
+        kodakTimer: {
+            fontSize: 64,
+            color: theme.colors.text,
+            fontFamily: theme.fonts.header,
+            letterSpacing: 4,
+        },
+        timerLabel: { fontSize: theme.fontSize.small, color: theme.colors.textMuted, fontFamily: theme.fonts.medium, letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 },
+        kodakTimerLabel: {
+            fontSize: 12,
+            color: theme.colors.tertiary,
+            letterSpacing: 4,
+            fontFamily: theme.fonts.medium,
+            marginTop: 4,
+        },
 
-    controls: {
-        width: '100%',
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        gap: theme.spacing.s,
-        paddingHorizontal: theme.spacing.s,
-    },
-    controlBtn: { flex: 1 },
+        controls: {
+            width: '100%',
+            flexDirection: 'row',
+            justifyContent: 'space-around',
+            gap: theme.spacing.s,
+            paddingHorizontal: theme.spacing.s,
+        },
+        controlBtn: { flex: 1 },
 
-    kodakOverlay: {
-        position: 'absolute',
-        top: '30%',
-        backgroundColor: theme.colors.surface,
-        padding: 30,
-        borderRadius: 20,
-        alignItems: 'center',
-        zIndex: 100,
-        width: '90%',
-        borderWidth: 3,
-        borderColor: theme.colors.primary,
-        ...theme.shadows.medium,
-    },
-    countdownTitle: { color: theme.colors.textSecondary, fontSize: 16, fontFamily: theme.fonts.bold, letterSpacing: 4 },
-    kodakCountdown: {
-        fontSize: 80,
-        color: theme.colors.text,
-        fontFamily: theme.fonts.header,
-        ...theme.textShadows.depth,
-    },
-    countdownNote: { color: theme.colors.textMuted, fontSize: 12, fontFamily: theme.fonts.medium, textAlign: 'center', letterSpacing: 2 }
-});
+        kodakOverlay: {
+            position: 'absolute',
+            top: '30%',
+            backgroundColor: theme.colors.surface,
+            padding: 30,
+            borderRadius: 20,
+            alignItems: 'center',
+            zIndex: 100,
+            width: '90%',
+            borderWidth: 3,
+            borderColor: theme.colors.primary,
+            ...theme.shadows.medium,
+        },
+        countdownTitle: { color: theme.colors.textSecondary, fontSize: 16, fontFamily: theme.fonts.bold, letterSpacing: 4 },
+        kodakCountdown: {
+            fontSize: 80,
+            color: theme.colors.text,
+            fontFamily: theme.fonts.header,
+            ...theme.textShadows.depth,
+        },
+        countdownNote: { color: theme.colors.textMuted, fontSize: 12, fontFamily: theme.fonts.medium, textAlign: 'center', letterSpacing: 2 }
+    });
 }

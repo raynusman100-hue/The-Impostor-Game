@@ -65,5 +65,43 @@ export const fetchCurrentAgoraAppId = async () => {
     return HARDCODED_APP_ID;
 };
 
+/**
+ * Fetches the list of Premium Emails from Firebase.
+ * Returns an array of strings. Defaults to empty array if fetch fails.
+ * Path: config/premiumEmails
+ */
+export const fetchPremiumEmails = async () => {
+    try {
+        console.log('📡 RemoteConfig: Fetching Premium Emails...');
+
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Firebase fetch timeout')), FETCH_TIMEOUT_MS)
+        );
+
+        const dbRef = ref(database);
+        const fetchPromise = get(child(dbRef, 'config/premiumEmails'));
+
+        const snapshot = await Promise.race([fetchPromise, timeoutPromise]);
+
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            // Data should be an array of strings: ["email1@gmail.com", "email2@gmail.com"]
+            if (Array.isArray(data)) {
+                console.log(`📡 RemoteConfig: ✅ Fetched ${data.length} premium emails`);
+                return data;
+            } else if (typeof data === 'object') {
+                // Handle case where Firebase stores array as object with index keys
+                const emails = Object.values(data);
+                console.log(`📡 RemoteConfig: ✅ Fetched ${emails.length} premium emails (from object)`);
+                return emails;
+            }
+        }
+    } catch (error) {
+        console.warn('📡 RemoteConfig: ⚠️ Premium fetch failed:', error.message);
+    }
+
+    return []; // Fail safe: Return empty array -> No free premium
+};
+
 // Backward compatibility alias (if used elsewhere)
 export const fetchAgoraAppId = fetchCurrentAgoraAppId; 

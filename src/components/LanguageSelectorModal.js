@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, TextInput, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Modal, TextInput, FlatList, TouchableOpacity, Pressable } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { useTheme } from '../utils/ThemeContext';
 import { SUPPORTED_LANGUAGES } from '../utils/translationService';
@@ -76,17 +76,27 @@ export default function LanguageSelectorModal({ visible, onClose, onSelect, curr
             transparent={true}
             onRequestClose={onClose}
         >
-            <View style={styles.modalOverlay}>
-                <View style={styles.modalContent}>
+            <TouchableOpacity
+                style={styles.modalOverlay}
+                activeOpacity={1}
+                onPress={() => {
+                    playHaptic('light');
+                    onClose();
+                }}
+            >
+                <Pressable
+                    style={styles.modalContent}
+                    onPress={() => { }} // Stop propagation
+                >
                     <View style={styles.header}>
-                        <Text style={styles.title}>SELECT LANGUAGE</Text>
+                        <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit>SELECT LANGUAGE</Text>
                         <TouchableOpacity
                             onPress={() => {
                                 playHaptic('light');
                                 onClose();
                             }}
                             style={styles.closeButton}
-                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
                         >
                             <Text style={styles.closeButtonText}>✕</Text>
                         </TouchableOpacity>
@@ -113,7 +123,7 @@ export default function LanguageSelectorModal({ visible, onClose, onSelect, curr
                             <Text style={styles.emptyText}>No languages found</Text>
                         }
                     />
-                </View>
+                </Pressable>
 
                 {/* Warning Modal */}
                 <Modal
@@ -143,7 +153,7 @@ export default function LanguageSelectorModal({ visible, onClose, onSelect, curr
                         </View>
                     </View>
                 </Modal>
-            </View>
+            </TouchableOpacity>
         </Modal>
     );
 }
@@ -174,16 +184,17 @@ function getStyles(theme) {
             color: theme.colors.tertiary, // Synchronized silver
             fontFamily: theme.fonts.header,
             letterSpacing: 2,
+            flex: 1,
         },
         closeButton: {
             padding: theme.spacing.s,
             marginLeft: theme.spacing.m,
         },
         closeButtonText: {
-            fontSize: 28,
-            color: theme.colors.textSecondary,
-            fontFamily: theme.fonts.medium,
-            lineHeight: 28,
+            fontSize: 32, // Increased size
+            color: theme.colors.text, // Changed to primary text color for better visibility
+            fontFamily: theme.fonts.bold,
+            lineHeight: 32,
         },
         searchContainer: {
             marginBottom: theme.spacing.l,
