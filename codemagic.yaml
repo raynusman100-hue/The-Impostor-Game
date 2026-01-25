@@ -533,3 +533,96 @@ workflows:
           
     artifacts:
       - ios/imposter-dev-unsigned.ipa
+
+  ios-unsigned-release:
+    name: iOS Unsigned Release Build (for Sideloadly - Production)
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+
+    environment:
+      node: 20
+      xcode: latest
+      cocoapods: default
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: ipa
+          include: true
+
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm install
+
+      - name: Prebuild iOS native project
+        script: |
+          npx expo prebuild --platform ios --clean
+
+      - name: Verify GoogleService-Info.plist
+        script: |
+          echo "=== Verifying GoogleService-Info.plist ==="
+          if [ -f "GoogleService-Info.plist" ]; then
+            echo "✓ GoogleService-Info.plist found in root"
+            if [ -d "ios" ]; then
+              cp GoogleService-Info.plist ios/
+              echo "✓ Copied GoogleService-Info.plist to ios folder"
+            fi
+          else
+            echo "✗ ERROR: GoogleService-Info.plist NOT FOUND!"
+            exit 1
+          fi
+          echo "========================================="
+
+      - name: Install CocoaPods
+        script: |
+          cd ios && pod install
+
+      - name: Build Unsigned Release .app
+        script: |
+          cd ios
+          
+          # Dynamic detection of workspace and scheme
+          WORKSPACE=$(ls -d *.xcworkspace | head -n 1)
+          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
+          echo "Found Workspace: $WORKSPACE"
+          echo "Using Scheme: $SCHEME"
+
+          # Build a RELEASE version (Production build, unsigned)
+          # CODE_SIGNING_ALLOWED=NO tells Xcode not to sign
+          xcodebuild build \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath ./build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Package as IPA
+        script: |
+          cd ios
+          # Detect Scheme again to find the built app path
+          WORKSPACE=$(ls -d *.xcworkspace | head -n 1)
+          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
+          
+          mkdir -p Payload
+          # The .app lives in build/Build/Products/Release-iphoneos/[SCHEME].app
+          APP_PATH="build/Build/Products/Release-iphoneos/$SCHEME.app"
+          
+          echo "Packaging app from: $APP_PATH"
+          cp -r "$APP_PATH" Payload/
+          
+          # Create IPA
+          zip -r imposter-release-unsigned.ipa Payload
+          
+          echo ""
+          echo "=== UNSIGNED RELEASE IPA CREATED ==="
+          echo "This is a PRODUCTION/RELEASE build (optimized, no debug)"
+          echo "Ready for Sideloadly installation"
+          echo "========================================"
+          
+    artifacts:
+      - ios/imposter-release-unsigned.ipa
