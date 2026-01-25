@@ -148,6 +148,7 @@ workflows:
             rm -rf app/build build .gradle
             
             # Ultra-minimal build (skips everything non-essential)
+            # Note: Removed deprecated android.enableR8 flag
             ./gradlew assembleRelease \
               --no-daemon \
               --max-workers=1 \
@@ -157,7 +158,6 @@ workflows:
               -x test \
               -x lint \
               -Dorg.gradle.jvmargs="-Xmx8192m -XX:MaxMetaspaceSize=2048m" \
-              -Pandroid.enableR8=false \
               -Pandroid.enableMinifyInReleaseBuilds=false \
               -Pandroid.enableShrinkResourcesInReleaseBuilds=false
           }
