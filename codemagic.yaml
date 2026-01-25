@@ -141,6 +141,8 @@ workflows:
           cd android
           # Kill any existing Gradle daemons
           ./gradlew --stop
+          # Clean build to avoid resource linking errors
+          ./gradlew clean
           # Build with more memory and parallel execution
           ./gradlew assembleRelease \
             --no-daemon \
