@@ -43,3 +43,6 @@ yarn-error.*
 # iOS builds
 *.ipa
 *.keystore
+
+# Secrets
+imposter-game-e5f12-firebase-adminsdk-fbsvc-eccb71e756.json

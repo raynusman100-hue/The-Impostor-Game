@@ -22,7 +22,14 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Imposter Game uses your camera to scan QR codes for quickly joining multiplayer game rooms.",
         "NSMicrophoneUsageDescription": "Imposter Game uses your microphone to record voice messages during multiplayer game chat.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.831244408092-oifo3c54on55brivq9kupic53ntbgrd2"
+            ]
+          }
+        ]
       }
     },
     "android": {
@@ -39,6 +46,22 @@
         "android.permission.ACCESS_NETWORK_STATE",
         "android.permission.RECORD_AUDIO",
         "android.permission.CAMERA"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "*.imposter-game.com"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
       ],
       "config": {
         "googleServicesFile": "./google-services.json"

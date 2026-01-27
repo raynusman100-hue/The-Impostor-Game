@@ -6,6 +6,7 @@ import HomeScreen from './HomeScreen';
 import PremiumScreen from './PremiumScreen';
 import { checkPremiumStatus, clearAllPremiumCaches } from '../utils/PremiumManager';
 import AdManager from '../utils/AdManager';
+import PurchaseManager from '../utils/PurchaseManager';
 import { auth } from '../utils/firebase';
 import { useTheme } from '../utils/ThemeContext';
 
@@ -60,6 +61,11 @@ export default function AppInitializer({ navigation }) {
             if (user) {
                 hasPremium = await checkPremiumStatus(user.email, user.uid);
                 await AdManager.updatePremiumStatus(user.email, user.uid);
+
+                // Initialize PurchaseManager with user ID for cross-device sync
+                await PurchaseManager.initialize(user.uid);
+                console.log('✅ PurchaseManager initialized with user:', user.uid);
+
                 console.log('📊 User premium status:', hasPremium);
             }
 

@@ -19,6 +19,10 @@ import PurchaseManager from './PurchaseManager';
 // Listener system for premium status changes
 const premiumListeners = [];
 
+// Request deduplication
+let activeCheckPromise = null;
+let activeCheckKey = null;
+
 /**
  * Add a listener for premium status changes
  */
@@ -61,14 +65,38 @@ export async function clearPremiumCache(userId) {
 
 /**
  * Check if a user has premium access
- * SIMPLE LOGIC: Checks hardcoded email list with offline fallback
- * 
- * @param {string} userEmail - User's email address
- * @param {string} userId - User's ID
- * @param {boolean} forceOffline - Force offline mode (for testing)
- * @returns {Promise<boolean>} - True if user has premium
+ * Uses request deduplication to prevent concurrent API calls
  */
 export async function checkPremiumStatus(userEmail, userId = null, forceOffline = false) {
+    const key = `${userEmail}-${userId}-${forceOffline}`;
+
+    // Dedupe: If same request is in flight, return existing promise
+    if (activeCheckPromise && activeCheckKey === key) {
+        console.log('⚡ Using ongoing premium check for:', userEmail);
+        return activeCheckPromise;
+    }
+
+    // Start new request
+    activeCheckPromise = (async () => {
+        try {
+            return await executePremiumCheck(userEmail, userId, forceOffline);
+        } finally {
+            // Clear promise when done
+            if (activeCheckKey === key) {
+                activeCheckPromise = null;
+                activeCheckKey = null;
+            }
+        }
+    })();
+
+    activeCheckKey = key;
+    return activeCheckPromise;
+}
+
+/**
+ * Internal function to execute the actual premium check logic
+ */
+async function executePremiumCheck(userEmail, userId = null, forceOffline = false) {
     try {
         console.log('🔍 Checking premium for:', userEmail);
 
@@ -100,21 +128,30 @@ export async function checkPremiumStatus(userEmail, userId = null, forceOffline 
                 const { fetchPremiumEmails } = require('./remoteConfig');
                 const remoteList = await fetchPremiumEmails();
 
-                if (remoteList) { // Ensure fetch actually succeeded
-                    if (remoteList.includes(userEmail.toLowerCase())) {
+                // Validate: Ensure fetch succeeded AND remoteList is an array AND userEmail is valid
+                if (remoteList && Array.isArray(remoteList) && userEmail) {
+                    const emailLower = userEmail.toLowerCase();
+                    if (remoteList.includes(emailLower)) {
                         console.log('✅ PREMIUM USER (Firebase Remote Config):', userEmail);
-                        // DO CACHE this, because lifetime access doesn't expire.
-                        if (userId) await AsyncStorage.setItem(`user_premium_${userId}`, 'true');
+                        // Cache with timestamp for TTL validation
+                        if (userId) {
+                            const cacheData = JSON.stringify({
+                                isPremium: true,
+                                timestamp: Date.now(),
+                                source: 'firebase'
+                            });
+                            await AsyncStorage.setItem(`user_premium_${userId}`, cacheData);
+                        }
                         notifyListeners(true);
                         return true;
                     } else {
                         // CRITICAL FIX: IF FETCH SUCCEEDED BUT USER IS NOT IN LIST -> REVOKE CACHE
                         // This prevents "Sticky Premium" where a removed user stays premium due to old cache.
-                        console.log('🚫 User NOT in remote list -> Revoking simple cache');
-                        if (userId) await AsyncStorage.setItem(`user_premium_${userId}`, 'false');
-                        // Do NOT return false yet, technically could still be cached (though we just cleared it),
-                        // or could have some other fallbacks (unlikely for lifetime).
-                        // But effectively, this cleans the state.
+                        console.log('🚫 User NOT in remote list -> Revoking cache if exists');
+                        if (userId) {
+                            // Only remove if it exists - don't write 'false'
+                            await AsyncStorage.removeItem(`user_premium_${userId}`);
+                        }
                     }
                 }
             } catch (remoteError) {
@@ -124,15 +161,38 @@ export async function checkPremiumStatus(userEmail, userId = null, forceOffline 
 
         // STEP 3: Cached Check (Offline Support for LIFETIME/FIREBASE ONLY)
         // RevenueCat offline support is already handled in Step 1 via its own SDK
+        // CACHE LOGIC: Only 'true' is cached. Missing key = not premium (no pollution)
         if (userId) {
             const cached = await AsyncStorage.getItem(`user_premium_${userId}`);
-            if (cached === 'true') {
-                console.log('✅ PREMIUM USER (Firebase cached):', userEmail);
-                notifyListeners(true);
-                return true;
+            if (cached) {
+                try {
+                    // Try parsing as JSON (new format with TTL)
+                    const cacheData = JSON.parse(cached);
+                    if (cacheData.isPremium) {
+                        // Check TTL: 30 days for Firebase whitelist
+                        const MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days
+                        const age = Date.now() - cacheData.timestamp;
+
+                        if (age < MAX_AGE) {
+                            console.log(`✅ PREMIUM USER (Firebase cached, ${Math.floor(age / (24 * 60 * 60 * 1000))} days old):`, userEmail);
+                            notifyListeners(true);
+                            return true;
+                        } else {
+                            console.log('⏰ Firebase cache expired, need to re-verify online');
+                            await AsyncStorage.removeItem(`user_premium_${userId}`);
+                        }
+                    }
+                } catch (e) {
+                    // Old format (just 'true' string) - support backwards compatibility
+                    if (cached === 'true') {
+                        console.log('✅ PREMIUM USER (Firebase cached, legacy format):', userEmail);
+                        notifyListeners(true);
+                        return true;
+                    }
+                }
             }
-            // Explicitly set false if not found to clean up
-            await AsyncStorage.setItem(`user_premium_${userId}`, 'false');
+            // No cache found or cache expired - user is not premium
+            // We do NOT write 'false' to avoid storage pollution
         }
 
         // STEP 4: Not premium
@@ -284,9 +344,21 @@ export async function clearAllPremiumCaches() {
 
 if (PurchaseManager && PurchaseManager.addListener) {
     PurchaseManager.addListener((isPro) => {
+        console.log('💰 PurchaseManager status changed:', isPro);
         if (isPro) {
             console.log('💰 PurchaseManager reported PRO status -> Updating PremiumManager');
             notifyListeners(true);
+        } else {
+            // If RevenueCat says NOT pro (expired/cancelled), we must re-verify
+            // because access might still be granted via Firebase Whitelist
+            const { auth } = require('./firebase');
+            const user = auth.currentUser;
+            if (user) {
+                console.log('💰 PurchaseManager reported NOT PRO -> Re-verifying sources...');
+                checkPremiumStatus(user.email, user.uid);
+            } else {
+                notifyListeners(false);
+            }
         }
     });
 }

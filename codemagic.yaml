@@ -14,7 +14,7 @@ workflows:
       events:
         - push
       branch_patterns:
-        - pattern: android-dev
+        - pattern: codemagic
           include: true
 
     scripts:
@@ -124,7 +124,7 @@ workflows:
       events:
         - push
       branch_patterns:
-        - pattern: codemagic
+        - pattern: android-unsigned
           include: true
 
     scripts:
