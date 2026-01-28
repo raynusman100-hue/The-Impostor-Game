@@ -26,6 +26,7 @@
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [
+              "imposter-game",
               "com.googleusercontent.apps.831244408092-oifo3c54on55brivq9kupic53ntbgrd2"
             ]
           }
@@ -33,7 +34,7 @@
       }
     },
     "android": {
-      "package": "com.usman.impostergame",
+      "package": "com.rayn100.impostergame",
       "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/game-icon.jpeg",

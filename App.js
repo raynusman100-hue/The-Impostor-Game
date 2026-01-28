@@ -29,20 +29,10 @@ import { ThemeProvider, useTheme } from './src/utils/ThemeContext';
 import { SettingsProvider } from './src/utils/SettingsContext';
 import { VoiceChatProvider } from './src/utils/VoiceChatContext';
 
-// --- TEMP: SEED FIREBASE CONFIG ---
-import { ref, set } from 'firebase/database';
-import { database } from './src/utils/firebase';
-import { AGORA_APP_ID } from './src/utils/constants';
-
-const seedConfig = async () => {
-  try {
-    console.log('🌱 SEEDING: Writing App ID to Firebase...');
-    await set(ref(database, 'config/agoraAppId'), AGORA_APP_ID);
-    console.log('🌱 SEEDING: ✅ Done! Config is now in Firebase.');
-  } catch (e) {
-    console.error('🌱 SEEDING: ❌ Failed', e);
-  }
-};
+// --- TEMP: SEED FIREBASE CONFIG (DISABLED - CAUSING ERRORS) ---
+// This seeding function was causing permission errors on app start
+// The Agora config is now managed through the rotation scripts
+// If you need to seed, run: node scripts/seedAgoraPool.js
 // ----------------------------------
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -151,8 +141,8 @@ function AppNavigator() {
 export default function App() {
   console.log('🚀 App.js: App() function called');
 
-  // TEMP: Run once
-  useEffect(() => { seedConfig(); }, []);
+  // SEEDING DISABLED - was causing Firebase permission errors
+  // To seed Agora config, run: node scripts/seedAgoraPool.js
 
   const [appIsReady, setAppIsReady] = useState(false);
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(null); // null = loading, true/false = checked

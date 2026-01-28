@@ -280,7 +280,7 @@ workflows:
       # Add these in Codemagic UI -> App Settings -> Environment variables:
       # - APP_STORE_APP_ID (your App Store Connect App ID)
       vars:
-        BUNDLE_ID: "com.usman.impostergame"
+        BUNDLE_ID: "com.rayn100.impostergame"
 
     triggering:
       events:
