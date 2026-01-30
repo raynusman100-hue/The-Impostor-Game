@@ -8,7 +8,7 @@ import { getRandomWord, CATEGORY_LABELS } from '../utils/words';
 import { translateText, SUPPORTED_LANGUAGES } from '../utils/translationService';
 import LanguageSelectorModal from '../components/LanguageSelectorModal';
 import { playHaptic } from '../utils/haptics';
-import { checkPremiumStatus } from '../utils/PremiumManager';
+import { checkPremiumStatus, addPremiumListener } from '../utils/PremiumManager';
 import { auth } from '../utils/firebase';
 import CategorySelectionModal from '../components/CategorySelectionModal';
 
@@ -96,16 +96,32 @@ export default function SetupScreen({ navigation, route }) {
     const [settingsLoaded, setSettingsLoaded] = useState(false); // Flag to prevent save before load
     const [isPremium, setIsPremium] = useState(false);
 
-    // Check Premium Status on Mount
+    // Check Premium Status on Mount & Listen for Changes
     useEffect(() => {
-        const checkPremium = async () => {
+        const updatePremium = async () => {
             if (auth.currentUser) {
                 const premium = await checkPremiumStatus(auth.currentUser.email, auth.currentUser.uid);
                 setIsPremium(premium);
             }
         };
-        checkPremium();
-    }, []);
+
+        // Initial check
+        updatePremium();
+
+        // Subscribe to real-time updates (e.g. immediately after purchase)
+        const unsubscribe = addPremiumListener((status) => {
+            console.log('SetupScreen: Premium status updated to:', status);
+            setIsPremium(status);
+        });
+
+        // Re-check on focus (e.g. returning from PremiumScreen)
+        const focusUnsubscribe = navigation.addListener('focus', updatePremium);
+
+        return () => {
+            unsubscribe();
+            focusUnsubscribe();
+        };
+    }, [navigation]);
 
     // Load saved players on mount
     useEffect(() => {

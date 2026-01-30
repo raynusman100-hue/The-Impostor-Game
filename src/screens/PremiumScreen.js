@@ -112,9 +112,16 @@ export default function PremiumScreen({ navigation, route }) {
 
         try {
             // SECURE: Call RevenueCat Purchase
-            // Note: Currently PurchaseManager.purchaseRemoveAds buys the default package.
-            // You should update PurchaseManager to support specific packages if needed.
-            const result = await PurchaseManager.purchaseRemoveAds();
+            // SECURE: Call RevenueCat Purchase
+            // Map UI plan names to RevenueCat Package Types
+            const planMapping = {
+                'Yearly': 'ANNUAL',
+                'Monthly': 'MONTHLY',
+                'Weekly': 'WEEKLY'
+            };
+
+            const rcPackageType = planMapping[planType] || 'ANNUAL'; // Default to Annual if unknown
+            const result = await PurchaseManager.purchaseRemoveAds(rcPackageType);
 
             if (result.success) {
                 // SECURITY: Don't call setPremiumStatus - it's disabled

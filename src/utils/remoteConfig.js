@@ -103,5 +103,39 @@ export const fetchPremiumEmails = async () => {
     return []; // Fail safe: Return empty array -> No free premium
 };
 
+/**
+ * Fetches RevenueCat API keys from Firebase.
+ * Expected path: config/revenueCatKeys
+ * Structure: { apple: "key_string", google: "key_string" }
+ */
+export const fetchRevenueCatKeys = async () => {
+    try {
+        console.log('📡 RemoteConfig: Fetching RevenueCat Keys...');
+
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Firebase fetch timeout')), FETCH_TIMEOUT_MS)
+        );
+
+        const dbRef = ref(database);
+        const fetchPromise = get(child(dbRef, 'config/revenueCatKeys'));
+
+        const snapshot = await Promise.race([fetchPromise, timeoutPromise]);
+
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            if (data && (data.apple || data.google)) {
+                console.log('📡 RemoteConfig: ✅ Fetched RevenueCat Keys');
+                return {
+                    apple: data.apple || null,
+                    google: data.google || null
+                };
+            }
+        }
+    } catch (error) {
+        console.warn('📡 RemoteConfig: ⚠️ RevenueCat key fetch failed:', error.message);
+    }
+    return null; // Return null if active fetch fails
+};
+
 // Backward compatibility alias (if used elsewhere)
 export const fetchAgoraAppId = fetchCurrentAgoraAppId; 

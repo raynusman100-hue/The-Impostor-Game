@@ -1,12 +1,12 @@
 import Purchases from 'react-native-purchases';
 import { Platform } from 'react-native';
+import { fetchRevenueCatKeys } from './remoteConfig';
 
 // RevenueCat API Keys
-// Using Test Store key for development (same for both platforms)
-// TODO: Replace with production keys when App Store/Play Store apps are configured
-const API_KEYS = {
-    apple: 'test_TnKjYrBPiEbigNCyWVqzMRvEwHx',
-    google: 'test_TnKjYrBPiEbigNCyWVqzMRvEwHx',
+// Hardcoded Fallback (Test Keys) - Used if Remote Config fails
+const FALLBACK_KEYS = {
+    apple: 'appl_GidmNgibMGrbuhmiJwrzLeJLEZM',
+    google: 'test_TnKjYrBPiEbigNCyWVqzMRvEwHx', // Waiting for Android key (goog_...)
 };
 
 class PurchaseManager {
@@ -29,11 +29,25 @@ class PurchaseManager {
         if (this.isConfigured) return;
 
         try {
+            // 1. Fetch keys from Remote Config (with fallback to hardcoded)
+            const remoteKeys = await fetchRevenueCatKeys();
+
+            // Determine which key to use
+            let apiKey = null;
+
             if (Platform.OS === 'ios') {
-                await Purchases.configure({ apiKey: API_KEYS.apple, appUserID: userId });
+                apiKey = remoteKeys?.apple || FALLBACK_KEYS.apple;
             } else if (Platform.OS === 'android') {
-                await Purchases.configure({ apiKey: API_KEYS.google, appUserID: userId });
+                apiKey = remoteKeys?.google || FALLBACK_KEYS.google;
             }
+
+            if (!apiKey) {
+                console.error('❌ PurchaseManager: No Valid API Key found!');
+                return;
+            }
+
+            console.log(`💳 PurchaseManager: Configuring with ${remoteKeys ? 'Remote' : 'Fallback'} Key...`);
+            await Purchases.configure({ apiKey, appUserID: userId });
 
             this.isConfigured = true;
             console.log('✅ RevenueCat configured with user:', userId);
@@ -124,15 +138,29 @@ class PurchaseManager {
         }
     }
 
-    async purchaseRemoveAds() {
+    async purchaseRemoveAds(packageType = 'ANNUAL') {
         try {
             // Fetch available offerings
             const offerings = await Purchases.getOfferings();
 
             if (offerings.current !== null && offerings.current.availablePackages.length !== 0) {
-                // Assume the first package is the "Remove Ads" one
-                const packageToBuy = offerings.current.availablePackages[0];
+                let packageToBuy = null;
 
+                // Try to find the specific package type requested
+                // RevenueCat package types: 0=UNKNOWN, 1=LIFETIME, 2=ANNUAL, 3=SIX_MONTH, 4=THREE_MONTH, 5=TWO_MONTH, 6=MONTHLY, 7=WEEKLY
+                if (packageType) {
+                    packageToBuy = offerings.current.availablePackages.find(
+                        pkg => pkg.packageType === packageType
+                    );
+                }
+
+                // Fallback: If no specific type found (or requested), use the first available
+                if (!packageToBuy) {
+                    console.log(`⚠️ Requested package type ${packageType} not found, falling back to first available.`);
+                    packageToBuy = offerings.current.availablePackages[0];
+                }
+
+                console.log(`🛒 Buying package: ${packageToBuy.product.identifier} (${packageToBuy.packageType})`);
                 const { customerInfo } = await Purchases.purchasePackage(packageToBuy);
 
                 if (typeof customerInfo.entitlements.active['pro_version'] !== "undefined") {
