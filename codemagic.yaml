@@ -1,4 +1,58 @@
 workflows:
+  ios-simulator-build:
+    name: iOS Simulator Build (Unsigned)
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+    environment:
+      vars:
+        BUNDLE_ID: "com.rayn100.impostergame"
+      node: 18
+      xcode: latest
+      cocoapods: default
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: 'ipa'
+          include: true
+          source: true
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm install
+      - name: Prebuild iOS project
+        script: |
+          npx expo prebuild --platform ios --clean
+      - name: Install CocoaPods dependencies
+        script: |
+          cd ios
+          pod install
+      - name: Build iOS Simulator App
+        script: |
+          cd ios
+          xcodebuild -workspace ImposterGame.xcworkspace \
+            -scheme ImposterGame \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            -derivedDataPath build \
+            build
+      - name: Create IPA from Simulator Build
+        script: |
+          cd ios/build/Build/Products/Debug-iphonesimulator
+          mkdir Payload
+          cp -r ImposterGame.app Payload/
+          zip -r ImposterGame-simulator.ipa Payload
+          mv ImposterGame-simulator.ipa $CM_BUILD_DIR/
+    artifacts:
+      - ImposterGame-simulator.ipa
+    publishing:
+      email:
+        recipients:
+          - raynusman100hue@gmail.com
+        notify:
+          success: true
+          failure: true
+
   android-production-aab:
     name: Android Production AAB
     max_build_duration: 60
