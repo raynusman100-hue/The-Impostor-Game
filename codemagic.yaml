@@ -30,8 +30,11 @@ workflows:
       - name: Build iOS App for Device (arm64)
         script: |
           cd ios
-          xcodebuild -workspace impostergame.xcworkspace \
-            -scheme impostergame \
+          WORKSPACE=$(ls *.xcworkspace | head -n 1)
+          SCHEME=$(xcodebuild -list -workspace "$WORKSPACE" 2>/dev/null | grep -A 1 "Schemes:" | tail -n 1 | xargs)
+          echo "Building workspace: $WORKSPACE with scheme: $SCHEME"
+          xcodebuild -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
             -sdk iphoneos \
             -configuration Release \
             -derivedDataPath build \
@@ -43,8 +46,10 @@ workflows:
       - name: Create IPA for Sideloadly
         script: |
           cd ios/build/Build/Products/Release-iphoneos
+          APP_NAME=$(ls *.app | head -n 1)
+          echo "Creating IPA from: $APP_NAME"
           mkdir Payload
-          cp -r impostergame.app Payload/
+          cp -r "$APP_NAME" Payload/
           zip -r ImposterGame-unsigned.ipa Payload
           mv ImposterGame-unsigned.ipa $CM_BUILD_DIR/
     artifacts:
