@@ -1,10 +1,10 @@
 import Purchases from 'react-native-purchases';
 import { Platform } from 'react-native';
 
-// TODO: Replace with your actual RevenueCat API Keys
+// RevenueCat API Keys
 const API_KEYS = {
-    apple: 'appl_placeholder_key',
-    google: 'goog_placeholder_key',
+    apple: 'app06ec5f375b',  // iOS Production Key
+    google: 'goog_xxxxxxxxxx',  // Android Production Key - UPDATE THIS with your actual key from RevenueCat dashboard
 };
 
 class PurchaseManager {
