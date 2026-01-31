@@ -37,7 +37,7 @@ Here's why:
 3. Select **Android**
 4. Fill in:
    - **App name**: Impostor Game Android
-   - **Package name**: `com.raynusman100hue.impostorgame`
+   - **Package name**: `com.rayn100.impostergame` ⚠️ **NO "hue"!**
    - **Play Store Service Credentials**: Upload JSON (see below)
 
 ### Step 2: Get Google Play Service Credentials

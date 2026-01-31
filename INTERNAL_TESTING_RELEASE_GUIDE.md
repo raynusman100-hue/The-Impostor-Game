@@ -10,7 +10,7 @@ All package names are now: `com.raynusman100hue.impostorgame`
 2. Navigate to your project
 3. Click **"Apps"** in the left sidebar
 4. Click **"+ New"** to add Android app
-5. Enter package name: `com.raynusman100hue.impostorgame`
+5. Enter package name: `com.rayn100.impostergame` ⚠️ **NO "hue"!**
 6. Copy the **Google API Key** (starts with `goog_`)
 7. Update `src/utils/PurchaseManager.js`:
    ```javascript
@@ -135,9 +135,9 @@ Initial internal testing release:
 - Package name is **LOCKED** after first upload
 - Cannot be changed later
 - Make sure it matches everywhere:
-  - `app.json`: ✅ `com.raynusman100hue.impostorgame`
-  - `build.gradle`: ✅ `com.raynusman100hue.impostorgame`
-  - Google Play Console: ✅ `com.raynusman100hue.impostorgame`
+  - `app.json`: ✅ `com.rayn100.impostergame`
+  - `build.gradle`: ✅ `com.rayn100.impostergame`
+  - Google Play Console: ✅ `com.rayn100.impostergame`
 
 ### About RevenueCat:
 - App ID: `appe839010e85` ✅
@@ -199,6 +199,6 @@ git push
 ---
 
 **Your App Details:**
-- Package: `com.raynusman100hue.impostorgame`
+- Package: `com.rayn100.impostergame`
 - RevenueCat ID: `appe839010e85`
 - Version: 1.0.0 (versionCode: 1)

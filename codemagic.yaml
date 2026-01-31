@@ -9,7 +9,7 @@ workflows:
       groups:
         - google_play
       vars:
-        PACKAGE_NAME: "com.raynusman100hue.impostorgame"
+        PACKAGE_NAME: "com.rayn100.impostergame"
       node: 18
     triggering:
       events:
@@ -54,7 +54,7 @@ workflows:
       groups:
         - google_play
       vars:
-        PACKAGE_NAME: "com.raynusman100hue.impostorgame"
+        PACKAGE_NAME: "com.rayn100.impostergame"
       node: 18
     triggering:
       events:

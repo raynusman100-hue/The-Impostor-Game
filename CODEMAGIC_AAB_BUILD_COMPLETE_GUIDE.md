@@ -160,7 +160,7 @@ The `codemagic.yaml` file is already created in your project root. It has two wo
 
 ### Error: "Package name mismatch"
 **Solution:**
-- Package name in code: `com.raynusman100hue.impostorgame` ✅
+- Package name in code: `com.rayn100.impostergame` ✅
 - Already fixed in this project!
 
 ### Build succeeds but no AAB file

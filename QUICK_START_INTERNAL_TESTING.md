@@ -9,7 +9,7 @@
 
 ### 1. RevenueCat Android Key (5 min)
 1. Go to https://app.revenuecat.com/
-2. Add Android app with package: `com.raynusman100hue.impostorgame`
+2. Add Android app with package: `com.rayn100.impostergame` ⚠️ **NO "hue"!**
 3. Copy Android key (starts with `goog_`)
 4. Update in `src/utils/PurchaseManager.js`
 
