@@ -1,12 +1,10 @@
 import Purchases from 'react-native-purchases';
 import { Platform } from 'react-native';
-import { fetchRevenueCatKeys } from './remoteConfig';
 
 // RevenueCat API Keys
-// Hardcoded Fallback (Test Keys) - Used if Remote Config fails
-const FALLBACK_KEYS = {
-    apple: 'appl_GidmNgibMGrbuhmiJwrzLeJLEZM',
-    google: 'test_TnKjYrBPiEbigNCyWVqzMRvEwHx', // Waiting for Android key (goog_...)
+const API_KEYS = {
+    apple: 'app06ec5f375b',  // iOS Production Key
+    google: 'goog_xxxxxxxxxx',  // Android Production Key - UPDATE THIS with your actual key from RevenueCat dashboard
 };
 
 class PurchaseManager {
@@ -15,7 +13,6 @@ class PurchaseManager {
     constructor() {
         this.isPro = false;
         this.listeners = [];
-        this.isConfigured = false;
     }
 
     static getInstance() {
@@ -25,32 +22,13 @@ class PurchaseManager {
         return PurchaseManager.instance;
     }
 
-    async initialize(userId = null) {
-        if (this.isConfigured) return;
-
+    async initialize() {
         try {
-            // 1. Fetch keys from Remote Config (with fallback to hardcoded)
-            const remoteKeys = await fetchRevenueCatKeys();
-
-            // Determine which key to use
-            let apiKey = null;
-
             if (Platform.OS === 'ios') {
-                apiKey = remoteKeys?.apple || FALLBACK_KEYS.apple;
+                await Purchases.configure({ apiKey: API_KEYS.apple });
             } else if (Platform.OS === 'android') {
-                apiKey = remoteKeys?.google || FALLBACK_KEYS.google;
+                await Purchases.configure({ apiKey: API_KEYS.google });
             }
-
-            if (!apiKey) {
-                console.error('❌ PurchaseManager: No Valid API Key found!');
-                return;
-            }
-
-            console.log(`💳 PurchaseManager: Configuring with ${remoteKeys ? 'Remote' : 'Fallback'} Key...`);
-            await Purchases.configure({ apiKey, appUserID: userId });
-
-            this.isConfigured = true;
-            console.log('✅ RevenueCat configured with user:', userId);
 
             await this.checkProStatus();
         } catch (error) {
@@ -58,57 +36,8 @@ class PurchaseManager {
         }
     }
 
-    async ensureInit() {
-        if (!this.isConfigured) {
-            console.log('⚠️ PurchaseManager not initialized, lazy loading...');
-            await this.initialize();
-        }
-    }
-
-    /**
-     * Login user to RevenueCat - syncs purchases across devices
-     * @param {string} userId - User's unique ID (Firebase UID)
-     */
-    async loginUser(userId) {
-        try {
-            await this.ensureInit();
-
-            if (!userId) {
-                console.warn('⚠️ No userId provided to loginUser');
-                return;
-            }
-
-            console.log('🔐 Logging in user to RevenueCat:', userId);
-            await Purchases.logIn(userId);
-
-            // Check premium status after login
-            const isPremium = await this.checkProStatus();
-            console.log('✅ User logged in to RevenueCat. Premium status:', isPremium);
-
-            return isPremium;
-        } catch (error) {
-            console.error('❌ Error logging in user to RevenueCat:', error);
-            return false;
-        }
-    }
-
-    /**
-     * Logout user from RevenueCat
-     */
-    async logoutUser() {
-        try {
-            console.log('👋 Logging out user from RevenueCat');
-            await Purchases.logOut();
-            this.setProStatus(false);
-        } catch (error) {
-            console.error('Error logging out from RevenueCat:', error);
-        }
-    }
-
     async checkProStatus() {
         try {
-            await this.ensureInit();
-
             const customerInfo = await Purchases.getCustomerInfo();
             // "pro_version" should be the Entitlement ID configured in RevenueCat
             if (typeof customerInfo.entitlements.active['pro_version'] !== "undefined") {
@@ -138,29 +67,15 @@ class PurchaseManager {
         }
     }
 
-    async purchaseRemoveAds(packageType = 'ANNUAL') {
+    async purchaseRemoveAds() {
         try {
             // Fetch available offerings
             const offerings = await Purchases.getOfferings();
 
             if (offerings.current !== null && offerings.current.availablePackages.length !== 0) {
-                let packageToBuy = null;
+                // Assume the first package is the "Remove Ads" one
+                const packageToBuy = offerings.current.availablePackages[0];
 
-                // Try to find the specific package type requested
-                // RevenueCat package types: 0=UNKNOWN, 1=LIFETIME, 2=ANNUAL, 3=SIX_MONTH, 4=THREE_MONTH, 5=TWO_MONTH, 6=MONTHLY, 7=WEEKLY
-                if (packageType) {
-                    packageToBuy = offerings.current.availablePackages.find(
-                        pkg => pkg.packageType === packageType
-                    );
-                }
-
-                // Fallback: If no specific type found (or requested), use the first available
-                if (!packageToBuy) {
-                    console.log(`⚠️ Requested package type ${packageType} not found, falling back to first available.`);
-                    packageToBuy = offerings.current.availablePackages[0];
-                }
-
-                console.log(`🛒 Buying package: ${packageToBuy.product.identifier} (${packageToBuy.packageType})`);
                 const { customerInfo } = await Purchases.purchasePackage(packageToBuy);
 
                 if (typeof customerInfo.entitlements.active['pro_version'] !== "undefined") {

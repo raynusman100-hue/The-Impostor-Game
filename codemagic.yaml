@@ -1,628 +1,83 @@
 workflows:
-  android-dev-apk:
-    name: Android Dev APK (with Metro support)
+  android-production-aab:
+    name: Android Production AAB
     max_build_duration: 60
-    instance_type: mac_mini_m2
-
+    instance_type: mac_mini_m1
     environment:
-      groups:
-        - imposter
-      node: 20
-      java: 17
-
+      android_signing:
+        - keystore_reference
+      vars:
+        PACKAGE_NAME: "com.rayn100.impostergame"
+      node: 18
     triggering:
       events:
         - push
       branch_patterns:
-        - pattern: codemagic
+        - pattern: 'main'
           include: true
-
+          source: true
+        - pattern: 'production'
+          include: true
+          source: true
     scripts:
       - name: Install dependencies
         script: |
           npm install
-
-      - name: Prebuild Android native project
+      - name: Prebuild Android project
         script: |
           npx expo prebuild --platform android --clean
+      - name: Build Android AAB
+        script: |
+          cd android
+          ./gradlew bundleRelease
+    artifacts:
+      - android/app/build/outputs/**/*.aab
+    publishing:
+      email:
+        recipients:
+          - raynusman100hue@gmail.com
+        notify:
+          success: true
+          failure: true
 
-      - name: Build Debug APK (Dev Client)
+  android-preview-apk:
+    name: Android Preview APK
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+    environment:
+      vars:
+        PACKAGE_NAME: "com.rayn100.impostergame"
+      node: 18
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: 'apk-build'
+          include: true
+          source: true
+        - pattern: 'codemagic'
+          include: true
+          source: true
+        - pattern: 'android-dev'
+          include: true
+          source: true
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm install
+      - name: Prebuild Android project
+        script: |
+          npx expo prebuild --platform android --clean
+      - name: Build Android APK
         script: |
           cd android
           ./gradlew assembleDebug
-
-      - name: Print APK Info
-        script: |
-          echo "=== ANDROID DEV APK BUILD COMPLETE ==="
-          echo "APK location: android/app/build/outputs/apk/debug/"
-          ls -la android/app/build/outputs/apk/debug/
-          echo ""
-          echo "This is a DEBUG APK with Metro bundler support"
-          echo "After installing:"
-          echo "1. Run 'npx expo start --dev-client' on your computer"
-          echo "2. Scan QR code or enter URL manually"
-          echo "3. Instant refresh enabled for development"
-          echo "========================================"
-
     artifacts:
-      - android/app/build/outputs/apk/debug/*.apk
-
-  android-apk-test:
-    name: Android Production APK Build
-    max_build_duration: 60
-    instance_type: mac_mini_m2
-
-    environment:
-      groups:
-        - imposter
-      node: 20
-      java: 17
-
-    triggering:
-      events:
-        - push
-      branch_patterns:
-        - pattern: apk
-          include: true
-
-    scripts:
-      - name: Install dependencies
-        script: |
-          npm install
-
-      - name: Prebuild Android native project
-        script: |
-          npx expo prebuild --platform android --clean
-
-      - name: Setup Signing Keystore
-        script: |
-          # Use Node.js for robust, cross-platform base64 decoding
-          node -e "
-            const fs = require('fs');
-            const keystore = process.env.CM_KEYSTORE;
-            if (!keystore) {
-              console.error('ERROR: CM_KEYSTORE environment variable is NOT set!');
-              process.exit(1);
-            }
-            fs.writeFileSync('/tmp/keystore.keystore', Buffer.from(keystore, 'base64'));
-          "
-
-      - name: Build Release APK with Signing
-        script: |
-          cd android
-          ./gradlew assembleRelease \
-            -Pandroid.injected.signing.store.file=/tmp/keystore.keystore \
-            -Pandroid.injected.signing.store.password=$CM_KEYSTORE_PASSWORD \
-            -Pandroid.injected.signing.key.alias=$CM_KEY_ALIAS \
-            -Pandroid.injected.signing.key.password=$CM_KEY_PASSWORD
-
-      - name: Print APK Info
-        script: |
-          echo "=== PRODUCTION APK BUILD COMPLETE ==="
-          echo "APK location: android/app/build/outputs/apk/release/"
-          ls -la android/app/build/outputs/apk/release/
-          echo ""
-          echo "This is a PRODUCTION RELEASE APK signed with your keystore"
-          echo "Ready for Play Store or testing on production environment"
-          echo "========================================"
-
-    artifacts:
-      - android/app/build/outputs/apk/**/*.apk
-
-  android-apk-unsigned:
-    name: Android Production APK (Unsigned - Quick Test)
-    max_build_duration: 90
-    instance_type: mac_mini_m2
-
-    environment:
-      groups:
-        - imposter
-      node: 20
-      java: 17
-
-    triggering:
-      events:
-        - push
-      branch_patterns:
-        - pattern: android-unsigned
-          include: true
-
-    scripts:
-      - name: Install dependencies
-        script: |
-          npm install
-          npm install -g eas-cli
-
-      - name: Build with EAS (Guaranteed to work)
-        script: |
-          # EAS Build handles all complexity
-          # This is the SURE FIX - it always works
-          eas build --platform android --profile preview --local --non-interactive --output ./app-release.apk || {
-            echo "EAS build failed, trying manual Gradle build..."
-            
-            # Fallback to manual build
-            npx expo prebuild --platform android --clean
-            
-            cd android
-            ./gradlew --stop || true
-            rm -rf app/build build .gradle
-            
-            # Ultra-minimal build (skips everything non-essential)
-            # Note: Removed deprecated android.enableR8 flag
-            ./gradlew assembleRelease \
-              --no-daemon \
-              --max-workers=1 \
-              --no-parallel \
-              --no-build-cache \
-              -x lintVitalRelease \
-              -x test \
-              -x lint \
-              -Dorg.gradle.jvmargs="-Xmx8192m -XX:MaxMetaspaceSize=2048m" \
-              -Pandroid.enableMinifyInReleaseBuilds=false \
-              -Pandroid.enableShrinkResourcesInReleaseBuilds=false
-          }
-
-      - name: Print APK Info
-        script: |
-          echo "=== BUILD COMPLETE ==="
-          
-          # Check EAS output first
-          if [ -f "./app-release.apk" ]; then
-            echo "✓ EAS Build APK found"
-            ls -lh ./app-release.apk
-          fi
-          
-          # Check Gradle output
-          if [ -d "android/app/build/outputs/apk/release" ]; then
-            echo "✓ Gradle Build APK found"
-            ls -lh android/app/build/outputs/apk/release/
-          fi
-          
-          echo ""
-          echo "⚠️ This is an UNSIGNED release APK"
-          echo "Good for: Testing app functionality"
-          echo "NOT suitable for: Play Store submission"
-          echo "=========================================="
-
-    artifacts:
-      - "*.apk"
-      - android/app/build/outputs/apk/**/*.apk
-
-  android-release:
-    name: Android Play Store Build (AAB)
-    max_build_duration: 60
-    instance_type: mac_mini_m2
-
-    environment:
-      groups:
-        - imposter
-      node: 20
-      java: 17
-
-    triggering:
-      events:
-        - push
-      branch_patterns:
-        - pattern: production
-          include: true
-
-    scripts:
-      - name: Install dependencies
-        script: |
-          npm install
-
-      - name: Prebuild Android native project
-        script: |
-          npx expo prebuild --platform android --clean
-
-      - name: Print Debug Keystore SHA-1
-        script: |
-          echo "=== DEBUG KEYSTORE SHA-1 FINGERPRINT ==="
-          keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android 2>/dev/null | grep SHA1
-          echo "========================================="
-
-      - name: Setup Signing Keystore
-        script: |
-          # Use Node.js for robust, cross-platform base64 decoding
-          node -e "
-            const fs = require('fs');
-            const keystore = process.env.CM_KEYSTORE;
-            if (!keystore) {
-              console.error('ERROR: CM_KEYSTORE environment variable is NOT set!');
-              process.exit(1);
-            }
-            fs.writeFileSync('/tmp/keystore.keystore', Buffer.from(keystore, 'base64'));
-          "
-
-      - name: Build Android AAB (App Bundle) with Signing
-        script: |
-          cd android
-          ./gradlew bundleRelease || ./gradlew bundleRelease
-
-      - name: Sign Android Release Bundle
-        script: |
-          echo "Removing debug signature..."
-          zip -d android/app/build/outputs/bundle/release/app-release.aab META-INF/\*
-
-          echo "Signing bundle manually..."
-          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
-            -keystore /tmp/keystore.keystore \
-            -storepass $CM_KEYSTORE_PASSWORD \
-            -keypass $CM_KEY_PASSWORD \
-            android/app/build/outputs/bundle/release/app-release.aab \
-            $CM_KEY_ALIAS
-
-      - name: Print APK SHA-1 (for Firebase)
-        script: |
-          echo "=== BUILD COMPLETE ==="
-          echo "AAB location: android/app/build/outputs/bundle/release/"
-          echo ""
-          echo "IMPORTANT: For Google Sign-In to work, add the SHA-1 from"
-          echo "Google Play Console -> Setup -> App signing -> App signing key certificate"
-          echo "to Firebase Console -> Project Settings -> Your Android app -> Add fingerprint"
-          echo "========================================"
-
-    artifacts:
-      - android/app/build/outputs/bundle/**/*.aab
-
-  ios-testflight:
-    name: iOS TestFlight Build
-    max_build_duration: 120
-    instance_type: mac_mini_m2
-
-    integrations:
-      app_store_connect: Codemagic imposter # Name of API key added in Codemagic UI
-
-    environment:
-      node: 20
-      xcode: latest
-      cocoapods: default
-      # Add these in Codemagic UI -> App Settings -> Environment variables:
-      # - APP_STORE_APP_ID (your App Store Connect App ID)
-      vars:
-        BUNDLE_ID: "com.rayn100.impostergame"
-
-    triggering:
-      events:
-        - push
-      branch_patterns:
-        - pattern: production
-          include: true
-
-    scripts:
-      - name: Install dependencies
-        script: |
-          npm install
-
-      - name: Install EAS CLI
-        script: |
-          npm install -g eas-cli
-
-      - name: Setup Expo credentials
-        script: |
-          # Login to Expo (set EXPO_TOKEN in Codemagic environment variables)
-          if [ -n "$EXPO_TOKEN" ]; then
-            echo "Expo token found, proceeding..."
-          else
-            echo "Warning: EXPO_TOKEN not set. You may need to set this for EAS builds."
-          fi
-
-      - name: Prebuild iOS native project
-        script: |
-          npx expo prebuild --platform ios --clean
-
-      - name: Verify GoogleService-Info.plist
-        script: |
-          echo "=== Verifying GoogleService-Info.plist ==="
-          if [ -f "GoogleService-Info.plist" ]; then
-            echo "✓ GoogleService-Info.plist found in root"
-            # Copy to iOS project if not already there
-            if [ -d "ios" ]; then
-              cp GoogleService-Info.plist ios/
-              echo "✓ Copied GoogleService-Info.plist to ios folder"
-            fi
-          else
-            echo "✗ ERROR: GoogleService-Info.plist NOT FOUND!"
-            exit 1
-          fi
-          echo "========================================="
-
-      - name: Set up code signing
-        script: |
-          keychain initialize
-          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
-          keychain add-certificates
-
-          # Force Manual Signing in the project file (Critical for Expo)
-          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' ios/ImposterGame.xcodeproj/project.pbxproj
-
-          # Apply profiles
-          xcode-project use-profiles --project ios/ImposterGame.xcodeproj
-
-      - name: Install CocoaPods dependencies
-        script: |
-          cd ios && pod install
-
-      - name: Increment build number
-        script: |
-          cd ios
-          LATEST_BUILD_NUMBER=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APP_ID" || echo "0")
-          NEW_BUILD_NUMBER=$((LATEST_BUILD_NUMBER + 1))
-          agvtool new-version -all $NEW_BUILD_NUMBER
-          echo "Build number set to: $NEW_BUILD_NUMBER"
-
-      - name: Build iOS app
-        script: |
-          cd ios
-          # Defines the path to the xcarchive
-          
-          # Dynamic detection of workspace and scheme
-          WORKSPACE=$(ls -d *.xcworkspace | head -n 1)
-          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
-          echo "Found Workspace: $WORKSPACE"
-          echo "Using Scheme: $SCHEME"
-          
-          ARCHIVE_PATH="$PWD/build/ios/xcarchive/$SCHEME.xcarchive"
-          EXPORT_OPTIONS_PLIST="$PWD/ExportOptions.plist"
-
-          # 0. REDUNDANT INSTALL (Ensure they exist right here)
-          keychain initialize
-          keychain add-certificates
-          xcode-project use-profiles
-
-          echo "Checking profiles directory:"
-          ls -R ~/Library/MobileDevice/Provisioning\ Profiles/ || echo "Directory not found!"
-
-          # Find the provisioning profile UUID
-          PROFILE_PATH=$(find ~/Library/MobileDevice/Provisioning\ Profiles -name "*.mobileprovision" | head -n 1)
-
-          if [ -z "$PROFILE_PATH" ]; then
-            echo "Error: No provisioning profile found!"
-            # exit 1  <-- Commented out to let build try anyway or fail later
-          fi
-
-          if [ -n "$PROFILE_PATH" ]; then
-            PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' /dev/stdin <<< $(security cms -D -i "$PROFILE_PATH"))
-            echo "Found Profile UUID: $PROFILE_UUID"
-          fi
-
-          # 1. Archive the app
-          xcodebuild archive \
-            -workspace "$WORKSPACE" \
-            -scheme "$SCHEME" \
-            -config Release \
-            -archivePath "$ARCHIVE_PATH" \
-            -allowProvisioningUpdates \
-            CODE_SIGN_STYLE="Manual" \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
-            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
-            DEVELOPMENT_TEAM="Z83Y9VJTKH"
-
-          # 2. Create ExportOptions.plist
-          cat > "$EXPORT_OPTIONS_PLIST" <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>app-store</string>
-            <key>uploadBitcode</key>
-            <false/>
-            <key>compileBitcode</key>
-            <false/>
-            <key>signingStyle</key>
-            <string>manual</string>
-            <key>stripSwiftSymbols</key>
-            <true/>
-            <key>teamID</key>
-            <string>Z83Y9VJTKH</string> 
-            <key>provisioningProfiles</key>
-            <dict>
-               <key>$BUNDLE_ID</key>
-               <string>$PROFILE_UUID</string>
-            </dict>
-          </dict>
-          </plist>
-          EOF
-
-          # Note: We need to dynamically insert Team ID or let it fail? 
-          # Better: Let xcodebuild detect or we need to add TEAM_ID var.
-
-          # 3. Export IPA
-          xcodebuild -exportArchive \
-            -archivePath "$ARCHIVE_PATH" \
-            -exportPath "$PWD/build/ios/ipa" \
-            -exportOptionsPlist "$EXPORT_OPTIONS_PLIST"
-
-    artifacts:
-      - ios/build/ios/ipa/*.ipa
-      - ios/build/ios/ipa/*.log
-
+      - android/app/build/outputs/**/*.apk
     publishing:
-      app_store_connect:
-        auth: integration
-        submit_to_testflight: true
-        beta_groups:
-          - "Internal Testers"
-
-  ios-unsigned-dev:
-    name: iOS Unsigned Dev Build (for Sideloadly)
-    max_build_duration: 120
-    instance_type: mac_mini_m2
-
-    environment:
-      node: 20
-      xcode: latest
-      cocoapods: default
-
-    triggering:
-      events:
-        - push
-      branch_patterns:
-        - pattern: ios-dev
-          include: true
-
-    scripts:
-      - name: Install dependencies
-        script: |
-          npm install
-
-      - name: Prebuild iOS native project
-        script: |
-          # Uses default EAS/Expo settings which creates Development Build compatible code by default in Debug mode usually
-          npx expo prebuild --platform ios --clean
-
-      - name: Verify GoogleService-Info.plist
-        script: |
-          echo "=== Verifying GoogleService-Info.plist ==="
-          if [ -f "GoogleService-Info.plist" ]; then
-            echo "✓ GoogleService-Info.plist found in root"
-            # Copy to iOS project if not already there
-            if [ -d "ios" ]; then
-              cp GoogleService-Info.plist ios/
-              echo "✓ Copied GoogleService-Info.plist to ios folder"
-            fi
-          else
-            echo "✗ ERROR: GoogleService-Info.plist NOT FOUND!"
-            exit 1
-          fi
-          echo "========================================="
-
-      - name: Install CocoaPods
-        script: |
-          cd ios && pod install
-
-      - name: Build Unsigned .app
-        script: |
-          cd ios
-          
-          # Dynamic detection of workspace and scheme
-          WORKSPACE=$(ls -d *.xcworkspace | head -n 1)
-          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
-          echo "Found Workspace: $WORKSPACE"
-          echo "Using Scheme: $SCHEME"
-
-          # Build a Debug version (Supports instant reload/Metro)
-          # CODE_SIGNING_ALLOWED=NO tells Xcode not to sign
-          xcodebuild build \
-            -workspace "$WORKSPACE" \
-            -scheme "$SCHEME" \
-            -configuration Debug \
-            -sdk iphoneos \
-            -derivedDataPath ./build \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY=""
-
-      - name: Package as IPA
-        script: |
-          cd ios
-          # Detect Scheme again to find the built app path
-          WORKSPACE=$(ls -d *.xcworkspace | head -n 1)
-          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
-          
-          mkdir -p Payload
-          # The .app usually lives in build/Build/Products/Debug-iphoneos/[SCHEME].app
-          APP_PATH="build/Build/Products/Debug-iphoneos/$SCHEME.app"
-          
-          echo "Packaging app from: $APP_PATH"
-          cp -r "$APP_PATH" Payload/
-          
-          # Create IPA
-          zip -r imposter-dev-unsigned.ipa Payload
-          
-    artifacts:
-      - ios/imposter-dev-unsigned.ipa
-
-  ios-unsigned-release:
-    name: iOS Unsigned Release Build (for Sideloadly - Production)
-    max_build_duration: 120
-    instance_type: mac_mini_m2
-
-    environment:
-      node: 20
-      xcode: latest
-      cocoapods: default
-
-    triggering:
-      events:
-        - push
-      branch_patterns:
-        - pattern: ipa
-          include: true
-
-    scripts:
-      - name: Install dependencies
-        script: |
-          npm install
-
-      - name: Prebuild iOS native project
-        script: |
-          npx expo prebuild --platform ios --clean
-
-      - name: Verify GoogleService-Info.plist
-        script: |
-          echo "=== Verifying GoogleService-Info.plist ==="
-          if [ -f "GoogleService-Info.plist" ]; then
-            echo "✓ GoogleService-Info.plist found in root"
-            if [ -d "ios" ]; then
-              cp GoogleService-Info.plist ios/
-              echo "✓ Copied GoogleService-Info.plist to ios folder"
-            fi
-          else
-            echo "✗ ERROR: GoogleService-Info.plist NOT FOUND!"
-            exit 1
-          fi
-          echo "========================================="
-
-      - name: Install CocoaPods
-        script: |
-          cd ios && pod install
-
-      - name: Build Unsigned Release .app
-        script: |
-          cd ios
-          
-          # Dynamic detection of workspace and scheme
-          WORKSPACE=$(ls -d *.xcworkspace | head -n 1)
-          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
-          echo "Found Workspace: $WORKSPACE"
-          echo "Using Scheme: $SCHEME"
-
-          # Build a RELEASE version (Production build, unsigned)
-          # CODE_SIGNING_ALLOWED=NO tells Xcode not to sign
-          xcodebuild build \
-            -workspace "$WORKSPACE" \
-            -scheme "$SCHEME" \
-            -configuration Release \
-            -sdk iphoneos \
-            -derivedDataPath ./build \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY=""
-
-      - name: Package as IPA
-        script: |
-          cd ios
-          # Detect Scheme again to find the built app path
-          WORKSPACE=$(ls -d *.xcworkspace | head -n 1)
-          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
-          
-          mkdir -p Payload
-          # The .app lives in build/Build/Products/Release-iphoneos/[SCHEME].app
-          APP_PATH="build/Build/Products/Release-iphoneos/$SCHEME.app"
-          
-          echo "Packaging app from: $APP_PATH"
-          cp -r "$APP_PATH" Payload/
-          
-          # Create IPA
-          zip -r imposter-release-unsigned.ipa Payload
-          
-          echo ""
-          echo "=== UNSIGNED RELEASE IPA CREATED ==="
-          echo "This is a PRODUCTION/RELEASE build (optimized, no debug)"
-          echo "Ready for Sideloadly installation"
-          echo "========================================"
-          
-    artifacts:
-      - ios/imposter-release-unsigned.ipa
+      email:
+        recipients:
+          - raynusman100hue@gmail.com
+        notify:
+          success: true
+          failure: true
