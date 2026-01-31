@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delete Data - Impostor Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%);
+            color: #ccc;
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: #151515;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 184, 0, 0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid rgba(255, 184, 0, 0.2);
+        }
+        
+        .logo {
+            color: #FFB800;
+            font-size: 36px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        
+        .subtitle {
+            color: #888;
+            font-size: 14px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+        
+        h2 {
+            color: #FFB800;
+            font-size: 20px;
+            margin: 30px 0 15px 0;
+            letter-spacing: 1px;
+        }
+        
+        .method {
+            background: #1a1a1a;
+            border-left: 4px solid #FFB800;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        
+        .method-title {
+            color: #FFB800;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .badge {
+            background: #FFB800;
+            color: #0a0a0a;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-left: 10px;
+            letter-spacing: 1px;
+        }
+        
+        .steps {
+            list-style: none;
+            counter-reset: step-counter;
+        }
+        
+        .steps li {
+            counter-increment: step-counter;
+            margin: 12px 0;
+            padding-left: 35px;
+            position: relative;
+            color: #ccc;
+        }
+        
+        .steps li::before {
+            content: counter(step-counter);
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: #FFB800;
+            color: #0a0a0a;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        
+        .email-link {
+            background: #FFB800;
+            color: #0a0a0a;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-block;
+            font-weight: bold;
+            margin: 15px 0;
+            transition: transform 0.2s;
+        }
+        
+        .email-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 184, 0, 0.3);
+        }
+        
+        .info-box {
+            background: rgba(255, 184, 0, 0.1);
+            border: 1px solid rgba(255, 184, 0, 0.3);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 25px 0;
+        }
+        
+        .info-title {
+            color: #FFB800;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 15px;
+        }
+        
+        .info-list {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .info-list li {
+            padding: 6px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+        
+        .info-list li::before {
+            content: "•";
+            position: absolute;
+            left: 8px;
+            color: #FFB800;
+            font-size: 20px;
+            line-height: 1;
+        }
+        
+        .warning {
+            background: rgba(244, 67, 54, 0.1);
+            border: 1px solid rgba(244, 67, 54, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            color: #ff6b6b;
+        }
+        
+        .success-box {
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            color: #81c784;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255, 184, 0, 0.1);
+            color: #666;
+            font-size: 13px;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 25px;
+            }
+            
+            .logo {
+                font-size: 28px;
+            }
+            
+            h2 {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">IMPOSTOR GAME</div>
+            <div class="subtitle">Clear Your Data</div>
+        </div>
+        
+        <p style="margin-bottom: 25px;">
+            You can clear your locally stored data without deleting your account. This removes saved preferences and cached information while keeping your account active.
+        </p>
+        
+        <h2>🧹 Method 1: In-App Data Clearing</h2>
+        <div class="method">
+            <div class="method-title">
+                Clear Data from the App
+                <span class="badge">RECOMMENDED</span>
+            </div>
+            <ol class="steps">
+                <li>Open the Impostor Game app</li>
+                <li>Go to <strong>Settings</strong></li>
+                <li>Scroll down and tap <strong>"Clear All Data"</strong></li>
+                <li>Confirm when prompted</li>
+                <li>Restart the app</li>
+            </ol>
+            <p style="margin-top: 15px; color: #888; font-size: 14px;">
+                ⚡ Data is cleared immediately
+            </p>
+        </div>
+        
+        <h2>📧 Method 2: Email Request</h2>
+        <div class="method">
+            <div class="method-title">Request Data Deletion via Email</div>
+            <p style="margin-bottom: 15px;">
+                Send an email to our support team:
+            </p>
+            <a href="mailto:theimpostergameonline@gmail.com?subject=Data%20Deletion%20Request" class="email-link">
+                📨 theimpostergameonline@gmail.com
+            </a>
+            <p style="margin-top: 15px; color: #888; font-size: 14px;">
+                <strong>Email Subject:</strong> Data Deletion Request<br>
+                <strong>Include:</strong> Your registered email address and what data you want deleted
+            </p>
+            <p style="margin-top: 15px; color: #888; font-size: 14px;">
+                ⏱️ Processing time: Within 48 hours
+            </p>
+        </div>
+        
+        <div class="info-box">
+            <div class="info-title">📋 What Gets Cleared</div>
+            <ul class="info-list">
+                <li>Locally cached profile data</li>
+                <li>Game preferences and settings</li>
+                <li>Saved avatar configurations</li>
+                <li>Theme preferences</li>
+                <li>Category selections</li>
+            </ul>
+        </div>
+        
+        <div class="success-box">
+            <strong>✅ Your Account Stays Active:</strong> Clearing data does NOT delete your account. You can sign back in anytime with your Google account.
+        </div>
+        
+        <div class="info-box">
+            <div class="info-title">🔄 What Happens After Clearing</div>
+            <p>
+                After clearing data, you'll need to sign in again. Your account information (email, username) remains in our servers and will be restored when you sign back in.
+            </p>
+        </div>
+        
+        <div class="warning">
+            <strong>⚠️ Note:</strong> If you want to permanently delete your account and ALL data, use the <a href="delete-account.html" style="color: #ff6b6b; text-decoration: underline;">Delete Account</a> option instead.
+        </div>
+        
+        <div class="footer">
+            <p>Need help? Contact us at <a href="mailto:theimpostergameonline@gmail.com" style="color: #FFB800; text-decoration: none;">theimpostergameonline@gmail.com</a></p>
+            <p style="margin-top: 10px;">© 2026 Impostor Game. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
