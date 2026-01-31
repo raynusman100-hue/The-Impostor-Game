@@ -30,8 +30,16 @@ workflows:
       - name: Build iOS App for Device (arm64)
         script: |
           cd ios
-          WORKSPACE=$(ls *.xcworkspace | head -n 1)
-          SCHEME=$(xcodebuild -list -workspace "$WORKSPACE" 2>/dev/null | grep -A 1 "Schemes:" | tail -n 1 | xargs)
+          WORKSPACE=$(find . -maxdepth 1 -name "*.xcworkspace" -type d | head -n 1 | sed 's|^\./||')
+          if [ -z "$WORKSPACE" ]; then
+            echo "Error: No .xcworkspace found"
+            exit 1
+          fi
+          SCHEME=$(xcodebuild -list -workspace "$WORKSPACE" 2>/dev/null | grep -A 100 "Schemes:" | grep -v "Schemes:" | grep -v "^$" | head -n 1 | xargs)
+          if [ -z "$SCHEME" ]; then
+            echo "Error: No scheme found"
+            exit 1
+          fi
           echo "Building workspace: $WORKSPACE with scheme: $SCHEME"
           xcodebuild -workspace "$WORKSPACE" \
             -scheme "$SCHEME" \
@@ -46,7 +54,11 @@ workflows:
       - name: Create IPA for Sideloadly
         script: |
           cd ios/build/Build/Products/Release-iphoneos
-          APP_NAME=$(ls *.app | head -n 1)
+          APP_NAME=$(find . -maxdepth 1 -name "*.app" -type d | head -n 1 | sed 's|^\./||')
+          if [ -z "$APP_NAME" ]; then
+            echo "Error: No .app found"
+            exit 1
+          fi
           echo "Creating IPA from: $APP_NAME"
           mkdir Payload
           cp -r "$APP_NAME" Payload/
