@@ -1,6 +1,6 @@
 workflows:
   ios-simulator-build:
-    name: iOS Simulator Build (Unsigned)
+    name: iOS Device Build (Unsigned for Sideloadly)
     max_build_duration: 60
     instance_type: mac_mini_m1
     environment:
@@ -27,24 +27,28 @@ workflows:
         script: |
           cd ios
           pod install
-      - name: Build iOS Simulator App
+      - name: Build iOS App for Device (arm64)
         script: |
           cd ios
           xcodebuild -workspace ImposterGame.xcworkspace \
             -scheme ImposterGame \
-            -sdk iphonesimulator \
-            -configuration Debug \
+            -sdk iphoneos \
+            -configuration Release \
             -derivedDataPath build \
+            -arch arm64 \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
             build
-      - name: Create IPA from Simulator Build
+      - name: Create IPA for Sideloadly
         script: |
-          cd ios/build/Build/Products/Debug-iphonesimulator
+          cd ios/build/Build/Products/Release-iphoneos
           mkdir Payload
           cp -r ImposterGame.app Payload/
-          zip -r ImposterGame-simulator.ipa Payload
-          mv ImposterGame-simulator.ipa $CM_BUILD_DIR/
+          zip -r ImposterGame-unsigned.ipa Payload
+          mv ImposterGame-unsigned.ipa $CM_BUILD_DIR/
     artifacts:
-      - ImposterGame-simulator.ipa
+      - ImposterGame-unsigned.ipa
     publishing:
       email:
         recipients:
