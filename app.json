@@ -1,15 +1,15 @@
 {
   "expo": {
-    "name": "Imposter Game",
+    "name": "Impostor Game: Film Edition",
     "slug": "imposter-game",
     "version": "1.0.0",
     "scheme": "imposter-game",
     "orientation": "portrait",
-    "icon": "./assets/the imposter logo 3.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0a0a0a",
     "splash": {
-      "image": "./assets/the imposter logo 3.png",
+      "image": "./assets/splash-logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#0a0a0a"
     },
@@ -18,6 +18,7 @@
       "bundleIdentifier": "com.rayn100.impostergame",
       "buildNumber": "1",
       "backgroundColor": "#0a0a0a",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "NSCameraUsageDescription": "Imposter Game uses your camera to scan QR codes for quickly joining multiplayer game rooms.",
         "NSMicrophoneUsageDescription": "Imposter Game uses your microphone to record voice messages during multiplayer game chat.",
@@ -25,10 +26,10 @@
       }
     },
     "android": {
-      "package": "com.rayn100.impostergame",
-      "versionCode": 1,
+      "package": "com.usman.impostergame",
+      "versionCode": 2,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/the imposter logo 3.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0a0a0a"
       },
       "edgeToEdgeEnabled": true,
@@ -50,6 +51,7 @@
       "expo-font",
       "expo-web-browser",
       "expo-splash-screen",
+      "@react-native-google-signin/google-signin",
       [
         "react-native-google-mobile-ads",
         {
@@ -62,6 +64,10 @@
         {
           "android": {
             "minSdkVersion": 24,
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "buildToolsVersion": "35.0.0",
+            "ndkVersion": "26.1.10909125",
             "packagingOptions": {
               "pickFirst": [
                 "lib/x86/libc++_shared.so",
@@ -82,5 +88,9 @@
         "projectId": "c49fcb0a-1434-4154-b66e-469b1050a674"
       }
     }
+  },
+  "react-native-google-mobile-ads": {
+    "android_app_id": "ca-app-pub-3940256099942544~3347511713",
+    "ios_app_id": "ca-app-pub-3940256099942544~1458002511"
   }
 }

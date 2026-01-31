@@ -1147,7 +1147,8 @@ export default function WifiVotingScreen({ route, navigation }) {
     );
 }
 
-const getStyles = (theme) => StyleSheet.create({
+function getStyles(theme) {
+    return StyleSheet.create({
     container: { flex: 1, alignItems: 'center' },
     // Kodak Film Strip Decorations
     filmHeader: {
@@ -1405,3 +1406,4 @@ const getStyles = (theme) => StyleSheet.create({
         fontFamily: theme.fonts.bold
     }
 });
+}

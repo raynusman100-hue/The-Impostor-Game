@@ -463,15 +463,24 @@ export default function ResultScreen({ route, navigation }) {
                                         return (
                                             <TouchableOpacity
                                                 key={index}
-                                                activeOpacity={0.8}
-                                                onPress={() => { playHaptic('light'); Alert.alert('Impostor', pData.name); }}
+                                                activeOpacity={isWifi ? 0.8 : 1}
+                                                onPress={() => {
+                                                    if (isWifi) {
+                                                        playHaptic('light');
+                                                        Alert.alert('Impostor', pData.name);
+                                                    }
+                                                }}
                                                 style={{ alignItems: 'center' }}
                                             >
-                                                {pData.customAvatarConfig ? (
-                                                    <CustomBuiltAvatar config={pData.customAvatarConfig} size={60} />
-                                                ) : (
-                                                    <CustomAvatar id={pData.avatarId || 1} size={60} />
+                                                {/* ONLY SHOW AVATAR IN WIFI MODE */}
+                                                {isWifi && (
+                                                    pData.customAvatarConfig ? (
+                                                        <CustomBuiltAvatar config={pData.customAvatarConfig} size={60} />
+                                                    ) : (
+                                                        <CustomAvatar id={pData.avatarId || 1} size={60} />
+                                                    )
                                                 )}
+
                                                 <Text style={[styles.impostorName, isWifi && styles.kodakImpostorName]}>
                                                     {pData.name || imp.name}
                                                 </Text>
@@ -548,7 +557,8 @@ export default function ResultScreen({ route, navigation }) {
     );
 }
 
-const getStyles = (theme) => StyleSheet.create({
+function getStyles(theme) {
+    return StyleSheet.create({
     container: { flex: 1 },
     safeArea: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: theme.spacing.m },
 
@@ -708,3 +718,4 @@ const getStyles = (theme) => StyleSheet.create({
         textAlign: 'center',
     },
 });
+}

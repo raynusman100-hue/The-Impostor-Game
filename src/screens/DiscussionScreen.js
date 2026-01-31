@@ -780,7 +780,8 @@ const ControlButtons = memo(({ isPaused, isWifi, onPause, onEnd, endRequests, ne
     );
 });
 
-const getStyles = (theme) => StyleSheet.create({
+function getStyles(theme) {
+    return StyleSheet.create({
     container: { flex: 1 },
     safeArea: { flex: 1, alignItems: 'center' },
 
@@ -1006,3 +1007,4 @@ const getStyles = (theme) => StyleSheet.create({
     },
     countdownNote: { color: theme.colors.textMuted, fontSize: 12, fontFamily: theme.fonts.medium, textAlign: 'center', letterSpacing: 2 }
 });
+}

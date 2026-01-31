@@ -34,8 +34,8 @@ export default function Button({ title, onPress, variant = 'primary', style, tex
     const getButtonColors = () => {
         if (disabled) {
             return {
-                backgroundColor: '#2a2a2a',
-                textColor: '#555',
+                backgroundColor: theme.colors.surface,
+                textColor: theme.colors.textMuted,
             };
         }
 
@@ -43,32 +43,32 @@ export default function Button({ title, onPress, variant = 'primary', style, tex
             case 'primary':
                 return {
                     backgroundColor: theme.colors.primary,
-                    textColor: theme.colors.background || '#0a0a0a',
+                    textColor: theme.colors.secondary,
                 };
             case 'secondary':
                 return {
-                    backgroundColor: '#2a2a2a',
+                    backgroundColor: theme.colors.surface,
                     textColor: theme.colors.primary,
                 };
             case 'error':
                 return {
-                    backgroundColor: theme.colors.error || '#D32F2F',
-                    textColor: '#FFFFFF',
+                    backgroundColor: theme.colors.error,
+                    textColor: theme.colors.text,
                 };
             case 'success':
                 return {
-                    backgroundColor: theme.colors.success || '#2E7D32',
-                    textColor: '#FFFFFF',
+                    backgroundColor: theme.colors.success,
+                    textColor: theme.colors.text,
                 };
             case 'tertiary':
                 return {
-                    backgroundColor: theme.colors.surface || '#1a1a1a',
-                    textColor: theme.colors.textSecondary || '#999',
+                    backgroundColor: theme.colors.surface,
+                    textColor: theme.colors.textSecondary,
                 };
             default:
                 return {
                     backgroundColor: theme.colors.primary,
-                    textColor: theme.colors.background || '#0a0a0a',
+                    textColor: theme.colors.secondary,
                 };
         }
     };

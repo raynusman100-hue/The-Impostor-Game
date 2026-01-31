@@ -1,10 +1,10 @@
 import { Platform } from 'react-native';
+import { checkPremiumStatus, shouldShowAds } from './PremiumManager';
 
 // ============================================================
-// ADS DISABLED FOR EXPO GO TESTING
-// Set ADS_ENABLED = true to re-enable Google Mobile Ads
+// ADS ENABLED FOR PRODUCTION BUILD
 // ============================================================
-const ADS_ENABLED = false;
+const ADS_ENABLED = true;
 
 // Check if we're on web - ads not supported
 const isWeb = Platform.OS === 'web';
@@ -15,6 +15,7 @@ class AdManager {
     constructor() {
         this.interstitial = null;
         this.loaded = false;
+        this.hasPremium = false;
     }
 
     static getInstance() {
@@ -24,17 +25,22 @@ class AdManager {
         return AdManager.instance;
     }
 
+    async updatePremiumStatus(userEmail, userId) {
+        this.hasPremium = await checkPremiumStatus(userEmail, userId);
+        console.log('AdManager: Premium status updated:', this.hasPremium);
+    }
+
     loadInterstitial() {
-        if (!ADS_ENABLED || isWeb) {
-            console.log('AdManager: DISABLED - loadInterstitial called');
+        if (!ADS_ENABLED || isWeb || !shouldShowAds(this.hasPremium)) {
+            console.log('AdManager: DISABLED - loadInterstitial called (Premium:', this.hasPremium, ')');
             return;
         }
         this._loadInterstitialFull();
     }
 
     showInterstitial(onAdClosed) {
-        if (!ADS_ENABLED || isWeb) {
-            console.log('AdManager: DISABLED - showInterstitial called');
+        if (!ADS_ENABLED || isWeb || !shouldShowAds(this.hasPremium)) {
+            console.log('AdManager: DISABLED - showInterstitial called (Premium:', this.hasPremium, ')');
             onAdClosed?.();
             return;
         }
