@@ -6,8 +6,6 @@ workflows:
     environment:
       android_signing:
         - keystore_reference
-      groups:
-        - google_play
       vars:
         PACKAGE_NAME: "com.rayn100.impostergame"
       node: 18
@@ -41,18 +39,12 @@ workflows:
         notify:
           success: true
           failure: true
-      google_play:
-        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
-        track: internal
-        submit_as_draft: true
 
   android-preview-apk:
     name: Android Preview APK
     max_build_duration: 60
     instance_type: mac_mini_m1
     environment:
-      groups:
-        - google_play
       vars:
         PACKAGE_NAME: "com.rayn100.impostergame"
       node: 18
