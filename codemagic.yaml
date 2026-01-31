@@ -30,8 +30,8 @@ workflows:
       - name: Build iOS App for Device (arm64)
         script: |
           cd ios
-          xcodebuild -workspace ImposterGame.xcworkspace \
-            -scheme ImposterGame \
+          xcodebuild -workspace impostergame.xcworkspace \
+            -scheme impostergame \
             -sdk iphoneos \
             -configuration Release \
             -derivedDataPath build \
@@ -44,7 +44,7 @@ workflows:
         script: |
           cd ios/build/Build/Products/Release-iphoneos
           mkdir Payload
-          cp -r ImposterGame.app Payload/
+          cp -r impostergame.app Payload/
           zip -r ImposterGame-unsigned.ipa Payload
           mv ImposterGame-unsigned.ipa $CM_BUILD_DIR/
     artifacts:
