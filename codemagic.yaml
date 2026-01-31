@@ -53,10 +53,26 @@ workflows:
             build
       - name: Create IPA for Sideloadly
         script: |
-          cd ios/build/Build/Products/Release-iphoneos
+          echo "Searching for .app in build directory..."
+          find ios/build -name "*.app" -type d
+          
+          cd ios/build/Build/Products/Release-iphoneos || {
+            echo "Release-iphoneos directory not found, checking alternatives..."
+            cd ios/build/Build/Products || exit 1
+            ls -la
+            RELEASE_DIR=$(find . -maxdepth 1 -type d -name "*Release*" | head -n 1)
+            if [ -n "$RELEASE_DIR" ]; then
+              cd "$RELEASE_DIR"
+            else
+              echo "No Release directory found"
+              exit 1
+            fi
+          }
+          
           APP_NAME=$(find . -maxdepth 1 -name "*.app" -type d | head -n 1 | sed 's|^\./||')
           if [ -z "$APP_NAME" ]; then
-            echo "Error: No .app found"
+            echo "Error: No .app found in $(pwd)"
+            ls -la
             exit 1
           fi
           echo "Creating IPA from: $APP_NAME"
