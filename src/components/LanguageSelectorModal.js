@@ -148,150 +148,154 @@ export default function LanguageSelectorModal({ visible, onClose, onSelect, curr
     );
 }
 
-const getStyles = (theme) => StyleSheet.create({
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.7)',
-        justifyContent: 'flex-end',
-    },
-    modalContent: {
-        backgroundColor: theme.colors.background,
-        borderTopLeftRadius: theme.borderRadius.xl,
-        borderTopRightRadius: theme.borderRadius.xl,
-        height: '80%',
-        padding: theme.spacing.l,
-        paddingBottom: theme.spacing.xxl,
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: theme.spacing.l,
-    },
-    title: {
-        fontSize: theme.fontSize.xxlarge,
-        color: theme.colors.tertiary, // Synchronized silver
-        fontFamily: theme.fonts.header,
-        letterSpacing: 2,
-    },
-    closeButton: {
-        padding: theme.spacing.s,
-    },
-    closeButtonText: {
-        fontSize: theme.fontSize.xlarge,
-        color: theme.colors.textSecondary,
-        fontFamily: theme.fonts.medium,
-    },
-    searchContainer: {
-        marginBottom: theme.spacing.l,
-        borderWidth: 1,
-        borderColor: theme.colors.textSecondary,
-        borderRadius: theme.borderRadius.pill,
-        paddingHorizontal: theme.spacing.m,
-        height: 50,
-        justifyContent: 'center',
-    },
-    searchInput: {
-        fontSize: theme.fontSize.medium,
-        color: theme.colors.text,
-        fontFamily: theme.fonts.medium,
-        letterSpacing: 1,
-    },
-    listContent: {
-        paddingBottom: 20,
-    },
-    languageItem: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: theme.spacing.m,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.1)',
-    },
-    selectedItem: {
-        backgroundColor: 'rgba(255, 255, 255, 0.1)', // Subtle selection background
-        paddingHorizontal: theme.spacing.s,
-        borderRadius: theme.borderRadius.m,
-        borderBottomWidth: 0,
-    },
-    languageText: {
-        fontSize: 16, // Explicitly slightly smaller than medium (18)
-        color: theme.colors.text,
-        fontFamily: theme.fonts.medium,
-        letterSpacing: 0.5, // Tighter tracking for long words
-        flex: 1, // Ensure text takes up available space before checkmark
-        paddingRight: 10,
-    },
-    selectedText: {
-        color: theme.colors.primary,
-        fontFamily: theme.fonts.bold,
-    },
-    checkmark: {
-        fontSize: theme.fontSize.medium,
-        color: theme.colors.primary,
-    },
-    emptyText: {
-        textAlign: 'center',
-        color: theme.colors.textSecondary,
-        marginTop: theme.spacing.xl,
-        fontFamily: theme.fonts.medium,
-        fontSize: theme.fontSize.medium,
-    },
-    // Warning Modal Styles
-    warningOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.85)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: theme.spacing.l,
-    },
-    warningContent: {
-        backgroundColor: theme.colors.background,
-        borderRadius: theme.borderRadius.xl,
-        padding: theme.spacing.xl,
-        width: '90%',
-        maxWidth: 400,
-        alignItems: 'center',
-        ...theme.shadows.soft,
-        borderWidth: 2,
-        borderColor: theme.colors.error,
-    },
-    warningIconContainer: {
-        marginBottom: theme.spacing.m,
-    },
-    warningIcon: {
-        fontSize: 64,
-    },
-    warningTitle: {
-        fontSize: theme.fontSize.large,
-        color: theme.colors.error,
-        fontFamily: theme.fonts.bold,
-        letterSpacing: 2,
-        marginBottom: theme.spacing.m,
-        textAlign: 'center',
-    },
-    warningMessage: {
-        fontSize: theme.fontSize.medium,
-        color: theme.colors.text,
-        fontFamily: theme.fonts.medium,
-        textAlign: 'center',
-        marginBottom: theme.spacing.xl,
-        lineHeight: 24,
-        letterSpacing: 0.5,
-    },
-    warningButton: {
-        backgroundColor: theme.colors.primary,
-        paddingVertical: theme.spacing.m,
-        paddingHorizontal: theme.spacing.xl,
-        borderRadius: theme.borderRadius.pill,
-        minWidth: 150,
-        alignItems: 'center',
-        ...theme.shadows.medium,
-    },
-    warningButtonText: {
-        color: theme.colors.secondary,
-        fontSize: theme.fontSize.medium,
-        fontFamily: theme.fonts.bold,
-        letterSpacing: 2,
-    },
-});
+function getStyles(theme) {
+    return StyleSheet.create({
+        modalOverlay: {
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            justifyContent: 'flex-end',
+        },
+        modalContent: {
+            backgroundColor: theme.colors.background,
+            borderTopLeftRadius: theme.borderRadius.xl,
+            borderTopRightRadius: theme.borderRadius.xl,
+            height: '80%',
+            padding: theme.spacing.l,
+            paddingBottom: theme.spacing.xxl,
+        },
+        header: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: theme.spacing.l,
+        },
+        title: {
+            fontSize: theme.fontSize.xxlarge,
+            color: theme.colors.tertiary, // Synchronized silver
+            fontFamily: theme.fonts.header,
+            letterSpacing: 2,
+        },
+        closeButton: {
+            padding: theme.spacing.s,
+            marginLeft: theme.spacing.m,
+        },
+        closeButtonText: {
+            fontSize: 28,
+            color: theme.colors.textSecondary,
+            fontFamily: theme.fonts.medium,
+            lineHeight: 28,
+        },
+        searchContainer: {
+            marginBottom: theme.spacing.l,
+            borderWidth: 1,
+            borderColor: theme.colors.textSecondary,
+            borderRadius: theme.borderRadius.pill,
+            paddingHorizontal: theme.spacing.m,
+            height: 50,
+            justifyContent: 'center',
+        },
+        searchInput: {
+            fontSize: theme.fontSize.medium,
+            color: theme.colors.text,
+            fontFamily: theme.fonts.medium,
+            letterSpacing: 1,
+        },
+        listContent: {
+            paddingBottom: 20,
+        },
+        languageItem: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingVertical: theme.spacing.m,
+            borderBottomWidth: 1,
+            borderBottomColor: 'rgba(0,0,0,0.1)',
+        },
+        selectedItem: {
+            backgroundColor: 'rgba(255, 255, 255, 0.1)', // Subtle selection background
+            paddingHorizontal: theme.spacing.s,
+            borderRadius: theme.borderRadius.m,
+            borderBottomWidth: 0,
+        },
+        languageText: {
+            fontSize: 16, // Explicitly slightly smaller than medium (18)
+            color: theme.colors.text,
+            fontFamily: theme.fonts.medium,
+            letterSpacing: 0.5, // Tighter tracking for long words
+            flex: 1, // Ensure text takes up available space before checkmark
+            paddingRight: 10,
+        },
+        selectedText: {
+            color: theme.colors.primary,
+            fontFamily: theme.fonts.bold,
+        },
+        checkmark: {
+            fontSize: theme.fontSize.medium,
+            color: theme.colors.primary,
+        },
+        emptyText: {
+            textAlign: 'center',
+            color: theme.colors.textSecondary,
+            marginTop: theme.spacing.xl,
+            fontFamily: theme.fonts.medium,
+            fontSize: theme.fontSize.medium,
+        },
+        // Warning Modal Styles
+        warningOverlay: {
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: theme.spacing.l,
+        },
+        warningContent: {
+            backgroundColor: theme.colors.background,
+            borderRadius: theme.borderRadius.xl,
+            padding: theme.spacing.xl,
+            width: '90%',
+            maxWidth: 400,
+            alignItems: 'center',
+            ...theme.shadows.soft,
+            borderWidth: 2,
+            borderColor: theme.colors.error,
+        },
+        warningIconContainer: {
+            marginBottom: theme.spacing.m,
+        },
+        warningIcon: {
+            fontSize: 64,
+        },
+        warningTitle: {
+            fontSize: theme.fontSize.large,
+            color: theme.colors.error,
+            fontFamily: theme.fonts.bold,
+            letterSpacing: 2,
+            marginBottom: theme.spacing.m,
+            textAlign: 'center',
+        },
+        warningMessage: {
+            fontSize: theme.fontSize.medium,
+            color: theme.colors.text,
+            fontFamily: theme.fonts.medium,
+            textAlign: 'center',
+            marginBottom: theme.spacing.xl,
+            lineHeight: 24,
+            letterSpacing: 0.5,
+        },
+        warningButton: {
+            backgroundColor: theme.colors.primary,
+            paddingVertical: theme.spacing.m,
+            paddingHorizontal: theme.spacing.xl,
+            borderRadius: theme.borderRadius.pill,
+            minWidth: 150,
+            alignItems: 'center',
+            ...theme.shadows.medium,
+        },
+        warningButtonText: {
+            color: theme.colors.secondary,
+            fontSize: theme.fontSize.medium,
+            fontFamily: theme.fonts.bold,
+            letterSpacing: 2,
+        },
+    });
+}

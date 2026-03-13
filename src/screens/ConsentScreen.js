@@ -171,7 +171,8 @@ function TermsContent({ theme, styles }) {
     );
 }
 
-const getStyles = (theme) => StyleSheet.create({
+function getStyles(theme) {
+    return StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#0a0a0a',
@@ -302,3 +303,4 @@ const getStyles = (theme) => StyleSheet.create({
         letterSpacing: 3,
     },
 });
+}

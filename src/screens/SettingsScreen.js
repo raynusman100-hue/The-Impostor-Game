@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { 
-    View, 
-    Text, 
-    StyleSheet, 
-    ScrollView, 
-    TouchableOpacity, 
-    Switch, 
+import {
+    View,
+    Text,
+    StyleSheet,
+    ScrollView,
+    TouchableOpacity,
+    Switch,
     Platform,
     Alert,
     Linking,
@@ -78,7 +78,7 @@ const SettingToggle = ({ label, description, value, onToggle, theme }) => (
 
 // Setting Button Row
 const SettingButton = ({ label, description, onPress, theme, value, danger }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
         style={[rowStyles.container, { borderBottomColor: theme.colors.primary + '20' }]}
         onPress={() => { playHaptic('light'); onPress(); }}
         activeOpacity={0.7}
@@ -156,6 +156,7 @@ export default function SettingsScreen({ navigation }) {
     const { settings, updateSetting, resetSettings } = useSettings();
     const styles = getStyles(theme);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deleteStep, setDeleteStep] = useState(0); // 0: Hidden, 1: Warning, 2: Final/Password
     const [deletePassword, setDeletePassword] = useState('');
 
     const handleResetSettings = () => {
@@ -164,8 +165,8 @@ export default function SettingsScreen({ navigation }) {
             'Reset all settings to default?',
             [
                 { text: 'Cancel', style: 'cancel' },
-                { 
-                    text: 'Reset', 
+                {
+                    text: 'Reset',
                     style: 'destructive',
                     onPress: () => {
                         playHaptic('medium');
@@ -182,8 +183,8 @@ export default function SettingsScreen({ navigation }) {
             'This will delete your profile and all saved data. This cannot be undone.',
             [
                 { text: 'Cancel', style: 'cancel' },
-                { 
-                    text: 'Clear All', 
+                {
+                    text: 'Clear All',
                     style: 'destructive',
                     onPress: async () => {
                         playHaptic('heavy');
@@ -201,60 +202,63 @@ export default function SettingsScreen({ navigation }) {
             Alert.alert('Not Logged In', 'You need to be logged in to delete your account.');
             return;
         }
-        
-        Alert.alert(
-            'Delete Account',
-            'This will permanently delete your account and all data. This cannot be undone.',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: () => setShowDeleteModal(true)
-                }
-            ]
-        );
+
+        // Start Step 1
+        setDeleteStep(1);
+        setShowDeleteModal(true);
     };
 
     const performAccountDeletion = async () => {
         const user = auth.currentUser;
-        if (!user || !deletePassword) {
+        if (!user) return;
+
+        const isGoogleUser = user.providerData.some(p => p.providerId === 'google.com');
+
+        // For password users, validate password
+        if (!isGoogleUser && !deletePassword) {
             Alert.alert('Error', 'Password is required.');
             return;
         }
-        
+
         setShowDeleteModal(false);
+        setDeleteStep(0);
         playHaptic('medium');
-        
+
         try {
-            const credential = EmailAuthProvider.credential(user.email, deletePassword);
-            await reauthenticateWithCredential(user, credential);
-            
+            if (!isGoogleUser) {
+                const credential = EmailAuthProvider.credential(user.email, deletePassword);
+                await reauthenticateWithCredential(user, credential);
+            }
+
             // Delete user data from database
             if (user.displayName) {
                 await remove(ref(database, `usernames/${user.displayName.toLowerCase()}`));
             }
             await remove(ref(database, `users/${user.uid}`));
-            
+
             // Clear local storage
             await AsyncStorage.clear();
-            
+
             // Delete Firebase account
             await deleteUser(user);
-            
+
             playHaptic('success');
             Alert.alert('Account Deleted', 'Your account has been permanently deleted.', [
                 { text: 'OK', onPress: () => navigation.navigate('Home') }
             ]);
         } catch (error) {
             playHaptic('error');
-            setDeletePassword('');
+            setDeletePassword(''); // Clear password
+
             if (error.code === 'auth/wrong-password') {
+                setShowDeleteModal(true); // Re-show modal
+                setDeleteStep(2);
                 Alert.alert('Error', 'Incorrect password.');
             } else if (error.code === 'auth/requires-recent-login') {
-                Alert.alert('Session Expired', 'Please log out and log back in, then try again.');
+                Alert.alert('Security Check', 'For security, please sign out and sign in again to delete your account.');
             } else {
-                Alert.alert('Error', 'Failed to delete account.');
+                console.error("Deletion error:", error);
+                Alert.alert('Error', 'Failed to delete account. Please try again.');
             }
         }
     };
@@ -286,7 +290,7 @@ export default function SettingsScreen({ navigation }) {
 
             {/* Header */}
             <View style={styles.header}>
-                <TouchableOpacity 
+                <TouchableOpacity
                     onPress={() => { playHaptic('light'); navigation.goBack(); }}
                     style={styles.backButton}
                 >
@@ -296,7 +300,7 @@ export default function SettingsScreen({ navigation }) {
                 <View style={styles.backButton} />
             </View>
 
-            <ScrollView 
+            <ScrollView
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
@@ -400,6 +404,33 @@ export default function SettingsScreen({ navigation }) {
                     danger
                 />
 
+                {/* DEBUG - Premium Testing */}
+                <SectionHeader title="DEBUG (Testing Only)" theme={theme} />
+                <SettingButton
+                    label="Test Premium Screen"
+                    description="Manually open premium page"
+                    onPress={() => navigation.navigate('Premium')}
+                    theme={theme}
+                />
+                <SettingButton
+                    label="Check App Open Count"
+                    description="View premium counter"
+                    onPress={async () => {
+                        const count = await AsyncStorage.getItem('app_open_count');
+                        Alert.alert('Premium Counter', `App opened ${count || 0} times\nPremium shows every 2nd open (even numbers)`);
+                    }}
+                    theme={theme}
+                />
+                <SettingButton
+                    label="Reset Premium Counter"
+                    description="Set count to 1 (next open = premium)"
+                    onPress={async () => {
+                        await AsyncStorage.setItem('app_open_count', '1');
+                        Alert.alert('Reset', 'Counter set to 1. Premium will show on next app open!');
+                    }}
+                    theme={theme}
+                />
+
                 {/* Footer */}
                 <View style={styles.footer}>
                     <Text style={[styles.footerText, { color: theme.colors.textMuted }]}>
@@ -411,39 +442,59 @@ export default function SettingsScreen({ navigation }) {
                 </View>
             </ScrollView>
 
-            {/* Delete Account Password Modal */}
-            <Modal visible={showDeleteModal} transparent animationType="fade">
+            {/* Delete Account 2-Step Modal */}
+            <Modal visible={showDeleteModal} transparent animationType="fade" onRequestClose={() => setShowDeleteModal(false)}>
                 <View style={styles.modalOverlay}>
                     <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
-                        <Text style={[styles.modalTitle, { color: theme.colors.error }]}>DELETE ACCOUNT</Text>
-                        <Text style={[styles.modalText, { color: theme.colors.textMuted }]}>
-                            Enter your password to confirm deletion
+                        <Text style={[styles.modalTitle, { color: theme.colors.error }]}>
+                            {deleteStep === 1 ? 'DELETE ACCOUNT?' : 'FINAL WARNING'}
                         </Text>
-                        <TextInput
-                            style={[styles.modalInput, { 
-                                backgroundColor: theme.colors.background, 
-                                color: theme.colors.text,
-                                borderColor: theme.colors.primary 
-                            }]}
-                            value={deletePassword}
-                            onChangeText={setDeletePassword}
-                            placeholder="Password"
-                            placeholderTextColor={theme.colors.textMuted}
-                            secureTextEntry
-                        />
+
+                        <Text style={[styles.modalText, { color: theme.colors.text }]}>
+                            {deleteStep === 1
+                                ? 'Are you sure you want to delete your account? This will permanently remove your profile, stats, and saved data.'
+                                : 'This action CANNOT be undone. Your data will be lost forever.'}
+                        </Text>
+
+                        {/* Step 2: Password Input (Only for Email Users) */}
+                        {deleteStep === 2 && auth.currentUser && !auth.currentUser.providerData.some(p => p.providerId === 'google.com') && (
+                            <TextInput
+                                style={[styles.modalInput, {
+                                    backgroundColor: theme.colors.background,
+                                    color: theme.colors.text,
+                                    borderColor: theme.colors.primary
+                                }]}
+                                value={deletePassword}
+                                onChangeText={setDeletePassword}
+                                placeholder="Enter Password"
+                                placeholderTextColor={theme.colors.textMuted}
+                                secureTextEntry
+                            />
+                        )}
+
                         <View style={styles.modalButtons}>
-                            <TouchableOpacity 
-                                onPress={() => { setShowDeleteModal(false); setDeletePassword(''); }}
+                            <TouchableOpacity
+                                onPress={() => { setShowDeleteModal(false); setDeleteStep(0); setDeletePassword(''); }}
                                 style={[styles.modalBtn, { borderColor: theme.colors.primary }]}
                             >
                                 <Text style={[styles.modalBtnText, { color: theme.colors.text }]}>CANCEL</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity 
-                                onPress={performAccountDeletion}
-                                style={[styles.modalBtn, { backgroundColor: theme.colors.error }]}
-                            >
-                                <Text style={[styles.modalBtnText, { color: '#fff' }]}>DELETE</Text>
-                            </TouchableOpacity>
+
+                            {deleteStep === 1 ? (
+                                <TouchableOpacity
+                                    onPress={() => { playHaptic('medium'); setDeleteStep(2); }}
+                                    style={[styles.modalBtn, { backgroundColor: theme.colors.primary + '20', borderColor: theme.colors.error, borderWidth: 1 }]}
+                                >
+                                    <Text style={[styles.modalBtnText, { color: theme.colors.error }]}>CONTINUE</Text>
+                                </TouchableOpacity>
+                            ) : (
+                                <TouchableOpacity
+                                    onPress={performAccountDeletion}
+                                    style={[styles.modalBtn, { backgroundColor: theme.colors.error, borderColor: theme.colors.error }]}
+                                >
+                                    <Text style={[styles.modalBtnText, { color: '#fff' }]}>DELETE FOREVER</Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                     </View>
                 </View>
@@ -452,106 +503,109 @@ export default function SettingsScreen({ navigation }) {
     );
 }
 
-const getStyles = (theme) => StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingTop: Platform.OS === 'ios' ? 56 : 40,
-        paddingHorizontal: 16,
-        paddingBottom: 12,
-    },
-    backButton: {
-        width: 44,
-        height: 44,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    backText: {
-        fontSize: 36,
-        fontWeight: '300',
-    },
-    headerTitle: {
-        fontSize: 16,
-        fontFamily: 'Panchang-Bold',
-        letterSpacing: 3,
-    },
-    scrollView: {
-        flex: 1,
-    },
-    scrollContent: {
-        paddingBottom: 40,
-    },
-    footer: {
-        alignItems: 'center',
-        paddingVertical: 30,
-    },
-    footerText: {
-        fontSize: 11,
-        fontFamily: 'Panchang-Bold',
-        letterSpacing: 3,
-    },
-    versionText: {
-        fontSize: 11,
-        fontFamily: 'Teko-Medium',
-        letterSpacing: 1,
-        marginTop: 4,
-    },
-    // Modal styles
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.8)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-    },
-    modalContent: {
-        width: '100%',
-        borderRadius: 16,
-        padding: 24,
-        alignItems: 'center',
-    },
-    modalTitle: {
-        fontSize: 16,
-        fontFamily: 'Panchang-Bold',
-        letterSpacing: 2,
-        marginBottom: 8,
-    },
-    modalText: {
-        fontSize: 13,
-        fontFamily: 'Teko-Medium',
-        textAlign: 'center',
-        marginBottom: 16,
-    },
-    modalInput: {
-        width: '100%',
-        height: 48,
-        borderRadius: 8,
-        borderWidth: 2,
-        paddingHorizontal: 16,
-        fontSize: 14,
-        fontFamily: 'Teko-Medium',
-        marginBottom: 16,
-    },
-    modalButtons: {
-        flexDirection: 'row',
-        gap: 12,
-        width: '100%',
-    },
-    modalBtn: {
-        flex: 1,
-        paddingVertical: 12,
-        borderRadius: 8,
-        borderWidth: 2,
-        borderColor: 'transparent',
-        alignItems: 'center',
-    },
-    modalBtnText: {
-        fontSize: 13,
-        fontFamily: 'CabinetGrotesk-Black',
-        letterSpacing: 1,
-    },
-});
+function getStyles(theme) {
+    return StyleSheet.create({
+        container: {
+            flex: 1,
+        },
+        header: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingTop: Platform.OS === 'ios' ? 56 : 40,
+            paddingHorizontal: 16,
+            paddingBottom: 12,
+        },
+        backButton: {
+            width: 44,
+            height: 44,
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        backText: {
+            fontSize: 36,
+            fontWeight: '300',
+        },
+        headerTitle: {
+            fontSize: 16,
+            fontFamily: 'Panchang-Bold',
+            letterSpacing: 3,
+        },
+        scrollView: {
+            flex: 1,
+        },
+        scrollContent: {
+            paddingBottom: 40,
+        },
+        footer: {
+            alignItems: 'center',
+            paddingVertical: 30,
+        },
+        footerText: {
+            fontSize: 11,
+            fontFamily: 'Panchang-Bold',
+            letterSpacing: 3,
+        },
+        versionText: {
+            fontSize: 11,
+            fontFamily: 'Teko-Medium',
+            letterSpacing: 1,
+            marginTop: 4,
+        },
+        // Modal styles
+        modalOverlay: {
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 20,
+        },
+        modalContent: {
+            width: '100%',
+            borderRadius: 16,
+            padding: 24,
+            alignItems: 'center',
+        },
+        modalTitle: {
+            fontSize: 16,
+            fontFamily: 'Panchang-Bold',
+            letterSpacing: 2,
+            marginBottom: 8,
+        },
+        modalText: {
+            fontSize: 13,
+            fontFamily: 'Teko-Medium',
+            textAlign: 'center',
+            marginBottom: 16,
+        },
+        modalInput: {
+            width: '100%',
+            height: 48,
+            borderRadius: 8,
+            borderWidth: 2,
+            paddingHorizontal: 16,
+            fontSize: 14,
+            fontFamily: 'Teko-Medium',
+            marginBottom: 16,
+        },
+        modalButtons: {
+            flexDirection: 'row',
+            gap: 12,
+            width: '100%',
+        },
+        modalBtn: {
+            flex: 1,
+            paddingVertical: 12,
+            borderRadius: 8,
+            borderWidth: 2,
+            borderColor: 'transparent',
+            alignItems: 'center',
+        },
+        modalBtnText: {
+            fontSize: 13,
+            fontFamily: 'CabinetGrotesk-Black',
+            letterSpacing: 1,
+        },
+    });
+}
+

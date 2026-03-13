@@ -43,36 +43,36 @@ export default function KodakButton({
     const getButtonStyle = () => {
         if (disabled) {
             return {
-                backgroundColor: '#2a2a2a',
-                textColor: '#555',
+                backgroundColor: theme.colors.surface,
+                textColor: theme.colors.textMuted,
             };
         }
 
         switch (variant) {
             case 'primary':
                 return {
-                    backgroundColor: '#FFB800', // Kodak amber
-                    textColor: '#0a0a0a',
+                    backgroundColor: theme.colors.primary,
+                    textColor: theme.colors.secondary,
                 };
             case 'secondary':
                 return {
-                    backgroundColor: '#2a2a2a',
-                    textColor: '#FFD54F',
+                    backgroundColor: theme.colors.surface,
+                    textColor: theme.colors.primary,
                 };
             case 'danger':
                 return {
-                    backgroundColor: '#D32F2F',
-                    textColor: '#FFFFFF',
+                    backgroundColor: theme.colors.error,
+                    textColor: theme.colors.text,
                 };
             case 'success':
                 return {
-                    backgroundColor: '#2E7D32',
-                    textColor: '#FFFFFF',
+                    backgroundColor: theme.colors.success,
+                    textColor: theme.colors.text,
                 };
             default:
                 return {
-                    backgroundColor: '#FFB800',
-                    textColor: '#0a0a0a',
+                    backgroundColor: theme.colors.primary,
+                    textColor: theme.colors.secondary,
                 };
         }
     };

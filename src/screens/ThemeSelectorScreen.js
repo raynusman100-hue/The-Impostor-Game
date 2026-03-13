@@ -69,7 +69,8 @@ export default function ThemeSelectorScreen({ navigation }) {
     );
 }
 
-const getStyles = (theme) => StyleSheet.create({
+function getStyles(theme) {
+    return StyleSheet.create({
     container: {
         flex: 1,
     },
@@ -132,3 +133,4 @@ const getStyles = (theme) => StyleSheet.create({
         fontWeight: 'bold',
     },
 });
+}

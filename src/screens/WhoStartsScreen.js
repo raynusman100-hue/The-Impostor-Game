@@ -48,7 +48,8 @@ export default function WhoStartsScreen({ route, navigation }) {
     );
 }
 
-const getStyles = (theme) => StyleSheet.create({
+function getStyles(theme) {
+    return StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: theme.colors.background,
@@ -95,3 +96,4 @@ const getStyles = (theme) => StyleSheet.create({
         letterSpacing: 4,
     }
 });
+}

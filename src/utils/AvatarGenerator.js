@@ -1,13 +1,20 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
+import { CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
 
 /**
  * Generates a cinematic/Kodak themed avatar based on an ID (1-12)
  * Each avatar represents a film/cinema character or element
  * @param {number} id - Avatar ID (1-12)
  * @param {number} size - Size in pixels
+ * @param {object} customConfig - Optional custom avatar configuration
  */
-export const CustomAvatar = ({ id, size = 100 }) => {
+export const CustomAvatar = ({ id, size = 100, customConfig }) => {
+    // If custom config is provided, render the custom avatar
+    if (customConfig) {
+        return <CustomBuiltAvatar config={customConfig} size={size} />;
+    }
+
     // Normalize ID to 1-12
     const avatarId = Math.max(1, Math.min(12, id || 1));
 

@@ -102,58 +102,60 @@ export default function HowToPlayScreen({ navigation }) {
     );
 }
 
-const getStyles = (theme) => StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    content: {
-        flex: 1,
-        paddingTop: 80,
-        paddingHorizontal: 20,
-        paddingBottom: 20,
-    },
-    title: {
-        fontSize: 48,
-        fontFamily: 'BespokeStencil-Extrabold',
-        letterSpacing: 2,
-        textAlign: 'center',
-        marginBottom: 30,
-        textTransform: 'uppercase',
-        color: theme.colors.tertiary, // Synchronized silver
-    },
-    scrollView: {
-        flex: 1,
-    },
-    scrollContent: {
-        paddingBottom: 20,
-    },
-    section: {
-        marginBottom: 24,
-        backgroundColor: theme.colors.surface,
-        padding: 20,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: theme.colors.textSecondary,
-    },
-    sectionTitle: {
-        fontSize: 24,
-        fontFamily: 'BespokeStencil-Extrabold',
-        letterSpacing: 1,
-        marginBottom: 12,
-        textTransform: 'uppercase',
-        color: theme.colors.tertiary, // Synchronized silver
-    },
-    text: {
-        fontSize: 16,
-        fontFamily: theme.fonts.medium,
-        lineHeight: 24,
-        letterSpacing: 0.5,
-    },
-    buttonContainer: {
-        paddingTop: 20,
-        alignItems: 'center',
-    },
-    backButton: {
-        minWidth: 200,
-    },
-});
+function getStyles(theme) {
+    return StyleSheet.create({
+        container: {
+            flex: 1,
+        },
+        content: {
+            flex: 1,
+            paddingTop: 80,
+            paddingHorizontal: 20,
+            paddingBottom: 20,
+        },
+        title: {
+            fontSize: 48,
+            fontFamily: 'BespokeStencil-Extrabold',
+            letterSpacing: 2,
+            textAlign: 'center',
+            marginBottom: 30,
+            textTransform: 'uppercase',
+            color: theme.colors.tertiary, // Synchronized silver
+        },
+        scrollView: {
+            flex: 1,
+        },
+        scrollContent: {
+            paddingBottom: 20,
+        },
+        section: {
+            marginBottom: 24,
+            backgroundColor: theme.colors.surface,
+            padding: 20,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: theme.colors.textSecondary,
+        },
+        sectionTitle: {
+            fontSize: 24,
+            fontFamily: 'BespokeStencil-Extrabold',
+            letterSpacing: 1,
+            marginBottom: 12,
+            textTransform: 'uppercase',
+            color: theme.colors.tertiary, // Synchronized silver
+        },
+        text: {
+            fontSize: 16,
+            fontFamily: theme.fonts.medium,
+            lineHeight: 24,
+            letterSpacing: 0.5,
+        },
+        buttonContainer: {
+            paddingTop: 20,
+            alignItems: 'center',
+        },
+        backButton: {
+            minWidth: 200,
+        },
+    });
+}

@@ -48,7 +48,8 @@ export default function VotingScreen({ route, navigation }) {
     );
 }
 
-const getStyles = (theme) => StyleSheet.create({
+function getStyles(theme) {
+    return StyleSheet.create({
     container: {
         flex: 1,
         paddingTop: 60,
@@ -99,3 +100,4 @@ const getStyles = (theme) => StyleSheet.create({
         borderColor: theme.colors.textMuted,
     },
 });
+}

@@ -1,0 +1,16 @@
+@echo off
+echo Fixing Metro Bundler Cache...
+echo.
+echo Step 1: Clearing watchman...
+call watchman watch-del-all 2>nul
+echo.
+echo Step 2: Removing node_modules/.cache...
+if exist node_modules\.cache rmdir /s /q node_modules\.cache
+echo.
+echo Step 3: Removing .expo cache...
+if exist .expo rmdir /s /q .expo
+echo.
+echo Step 4: Starting Metro with clear cache...
+echo Run: npx expo start --clear
+echo.
+pause
