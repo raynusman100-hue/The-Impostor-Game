@@ -26,7 +26,7 @@
       }
     },
     "android": {
-      "package": "com.usman.impostergame",
+      "package": "com.rayn100.impostergame",
       "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
