@@ -1,9 +1,11 @@
 workflows:
   android-production-aab:
-    name: Android Production AAB (Unsigned - for Play Console signing)
+    name: Android Production AAB (Signed)
     max_build_duration: 60
     instance_type: mac_mini_m1
     environment:
+      android_signing:
+        - keystore_reference
       vars:
         PACKAGE_NAME: "com.rayn100.impostergame"
       node: 20
