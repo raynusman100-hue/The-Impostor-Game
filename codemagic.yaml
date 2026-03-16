@@ -7,7 +7,7 @@ workflows:
       android_signing:
         - keystore_reference
       vars:
-        PACKAGE_NAME: "com.rayn100.impostergame"
+        PACKAGE_NAME: "com.rayn100.impostor"
       node: 20
     triggering:
       events:
@@ -46,7 +46,7 @@ workflows:
     instance_type: mac_mini_m1
     environment:
       vars:
-        PACKAGE_NAME: "com.rayn100.impostergame"
+        PACKAGE_NAME: "com.rayn100.impostor"
       node: 20
     triggering:
       events:
