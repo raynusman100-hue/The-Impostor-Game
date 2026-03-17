@@ -28,6 +28,7 @@ import PremiumScreen from './src/screens/PremiumScreen';
 import { ThemeProvider, useTheme } from './src/utils/ThemeContext';
 import { SettingsProvider } from './src/utils/SettingsContext';
 import { VoiceChatProvider } from './src/utils/VoiceChatContext';
+import PurchaseManager from './src/utils/PurchaseManager';
 
 // --- TEMP: SEED FIREBASE CONFIG ---
 import { ref, set } from 'firebase/database';
@@ -152,7 +153,11 @@ export default function App() {
   console.log('🚀 App.js: App() function called');
 
   // TEMP: Run once
-  useEffect(() => { seedConfig(); }, []);
+  useEffect(() => { 
+    seedConfig(); 
+    // Initialize RevenueCat
+    PurchaseManager.initialize();
+  }, []);
 
   const [appIsReady, setAppIsReady] = useState(false);
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(null); // null = loading, true/false = checked

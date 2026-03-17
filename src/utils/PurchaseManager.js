@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 // RevenueCat API Keys
 const API_KEYS = {
     apple: 'app06ec5f375b',  // iOS Production Key
-    google: 'goog_xxxxxxxxxx',  // Android Production Key - UPDATE THIS with your actual key from RevenueCat dashboard
+    google: 'goog_appe839010e85',  // Android Production Key - From RevenueCat dashboard
 };
 
 class PurchaseManager {
@@ -39,8 +39,8 @@ class PurchaseManager {
     async checkProStatus() {
         try {
             const customerInfo = await Purchases.getCustomerInfo();
-            // "pro_version" should be the Entitlement ID configured in RevenueCat
-            if (typeof customerInfo.entitlements.active['pro_version'] !== "undefined") {
+            // "premium" should be the Entitlement ID configured in RevenueCat
+            if (typeof customerInfo.entitlements.active['premium'] !== "undefined") {
                 this.setProStatus(true);
                 return true;
             } else {
@@ -78,7 +78,7 @@ class PurchaseManager {
 
                 const { customerInfo } = await Purchases.purchasePackage(packageToBuy);
 
-                if (typeof customerInfo.entitlements.active['pro_version'] !== "undefined") {
+                if (typeof customerInfo.entitlements.active['premium'] !== "undefined") {
                     this.setProStatus(true);
                     return { success: true };
                 }
@@ -95,7 +95,7 @@ class PurchaseManager {
     async restorePurchases() {
         try {
             const customerInfo = await Purchases.restorePurchases();
-            if (typeof customerInfo.entitlements.active['pro_version'] !== "undefined") {
+            if (typeof customerInfo.entitlements.active['premium'] !== "undefined") {
                 this.setProStatus(true);
                 return true;
             }

@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../utils/ThemeContext';
 import { playHaptic } from '../utils/haptics';
 import { setPremiumStatus } from '../utils/PremiumManager';
+import PurchaseManager from '../utils/PurchaseManager';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -63,54 +64,47 @@ export default function PremiumScreen({ navigation }) {
         setIsProcessing(true);
 
         try {
-            // TODO: Integrate with actual payment provider (RevenueCat, Stripe, etc.)
-            // For now, show a confirmation dialog
+            // Use RevenueCat for actual purchases
+            const result = await PurchaseManager.purchaseRemoveAds();
             
-            const planDetails = {
-                weekly: { price: '$1.99', period: 'week' },
-                monthly: { price: '$4.99', period: 'month' },
-                yearly: { price: '$19.99', period: 'year' }
-            };
-
-            const plan = planDetails[selectedPlan];
-
-            Alert.alert(
-                'Confirm Purchase',
-                `Subscribe to Premium for ${plan.price}/${plan.period}?\n\n✨ This is a test purchase - no actual payment will be charged.`,
-                [
-                    {
-                        text: 'Cancel',
-                        style: 'cancel',
-                        onPress: () => setIsProcessing(false)
-                    },
-                    {
-                        text: 'Subscribe',
-                        onPress: async () => {
-                            // Simulate purchase success
-                            await setPremiumStatus(true);
-                            playHaptic('success');
-                            
-                            Alert.alert(
-                                '🎉 Welcome to Premium!',
-                                'You now have access to all premium features!\n\n• No Ads\n• 12 Premium Categories\n• Custom Avatar Builder\n• Exclusive Game Modes',
-                                [
-                                    {
-                                        text: 'Awesome!',
-                                        onPress: () => {
-                                            setIsProcessing(false);
-                                            navigation.goBack();
-                                        }
-                                    }
-                                ]
-                            );
+            if (result.success) {
+                // Purchase successful
+                await setPremiumStatus(true);
+                playHaptic('success');
+                
+                Alert.alert(
+                    '🎉 Welcome to Premium!',
+                    'You now have access to all premium features!\n\n• No Ads\n• 12 Premium Categories\n• Custom Avatar Builder\n• Exclusive Game Modes',
+                    [
+                        {
+                            text: 'Awesome!',
+                            onPress: () => {
+                                setIsProcessing(false);
+                                navigation.goBack();
+                            }
                         }
-                    }
-                ]
-            );
+                    ]
+                );
+            } else {
+                // Purchase failed or cancelled
+                setIsProcessing(false);
+                
+                if (result.error !== 'User cancelled') {
+                    Alert.alert(
+                        'Purchase Failed', 
+                        result.error || 'Unable to complete purchase. Please try again.',
+                        [{ text: 'OK' }]
+                    );
+                }
+            }
         } catch (error) {
             console.error('Purchase error:', error);
-            Alert.alert('Error', 'Failed to process purchase. Please try again.');
             setIsProcessing(false);
+            Alert.alert(
+                'Purchase Error', 
+                'Unable to process purchase. Please check your connection and try again.',
+                [{ text: 'OK' }]
+            );
         }
     };
 
@@ -221,9 +215,9 @@ export default function PremiumScreen({ navigation }) {
                         </Text>
                     </TouchableOpacity>
 
-                    {/* Test Mode Note */}
+                    {/* Secure Payment Note */}
                     <Text style={[styles.comingSoonText, { color: theme.colors.tertiary }]}>
-                        TEST MODE - NO ACTUAL PAYMENT
+                        SECURE PAYMENT VIA GOOGLE PLAY
                     </Text>
                 </View>
             </View>
