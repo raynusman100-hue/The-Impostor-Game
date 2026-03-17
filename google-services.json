@@ -8,66 +8,6 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:831244408092:android:fde2e3f967607ce737d6d9",
-        "android_client_info": {
-          "package_name": "com.rayn100.impostergame"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "831244408092-00j2p0v2fejbv9e0l2kdbb2jultn6kp8.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.rayn100.impostergame",
-            "certificate_hash": "1fb5e79d76ffbf9e14dcc606464f6554f0bf4c6a"
-          }
-        },
-        {
-          "client_id": "831244408092-iqro5t18mgktp3mg6lkb1m3270990o62.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.rayn100.impostergame",
-            "certificate_hash": "81af3830d1fc6ec12b54c5819ca6401343614f6b"
-          }
-        },
-        {
-          "client_id": "831244408092-npku8gmq2bg7abqb2di0nt80vl6g6epm.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.rayn100.impostergame",
-            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
-          }
-        },
-        {
-          "client_id": "831244408092-mn4bhuvq6v4il0nippaiaf7q729o97bu.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyA8oJoBAHNbslcy-U4iQ_GpYNRuROhltx4"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "831244408092-mn4bhuvq6v4il0nippaiaf7q729o97bu.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "831244408092-oifo3c54on55brivq9kupic53ntbgrd2.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.rayn100.impostergame"
-              }
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
         "mobilesdk_app_id": "1:831244408092:android:bf3eaefe162f81b637d6d9",
         "android_client_info": {
           "package_name": "com.rayn100.impostor"
@@ -96,58 +36,6 @@
           "android_info": {
             "package_name": "com.rayn100.impostor",
             "certificate_hash": "81af3830d1fc6ec12b54c5819ca6401343614f6b"
-          }
-        },
-        {
-          "client_id": "831244408092-mn4bhuvq6v4il0nippaiaf7q729o97bu.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyA8oJoBAHNbslcy-U4iQ_GpYNRuROhltx4"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "831244408092-mn4bhuvq6v4il0nippaiaf7q729o97bu.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "831244408092-oifo3c54on55brivq9kupic53ntbgrd2.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.rayn100.impostergame"
-              }
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:831244408092:android:18c709db8fe438a637d6d9",
-        "android_client_info": {
-          "package_name": "com.usman.impostergame"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "831244408092-03kmfqu475u7ffv5mkah4u5v4ojofaqm.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.usman.impostergame",
-            "certificate_hash": "8b2b4401c7fb2d0873bce57d501d11fd7812515d"
-          }
-        },
-        {
-          "client_id": "831244408092-i966qf9ncg4reifvcgcshcnrs7nlgb63.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.usman.impostergame",
-            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
           }
         },
         {
