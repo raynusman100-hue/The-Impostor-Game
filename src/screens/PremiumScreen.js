@@ -1,21 +1,27 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Dimensions, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../utils/ThemeContext';
 import { playHaptic } from '../utils/haptics';
+import { setPremiumStatus } from '../utils/PremiumManager';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const PricingCard = ({ price, period, duration, isSelected, onSelect, theme, styles }) => (
+const PricingCard = ({ price, period, duration, isSelected, onSelect, theme, styles, badge, weeklyRate }) => (
     <TouchableOpacity
-        style={[styles.pricingCard, isSelected && styles.selectedCard]}
+        style={[styles.pricingCard, isSelected && styles.selectedCard, badge && styles.bestValueCard]}
         onPress={() => {
             playHaptic('light');
             onSelect();
         }}
         activeOpacity={0.8}
     >
+        {badge && (
+            <View style={[styles.badge, { backgroundColor: theme.colors.primary }]}>
+                <Text style={[styles.badgeText, { color: theme.colors.secondary }]}>{badge}</Text>
+            </View>
+        )}
         <View style={styles.cardContent}>
             <Text style={[styles.duration, { color: isSelected ? theme.colors.primary : theme.colors.textMuted }]}>
                 {duration}
@@ -25,6 +31,11 @@ const PricingCard = ({ price, period, duration, isSelected, onSelect, theme, sty
                 <Text style={[styles.price, { color: isSelected ? theme.colors.primary : theme.colors.text }]}>{price}</Text>
             </View>
             <Text style={[styles.period, { color: theme.colors.textMuted }]}>/ {period}</Text>
+            {weeklyRate && (
+                <Text style={[styles.weeklyRate, { color: theme.colors.primary }]}>
+                    ${weeklyRate}/week
+                </Text>
+            )}
         </View>
         {isSelected && (
             <View style={[styles.checkmark, { backgroundColor: theme.colors.primary }]}>
@@ -37,17 +48,70 @@ const PricingCard = ({ price, period, duration, isSelected, onSelect, theme, sty
 export default function PremiumScreen({ navigation }) {
     const { theme } = useTheme();
     const styles = getStyles(theme);
-    const [selectedPlan, setSelectedPlan] = useState('monthly'); // 'weekly', 'monthly', 'yearly'
+    const [selectedPlan, setSelectedPlan] = useState('yearly'); // Default to best value
+    const [isProcessing, setIsProcessing] = useState(false);
 
     const handleClose = () => {
         playHaptic('medium');
         navigation.goBack();
     };
 
-    const handleSubscribe = () => {
+    const handleSubscribe = async () => {
+        if (isProcessing) return;
+        
         playHaptic('medium');
-        // TODO: Implement payment
-        console.log('Selected plan:', selectedPlan);
+        setIsProcessing(true);
+
+        try {
+            // TODO: Integrate with actual payment provider (RevenueCat, Stripe, etc.)
+            // For now, show a confirmation dialog
+            
+            const planDetails = {
+                weekly: { price: '$1.99', period: 'week' },
+                monthly: { price: '$4.99', period: 'month' },
+                yearly: { price: '$19.99', period: 'year' }
+            };
+
+            const plan = planDetails[selectedPlan];
+
+            Alert.alert(
+                'Confirm Purchase',
+                `Subscribe to Premium for ${plan.price}/${plan.period}?\n\n✨ This is a test purchase - no actual payment will be charged.`,
+                [
+                    {
+                        text: 'Cancel',
+                        style: 'cancel',
+                        onPress: () => setIsProcessing(false)
+                    },
+                    {
+                        text: 'Subscribe',
+                        onPress: async () => {
+                            // Simulate purchase success
+                            await setPremiumStatus(true);
+                            playHaptic('success');
+                            
+                            Alert.alert(
+                                '🎉 Welcome to Premium!',
+                                'You now have access to all premium features!\n\n• No Ads\n• 12 Premium Categories\n• Custom Avatar Builder\n• Exclusive Game Modes',
+                                [
+                                    {
+                                        text: 'Awesome!',
+                                        onPress: () => {
+                                            setIsProcessing(false);
+                                            navigation.goBack();
+                                        }
+                                    }
+                                ]
+                            );
+                        }
+                    }
+                ]
+            );
+        } catch (error) {
+            console.error('Purchase error:', error);
+            Alert.alert('Error', 'Failed to process purchase. Please try again.');
+            setIsProcessing(false);
+        }
     };
 
     return (
@@ -104,50 +168,62 @@ export default function PremiumScreen({ navigation }) {
                         CHOOSE YOUR PLAN
                     </Text>
 
-                    <View style={styles.pricingRow}>
+                    <View style={styles.pricingColumn}>
+                        {/* Yearly - Best Value (Top) */}
                         <PricingCard
-                            price="2"
-                            period="WEEK"
-                            duration="WEEKLY"
-                            isSelected={selectedPlan === 'weekly'}
-                            onSelect={() => setSelectedPlan('weekly')}
-                            theme={theme}
-                            styles={styles}
-                        />
-                        <PricingCard
-                            price="6"
-                            period="MONTH"
-                            duration="MONTHLY"
-                            isSelected={selectedPlan === 'monthly'}
-                            onSelect={() => setSelectedPlan('monthly')}
-                            theme={theme}
-                            styles={styles}
-                        />
-                        <PricingCard
-                            price="20"
+                            price="19.99"
                             period="YEAR"
                             duration="YEARLY"
+                            weeklyRate="0.38"
+                            badge="BEST VALUE"
                             isSelected={selectedPlan === 'yearly'}
                             onSelect={() => setSelectedPlan('yearly')}
                             theme={theme}
                             styles={styles}
                         />
+                        
+                        {/* Monthly and Weekly in a row */}
+                        <View style={styles.pricingRow}>
+                            <PricingCard
+                                price="1.99"
+                                period="WEEK"
+                                duration="WEEKLY"
+                                isSelected={selectedPlan === 'weekly'}
+                                onSelect={() => setSelectedPlan('weekly')}
+                                theme={theme}
+                                styles={styles}
+                            />
+                            <PricingCard
+                                price="4.99"
+                                period="MONTH"
+                                duration="MONTHLY"
+                                isSelected={selectedPlan === 'monthly'}
+                                onSelect={() => setSelectedPlan('monthly')}
+                                theme={theme}
+                                styles={styles}
+                            />
+                        </View>
                     </View>
 
                     {/* Subscribe Button */}
                     <TouchableOpacity
-                        style={[styles.subscribeButton, { backgroundColor: theme.colors.primary }]}
+                        style={[
+                            styles.subscribeButton, 
+                            { backgroundColor: theme.colors.primary },
+                            isProcessing && styles.subscribeButtonDisabled
+                        ]}
                         onPress={handleSubscribe}
                         activeOpacity={0.8}
+                        disabled={isProcessing}
                     >
                         <Text style={[styles.subscribeText, { color: theme.colors.secondary }]}>
-                            SUBSCRIBE NOW
+                            {isProcessing ? 'PROCESSING...' : 'SUBSCRIBE NOW'}
                         </Text>
                     </TouchableOpacity>
 
-                    {/* Coming Soon Note */}
+                    {/* Test Mode Note */}
                     <Text style={[styles.comingSoonText, { color: theme.colors.tertiary }]}>
-                        PAYMENT INTEGRATION COMING SOON
+                        TEST MODE - NO ACTUAL PAYMENT
                     </Text>
                 </View>
             </View>
@@ -245,11 +321,14 @@ function getStyles(theme) {
             marginBottom: 10,
             textAlign: 'center',
         },
+        pricingColumn: {
+            gap: 12,
+            marginBottom: 16,
+        },
         pricingRow: {
             flexDirection: 'row',
             justifyContent: 'space-between',
             gap: 8,
-            marginBottom: 16,
         },
         pricingCard: {
             flex: 1,
@@ -260,10 +339,30 @@ function getStyles(theme) {
             position: 'relative',
             minHeight: 110,
         },
+        bestValueCard: {
+            borderColor: theme.colors.primary,
+            borderWidth: 3,
+            backgroundColor: theme.colors.primary + '15',
+        },
         selectedCard: {
             borderColor: theme.colors.primary,
             borderWidth: 3,
             backgroundColor: theme.colors.primary + '10',
+        },
+        badge: {
+            position: 'absolute',
+            top: -10,
+            left: '50%',
+            transform: [{ translateX: -40 }],
+            paddingHorizontal: 12,
+            paddingVertical: 4,
+            borderRadius: 12,
+            zIndex: 10,
+        },
+        badgeText: {
+            fontSize: 9,
+            fontFamily: 'Panchang-Bold',
+            letterSpacing: 1.5,
         },
         cardContent: {
             padding: 12,
@@ -298,6 +397,12 @@ function getStyles(theme) {
             fontFamily: 'Teko-Medium',
             letterSpacing: 1,
         },
+        weeklyRate: {
+            fontSize: 11,
+            fontFamily: 'Panchang-Bold',
+            letterSpacing: 0.5,
+            marginTop: 4,
+        },
         checkmark: {
             position: 'absolute',
             top: -8,
@@ -314,6 +419,9 @@ function getStyles(theme) {
             borderRadius: 12,
             alignItems: 'center',
             marginBottom: 10,
+        },
+        subscribeButtonDisabled: {
+            opacity: 0.6,
         },
         subscribeText: {
             fontSize: 15,
