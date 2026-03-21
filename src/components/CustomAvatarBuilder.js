@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { playHaptic } from '../utils/haptics';
+import PremiumManager from '../utils/PremiumManager';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -13,6 +14,36 @@ const HAIR_STYLES = ['none', 'short', 'spiky', 'curly', 'wavy', 'long', 'ponytai
 const HAIR_COLORS = ['#1a1a1a', '#4A3728', '#8B4513', '#D4A574', '#FFD700', '#FF6B6B', '#9B59B6', '#3498DB'];
 const ACCESSORIES = ['none', 'glasses', 'sunglasses', 'roundGlasses', 'eyepatch', 'bandana', 'earrings', 'headphones'];
 const BG_COLORS = ['#FFB800', '#FF6B6B', '#4ECDC4', '#9B59B6', '#3498DB', '#2ECC71', '#E74C3C', '#1a1a1a'];
+
+// Premium-locked accessories (only the most recently added special ones)
+const PREMIUM_ACCESSORIES = ['bandana', 'earrings', 'headphones'];
+
+// Premium-locked hair styles (special/unique styles)
+const PREMIUM_HAIR_STYLES = ['mohawk', 'cap', 'beanie'];
+
+// Premium-locked eye styles (special/expressive styles)
+const PREMIUM_EYE_STYLES = ['wink', 'angry', 'cute'];
+
+// Premium-locked mouth styles (special/expressive styles)
+const PREMIUM_MOUTH_STYLES = ['kiss', 'teeth', 'smirk'];
+
+// Helper function to check if an accessory is premium
+export const isPremiumAccessory = (accessory) => PREMIUM_ACCESSORIES.includes(accessory);
+
+// Helper function to check if a hair style is premium
+export const isPremiumHairStyle = (hairStyle) => PREMIUM_HAIR_STYLES.includes(hairStyle);
+
+// Helper function to check if an eye style is premium
+export const isPremiumEyeStyle = (eyeStyle) => PREMIUM_EYE_STYLES.includes(eyeStyle);
+
+// Helper function to check if a mouth style is premium
+export const isPremiumMouthStyle = (mouthStyle) => PREMIUM_MOUTH_STYLES.includes(mouthStyle);
+
+// Export premium lists for reference
+export const getPremiumAccessories = () => [...PREMIUM_ACCESSORIES];
+export const getPremiumHairStyles = () => [...PREMIUM_HAIR_STYLES];
+export const getPremiumEyeStyles = () => [...PREMIUM_EYE_STYLES];
+export const getPremiumMouthStyles = () => [...PREMIUM_MOUTH_STYLES];
 
 // ============ AVATAR DISPLAY COMPONENT ============
 export const CustomBuiltAvatar = ({ config, size = 100 }) => {
@@ -121,7 +152,7 @@ export const CustomBuiltAvatar = ({ config, size = 100 }) => {
 
 
 // ============ BUILDER UI - CLEAN LAYOUT ============
-const CustomAvatarBuilder = ({ initialConfig, onSave, onCancel, theme }) => {
+const CustomAvatarBuilder = ({ initialConfig, onSave, onCancel, theme, onPremiumRequired }) => {
     const colors = theme?.colors || { primary: '#FFB800', secondary: '#000', background: '#0a0a0a', surface: '#1a1a1a', text: '#fff', textMuted: '#888' };
     
     const [config, setConfig] = useState(initialConfig || {
@@ -129,35 +160,137 @@ const CustomAvatarBuilder = ({ initialConfig, onSave, onCancel, theme }) => {
         hairStyle: 'none', hairColor: '#1a1a1a', accessory: 'none', bgColor: '#FFB800',
     });
     const [activeTab, setActiveTab] = useState('face');
+    const [hasPremium, setHasPremium] = useState(false);
 
-    const update = (key, value) => { playHaptic('light'); setConfig(p => ({ ...p, [key]: value })); };
+    // Check premium status on mount and when config changes
+    useEffect(() => {
+        const checkPremium = async () => {
+            const premium = await PremiumManager.checkPremiumStatus();
+            setHasPremium(premium);
+            
+            // If user doesn't have premium and current config has premium items, reset them
+            if (!premium) {
+                let needsUpdate = false;
+                const newConfig = { ...config };
+                
+                if (config.accessory && PREMIUM_ACCESSORIES.includes(config.accessory)) {
+                    console.log('User lost premium access, resetting premium accessory to none');
+                    newConfig.accessory = 'none';
+                    needsUpdate = true;
+                }
+                
+                if (config.hairStyle && PREMIUM_HAIR_STYLES.includes(config.hairStyle)) {
+                    console.log('User lost premium access, resetting premium hair style to none');
+                    newConfig.hairStyle = 'none';
+                    needsUpdate = true;
+                }
+                
+                if (config.eyeStyle && PREMIUM_EYE_STYLES.includes(config.eyeStyle)) {
+                    console.log('User lost premium access, resetting premium eye style to normal');
+                    newConfig.eyeStyle = 'normal';
+                    needsUpdate = true;
+                }
+                
+                if (config.mouthStyle && PREMIUM_MOUTH_STYLES.includes(config.mouthStyle)) {
+                    console.log('User lost premium access, resetting premium mouth style to smile');
+                    newConfig.mouthStyle = 'smile';
+                    needsUpdate = true;
+                }
+                
+                if (needsUpdate) {
+                    setConfig(newConfig);
+                }
+            }
+        };
+        checkPremium();
+    }, [initialConfig]); // Re-run when initialConfig changes
+
+    const update = (key, value) => { 
+        // Check if trying to select a premium accessory without premium access
+        if (key === 'accessory' && PREMIUM_ACCESSORIES.includes(value) && !hasPremium) {
+            playHaptic('error');
+            if (onPremiumRequired) {
+                onPremiumRequired();
+            }
+            return;
+        }
+        
+        // Check if trying to select a premium hair style without premium access
+        if (key === 'hairStyle' && PREMIUM_HAIR_STYLES.includes(value) && !hasPremium) {
+            playHaptic('error');
+            if (onPremiumRequired) {
+                onPremiumRequired();
+            }
+            return;
+        }
+        
+        // Check if trying to select a premium eye style without premium access
+        if (key === 'eyeStyle' && PREMIUM_EYE_STYLES.includes(value) && !hasPremium) {
+            playHaptic('error');
+            if (onPremiumRequired) {
+                onPremiumRequired();
+            }
+            return;
+        }
+        
+        // Check if trying to select a premium mouth style without premium access
+        if (key === 'mouthStyle' && PREMIUM_MOUTH_STYLES.includes(value) && !hasPremium) {
+            playHaptic('error');
+            if (onPremiumRequired) {
+                onPremiumRequired();
+            }
+            return;
+        }
+        
+        playHaptic('light'); 
+        setConfig(p => ({ ...p, [key]: value })); 
+    };
     
     const randomize = () => {
         playHaptic('medium');
+        
+        // Filter items based on premium status
+        const availableAccessories = hasPremium 
+            ? ACCESSORIES 
+            : ACCESSORIES.filter(acc => !PREMIUM_ACCESSORIES.includes(acc));
+            
+        const availableHairStyles = hasPremium
+            ? HAIR_STYLES
+            : HAIR_STYLES.filter(hair => !PREMIUM_HAIR_STYLES.includes(hair));
+            
+        const availableEyeStyles = hasPremium
+            ? EYE_STYLES
+            : EYE_STYLES.filter(eye => !PREMIUM_EYE_STYLES.includes(eye));
+            
+        const availableMouthStyles = hasPremium
+            ? MOUTH_STYLES
+            : MOUTH_STYLES.filter(mouth => !PREMIUM_MOUTH_STYLES.includes(mouth));
+        
         setConfig({
             faceShape: FACE_SHAPES[Math.floor(Math.random() * FACE_SHAPES.length)],
             skinColor: SKIN_COLORS[Math.floor(Math.random() * SKIN_COLORS.length)],
-            eyeStyle: EYE_STYLES[Math.floor(Math.random() * EYE_STYLES.length)],
-            mouthStyle: MOUTH_STYLES[Math.floor(Math.random() * MOUTH_STYLES.length)],
-            hairStyle: HAIR_STYLES[Math.floor(Math.random() * HAIR_STYLES.length)],
+            eyeStyle: availableEyeStyles[Math.floor(Math.random() * availableEyeStyles.length)],
+            mouthStyle: availableMouthStyles[Math.floor(Math.random() * availableMouthStyles.length)],
+            hairStyle: availableHairStyles[Math.floor(Math.random() * availableHairStyles.length)],
             hairColor: HAIR_COLORS[Math.floor(Math.random() * HAIR_COLORS.length)],
-            accessory: ACCESSORIES[Math.floor(Math.random() * ACCESSORIES.length)],
+            accessory: availableAccessories[Math.floor(Math.random() * availableAccessories.length)],
             bgColor: BG_COLORS[Math.floor(Math.random() * BG_COLORS.length)],
         });
     };
 
     // Text option button
-    const TextBtn = ({ value, selected, onPress }) => (
+    const TextBtn = ({ value, selected, onPress, isPremium = false, isLocked = false }) => (
         <TouchableOpacity 
             onPress={onPress} 
             style={[
                 styles.textBtn, 
                 { borderColor: selected ? colors.primary : colors.textMuted + '40' }, 
-                selected && { backgroundColor: colors.primary + '20' }
+                selected && { backgroundColor: colors.primary + '20' },
+                isLocked && { opacity: 0.5 }
             ]}
         >
             <Text style={[styles.textBtnLabel, { color: selected ? colors.primary : colors.textMuted }]}>
-                {value.toUpperCase()}
+                {isLocked ? '🔒 ' : ''}{value.toUpperCase()}
             </Text>
         </TouchableOpacity>
     );
@@ -221,9 +354,20 @@ const CustomAvatarBuilder = ({ initialConfig, onSave, onCancel, theme }) => {
                     <View style={styles.tabContent}>
                         <Text style={[styles.sectionTitle, { color: colors.primary }]}>EYE STYLE</Text>
                         <View style={styles.optionGrid}>
-                            {EYE_STYLES.map(v => (
-                                <TextBtn key={v} value={v} selected={config.eyeStyle === v} onPress={() => update('eyeStyle', v)} />
-                            ))}
+                            {EYE_STYLES.map(v => {
+                                const isPremium = PREMIUM_EYE_STYLES.includes(v);
+                                const isLocked = isPremium && !hasPremium;
+                                return (
+                                    <TextBtn 
+                                        key={v} 
+                                        value={v} 
+                                        selected={config.eyeStyle === v} 
+                                        onPress={() => update('eyeStyle', v)}
+                                        isPremium={isPremium}
+                                        isLocked={isLocked}
+                                    />
+                                );
+                            })}
                         </View>
                     </View>
                 );
@@ -233,9 +377,20 @@ const CustomAvatarBuilder = ({ initialConfig, onSave, onCancel, theme }) => {
                     <View style={styles.tabContent}>
                         <Text style={[styles.sectionTitle, { color: colors.primary }]}>MOUTH STYLE</Text>
                         <View style={styles.optionGrid}>
-                            {MOUTH_STYLES.map(v => (
-                                <TextBtn key={v} value={v} selected={config.mouthStyle === v} onPress={() => update('mouthStyle', v)} />
-                            ))}
+                            {MOUTH_STYLES.map(v => {
+                                const isPremium = PREMIUM_MOUTH_STYLES.includes(v);
+                                const isLocked = isPremium && !hasPremium;
+                                return (
+                                    <TextBtn 
+                                        key={v} 
+                                        value={v} 
+                                        selected={config.mouthStyle === v} 
+                                        onPress={() => update('mouthStyle', v)}
+                                        isPremium={isPremium}
+                                        isLocked={isLocked}
+                                    />
+                                );
+                            })}
                         </View>
                     </View>
                 );
@@ -245,9 +400,20 @@ const CustomAvatarBuilder = ({ initialConfig, onSave, onCancel, theme }) => {
                     <View style={styles.tabContent}>
                         <Text style={[styles.sectionTitle, { color: colors.primary }]}>HAIR STYLE</Text>
                         <View style={styles.optionGrid}>
-                            {HAIR_STYLES.map(v => (
-                                <TextBtn key={v} value={v} selected={config.hairStyle === v} onPress={() => update('hairStyle', v)} />
-                            ))}
+                            {HAIR_STYLES.map(v => {
+                                const isPremium = PREMIUM_HAIR_STYLES.includes(v);
+                                const isLocked = isPremium && !hasPremium;
+                                return (
+                                    <TextBtn 
+                                        key={v} 
+                                        value={v} 
+                                        selected={config.hairStyle === v} 
+                                        onPress={() => update('hairStyle', v)}
+                                        isPremium={isPremium}
+                                        isLocked={isLocked}
+                                    />
+                                );
+                            })}
                         </View>
                         
                         <Text style={[styles.sectionTitle, { color: colors.primary }]}>HAIR COLOR</Text>
@@ -264,9 +430,20 @@ const CustomAvatarBuilder = ({ initialConfig, onSave, onCancel, theme }) => {
                     <View style={styles.tabContent}>
                         <Text style={[styles.sectionTitle, { color: colors.primary }]}>ACCESSORIES</Text>
                         <View style={styles.optionGrid}>
-                            {ACCESSORIES.map(v => (
-                                <TextBtn key={v} value={v} selected={config.accessory === v} onPress={() => update('accessory', v)} />
-                            ))}
+                            {ACCESSORIES.map(v => {
+                                const isPremium = PREMIUM_ACCESSORIES.includes(v);
+                                const isLocked = isPremium && !hasPremium;
+                                return (
+                                    <TextBtn 
+                                        key={v} 
+                                        value={v} 
+                                        selected={config.accessory === v} 
+                                        onPress={() => update('accessory', v)}
+                                        isPremium={isPremium}
+                                        isLocked={isLocked}
+                                    />
+                                );
+                            })}
                         </View>
                     </View>
                 );

@@ -18,9 +18,11 @@ export const useVoiceChat = () => useContext(VoiceChatContext);
 // Disabled stub provider - for web or when disabled
 const DisabledVoiceChatProvider = ({ children }) => {
     const [isMuted, setIsMuted] = useState(false);
+    const [hostHasPremium, setHostHasPremium] = useState(false);
+    const [currentRoomCode, setCurrentRoomCode] = useState(null);
 
-    const joinChannel = async (channelName, uid) => {
-        console.log('VoiceChat: DISABLED - joinChannel called for', channelName);
+    const joinChannel = async (channelName, uid, roomCode = null) => {
+        console.log('VoiceChat: DISABLED - joinChannel called for', channelName, 'room:', roomCode);
     };
 
     const leaveChannel = async () => {
@@ -31,6 +33,17 @@ const DisabledVoiceChatProvider = ({ children }) => {
         setIsMuted(prev => !prev);
     };
 
+    const setRoomCodeForPremiumMonitoring = (roomCode) => {
+        console.log('VoiceChat: DISABLED - setRoomCodeForPremiumMonitoring called for', roomCode);
+        setCurrentRoomCode(roomCode);
+    };
+
+    const clearRoomCodeForPremiumMonitoring = () => {
+        console.log('VoiceChat: DISABLED - clearRoomCodeForPremiumMonitoring called');
+        setCurrentRoomCode(null);
+        setHostHasPremium(false);
+    };
+
     return (
         <VoiceChatContext.Provider value={{
             isJoined: false,
@@ -38,7 +51,13 @@ const DisabledVoiceChatProvider = ({ children }) => {
             remoteUsers: [],
             joinChannel,
             leaveChannel,
-            toggleMute
+            toggleMute,
+            // Premium status management (disabled but consistent interface)
+            hostHasPremium,
+            currentRoomCode,
+            premiumStatusLoading: false,
+            setRoomCodeForPremiumMonitoring,
+            clearRoomCodeForPremiumMonitoring,
         }}>
             {children}
         </VoiceChatContext.Provider>
@@ -57,6 +76,12 @@ const FullVoiceChatProvider = ({ children }) => {
     const [currentAppId, setCurrentAppId] = useState(null); // Track the actual ID used
     const [appIdLoading, setAppIdLoading] = useState(true); // Track if we're fetching from Firebase
     const currentChannelRef = useRef(null);
+    
+    // Premium status state management
+    const [hostHasPremium, setHostHasPremium] = useState(false);
+    const [currentRoomCode, setCurrentRoomCode] = useState(null);
+    const [premiumStatusLoading, setPremiumStatusLoading] = useState(false);
+    const premiumListenerRef = useRef(null);
 
     // Fetch current App ID from Firebase rotation pool
     const fetchCurrentAppId = async () => {
@@ -246,12 +271,135 @@ const FullVoiceChatProvider = ({ children }) => {
         };
     }, [currentAppId]);
 
-    const joinChannel = async (channelName, uid, specificAppId = null) => {
+    // Premium status monitoring for current room
+    useEffect(() => {
+        if (!currentRoomCode) {
+            console.log('🎤 [PREMIUM LISTENER] No room code set, skipping premium listener');
+            return;
+        }
+
+        console.log('🎤 [PREMIUM LISTENER] Setting up real-time premium status listener for room:', currentRoomCode);
+        setPremiumStatusLoading(true);
+
+        const premiumRef = ref(database, `rooms/${currentRoomCode}/hostHasPremium`);
+        let previousPremiumStatus = null;
+
+        const unsubscribe = onValue(premiumRef, (snapshot) => {
+            const premiumStatus = snapshot.val();
+            console.log('🎤 [PREMIUM LISTENER] Premium status update:', premiumStatus);
+            
+            // Handle different cases for premium status
+            const newPremiumStatus = premiumStatus === null || premiumStatus === undefined ? false : Boolean(premiumStatus);
+            
+            // Check if premium was lost during active session
+            if (previousPremiumStatus === true && newPremiumStatus === false && isJoined) {
+                console.log('🎤 [PREMIUM LISTENER] ⚠️ Premium lost during active session - disconnecting voice chat');
+                
+                // Show alert to user
+                Alert.alert(
+                    'Voice Chat Disconnected',
+                    'The host\'s premium subscription has expired. Voice chat is no longer available.',
+                    [{ text: 'OK' }]
+                );
+                
+                // Disconnect from voice chat
+                leaveChannel().catch(err => {
+                    console.error('🎤 [PREMIUM LISTENER] Error leaving channel on premium loss:', err);
+                });
+            }
+            
+            previousPremiumStatus = newPremiumStatus;
+            setHostHasPremium(newPremiumStatus);
+            setPremiumStatusLoading(false);
+        }, (error) => {
+            console.error('🎤 [PREMIUM LISTENER] Error listening to premium status:', error);
+            // On error, default to no premium for security
+            setHostHasPremium(false);
+            setPremiumStatusLoading(false);
+        });
+
+        // Store the unsubscribe function
+        premiumListenerRef.current = unsubscribe;
+
+        return () => {
+            console.log('🎤 [PREMIUM LISTENER] Cleaning up premium status listener');
+            if (premiumListenerRef.current) {
+                premiumListenerRef.current();
+                premiumListenerRef.current = null;
+            }
+        };
+    }, [currentRoomCode, isJoined]);
+
+    // Function to set/update the room code for premium monitoring
+    const setRoomCodeForPremiumMonitoring = (roomCode) => {
+        console.log('🎤 [PREMIUM] Setting room code for premium monitoring:', roomCode);
+        setCurrentRoomCode(roomCode);
+        
+        // Reset premium status when changing rooms
+        if (roomCode !== currentRoomCode) {
+            setHostHasPremium(false);
+            setPremiumStatusLoading(true);
+        }
+    };
+
+    // Function to clear room code and stop premium monitoring
+    const clearRoomCodeForPremiumMonitoring = () => {
+        console.log('🎤 [PREMIUM] Clearing room code, stopping premium monitoring');
+        setCurrentRoomCode(null);
+        setHostHasPremium(false);
+        setPremiumStatusLoading(false);
+        
+        // Clean up existing listener
+        if (premiumListenerRef.current) {
+            premiumListenerRef.current();
+            premiumListenerRef.current = null;
+        }
+    };
+
+    const joinChannel = async (channelName, uid, roomCode = null, specificAppId = null) => {
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log('🎤 [TRAP 10] joinChannel() CALLED');
         console.log('🎤 [TRAP 10] Channel:', channelName);
         console.log('🎤 [TRAP 10] UID:', uid);
+        console.log('🎤 [TRAP 10] Room Code:', roomCode);
         console.log('🎤 [TRAP 10] Specific App ID:', specificAppId);
+
+        // PREMIUM GATING: Check host premium status before allowing voice chat
+        if (roomCode) {
+            console.log('🎤 [PREMIUM] Checking host premium status for room:', roomCode);
+            try {
+                const roomRef = ref(database, `rooms/${roomCode}/hostHasPremium`);
+                const snapshot = await get(roomRef);
+                const hostHasPremium = snapshot.val();
+                
+                console.log('🎤 [PREMIUM] Host premium status:', hostHasPremium);
+                
+                if (hostHasPremium === false) {
+                    const error = new Error('Voice chat requires the host to have premium');
+                    error.code = 'PREMIUM_REQUIRED';
+                    console.log('🎤 [PREMIUM] ❌ Premium required but not available');
+                    throw error;
+                } else if (hostHasPremium === null || hostHasPremium === undefined) {
+                    console.log('🎤 [PREMIUM] ⚠️ Premium status not found, defaulting to no access');
+                    const error = new Error('Voice chat requires the host to have premium');
+                    error.code = 'PREMIUM_REQUIRED';
+                    throw error;
+                } else {
+                    console.log('🎤 [PREMIUM] ✅ Host has premium, proceeding with voice chat');
+                }
+            } catch (error) {
+                if (error.code === 'PREMIUM_REQUIRED') {
+                    throw error; // Re-throw premium errors
+                }
+                console.error('🎤 [PREMIUM] ❌ Error checking premium status:', error);
+                // On Firebase errors, default to no premium access for security
+                const premiumError = new Error('Voice chat requires the host to have premium');
+                premiumError.code = 'PREMIUM_REQUIRED';
+                throw premiumError;
+            }
+        } else {
+            console.log('🎤 [PREMIUM] ⚠️ No room code provided, skipping premium check');
+        }
 
         // RE-INITIALIZATION LIGIC FOR ROTATION
         if (specificAppId && specificAppId !== currentAppId) {
@@ -312,7 +460,7 @@ const FullVoiceChatProvider = ({ children }) => {
 
         if (!engineInitialized || !agoraEngineRef.current) {
             console.log('🎤 [TRAP 11] Engine not ready, retrying in 500ms...');
-            setTimeout(() => joinChannel(channelName, uid), 500);
+            setTimeout(() => joinChannel(channelName, uid, roomCode, specificAppId), 500);
             return;
         }
         console.log('🎤 [TRAP 11] ✅ Engine is ready');
@@ -421,6 +569,12 @@ const FullVoiceChatProvider = ({ children }) => {
             joinError,
             error: initError || joinError, // Consolidated error for UI
             currentAppId, // Exposed for debug
+            // Premium status management
+            hostHasPremium,
+            currentRoomCode,
+            premiumStatusLoading,
+            setRoomCodeForPremiumMonitoring,
+            clearRoomCodeForPremiumMonitoring,
         }}>
             {children}
         </VoiceChatContext.Provider>

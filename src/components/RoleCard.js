@@ -220,9 +220,11 @@ export default function RoleCard({ player, category, hintsEnabled, onNext, langu
             <View style={styles.cardContainer}>
                 {/* BACK LAYER - The Info */}
                 <View style={[styles.cardBackLayer, { borderColor: roleColor }]}>
-                    <Text style={[styles.roleTitle, { color: roleColor }]}>
-                        {player.role.toUpperCase()}
-                    </Text>
+                    {player.role !== 'Citizen' && (
+                        <Text style={[styles.roleTitle, { color: roleColor }]}>
+                            {player.role.toUpperCase()}
+                        </Text>
+                    )}
 
                     <View style={styles.infoContainer}>
                         {player.role === 'Citizen' ? (

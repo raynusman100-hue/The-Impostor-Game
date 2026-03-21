@@ -14,6 +14,7 @@ import { safeFirebaseUpdate, verifyRoomAccess } from '../utils/connectionUtils';
 import ChatSystem from '../components/ChatSystem';
 import VoiceControl from '../components/VoiceControl';
 import { useVoiceChat } from '../utils/VoiceChatContext';
+import PremiumRequiredMessage from '../components/PremiumRequiredMessage';
 
 // Film perforation component for Kodak aesthetic (same as SetupScreen)
 const FilmPerforations = ({ side, theme }) => {
@@ -200,13 +201,33 @@ export default function DiscussionScreen({ route, navigation }) {
         }
     }, [isWifi, roomCode, playerId]);
 
-    // Voice Chat Integration
-    const { joinChannel } = useVoiceChat();
+    // Voice Chat Integration with Premium Gating
+    const { joinChannel, hostHasPremium, setRoomCodeForPremiumMonitoring, clearRoomCodeForPremiumMonitoring } = useVoiceChat();
+    
+    // Set up premium monitoring when screen loads
     useEffect(() => {
         if (isWifi && roomCode) {
-            joinChannel(roomCode, 0);
+            console.log('🎤 [DISCUSSION] Setting up premium monitoring for room:', roomCode);
+            setRoomCodeForPremiumMonitoring(roomCode);
         }
+        
+        return () => {
+            if (isWifi && roomCode) {
+                console.log('🎤 [DISCUSSION] Clearing premium monitoring');
+                clearRoomCodeForPremiumMonitoring();
+            }
+        };
     }, [isWifi, roomCode]);
+    
+    // Auto-join voice chat only if host has premium
+    useEffect(() => {
+        if (isWifi && roomCode && hostHasPremium) {
+            console.log('🎤 [DISCUSSION] Host has premium, auto-joining voice chat');
+            joinChannel(roomCode, 0, roomCode);
+        } else if (isWifi && roomCode && hostHasPremium === false) {
+            console.log('🎤 [DISCUSSION] Host lacks premium, skipping voice chat auto-join');
+        }
+    }, [isWifi, roomCode, hostHasPremium]);
 
     // 2. Main Game Stream Listener + Room Monitoring - OPTIMIZED TO PREVENT DOUBLE LOADING
     useEffect(() => {
@@ -616,8 +637,20 @@ export default function DiscussionScreen({ route, navigation }) {
                     </View>
                 </View>
 
-                {/* Voice Control for Wifi Mode */}
-                {isWifi && <VoiceControl />}
+                {/* Voice Control for Wifi Mode - Only if host has premium */}
+                {isWifi && hostHasPremium && <VoiceControl />}
+                
+                {/* Premium Message when voice is unavailable */}
+                {isWifi && hostHasPremium === false && (
+                    <View style={styles.premiumMessageOverlay}>
+                        <PremiumRequiredMessage 
+                            type="discussion"
+                            isHost={playerId === 'host-id'}
+                            onUpgrade={() => navigation.navigate('Profile')}
+                            compact={true}
+                        />
+                    </View>
+                )}
 
                 {/* Header / Room Code */}
                 <View style={styles.header}>
@@ -1005,6 +1038,15 @@ function getStyles(theme) {
         fontFamily: theme.fonts.header,
         ...theme.textShadows.depth,
     },
-    countdownNote: { color: theme.colors.textMuted, fontSize: 12, fontFamily: theme.fonts.medium, textAlign: 'center', letterSpacing: 2 }
+    countdownNote: { color: theme.colors.textMuted, fontSize: 12, fontFamily: theme.fonts.medium, textAlign: 'center', letterSpacing: 2 },
+    
+    // Premium message overlay styling
+    premiumMessageOverlay: {
+        position: 'absolute',
+        top: 20,
+        right: 20,
+        zIndex: 998,
+        maxWidth: 200,
+    },
 });
 }

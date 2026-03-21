@@ -6,7 +6,7 @@ import { useTheme } from '../utils/ThemeContext';
 import KodakButton from '../components/KodakButton';
 import { playHaptic } from '../utils/haptics';
 import { database } from '../utils/firebase';
-import { ref, set, onValue, off, onDisconnect, update, remove } from 'firebase/database';
+import { ref, set, onValue, off, onDisconnect, update, remove, get } from 'firebase/database';
 import { startWifiGame } from '../utils/multiplayerLogic';
 import { CATEGORY_LABELS } from '../utils/words';
 import { SUPPORTED_LANGUAGES } from '../utils/translationService';
@@ -14,11 +14,14 @@ import LanguageSelectorModal from '../components/LanguageSelectorModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ChatSystem from '../components/ChatSystem';
 import VoiceControl from '../components/VoiceControl';
+import VoiceTab from '../components/VoiceTab';
 import { useVoiceChat } from '../utils/VoiceChatContext';
 import { CustomAvatar } from '../utils/AvatarGenerator';
 import { CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
 import CategorySelectionModal from '../components/CategorySelectionModal';
 import { useVoiceParticipantsTracker } from '../utils/VoiceParticipantsTracker';
+import { checkPremiumStatus, checkAndSyncHostPremium } from '../utils/PremiumManager';
+import { updateHostPremiumStatus } from '../utils/connectionUtils';
 
 // Film perforation component for Kodak aesthetic
 const FilmPerforations = ({ side, theme }) => {
@@ -149,25 +152,89 @@ export default function HostScreen({ navigation, route }) {
                     // Ignore if no handler exists
                 }
 
+                // Retrieve stamped App ID from existing room
+                try {
+                    const roomSnapshot = await get(roomRef);
+                    const roomData = roomSnapshot.val();
+                    if (roomData?.agoraAppId) {
+                        setStampedAppId(roomData.agoraAppId);
+                        console.log("🔄 HOST: Retrieved stamped App ID from existing room:", roomData.agoraAppId);
+                    }
+                } catch (err) {
+                    console.warn("🔄 HOST: Failed to retrieve stamped App ID from existing room:", err);
+                }
+
+                // Check and update host premium status for existing room with retry logic
+                let hostHasPremium = false;
+                let retryCount = 0;
+                const maxRetries = 3;
+                
+                while (retryCount < maxRetries) {
+                    try {
+                        hostHasPremium = await checkPremiumStatus(null, playerData.uid);
+                        console.log("🔄 HOST: Premium status checked for existing room:", hostHasPremium);
+                        break; // Success, exit retry loop
+                    } catch (err) {
+                        retryCount++;
+                        console.warn(`🔄 HOST: Premium check attempt ${retryCount} failed for existing room:`, err);
+                        
+                        if (retryCount < maxRetries) {
+                            // Exponential backoff: 1s, 2s, 4s
+                            const delay = Math.pow(2, retryCount - 1) * 1000;
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                        } else {
+                            console.warn("🔄 HOST: All premium check attempts failed for existing room, defaulting to false");
+                            hostHasPremium = false;
+                        }
+                    }
+                }
+
                 await update(roomRef, {
                     status: 'lobby',
                     gameStarted: false,
                     gameInProgress: false,
                     hostDisconnected: false,
-                    hostLeft: false
+                    hostLeft: false,
+                    hostHasPremium: hostHasPremium // <--- UPDATE PREMIUM STATUS
                 });
             } else {
                 // CREATING NEW ROOM
                 console.log("🔄 HOST: Creating new room:", roomCode);
 
                 // 1. Fetch current Agora App ID from pool
-                let stampedAppId = null;
+                let appId = null;
                 try {
                     const { fetchCurrentAgoraAppId } = require('../utils/remoteConfig');
-                    stampedAppId = await fetchCurrentAgoraAppId();
-                    console.log("🔄 HOST: Stamped room with App ID:", stampedAppId);
+                    appId = await fetchCurrentAgoraAppId();
+                    setStampedAppId(appId);
+                    console.log("🔄 HOST: Stamped room with App ID:", appId);
                 } catch (err) {
                     console.warn("🔄 HOST: Failed to fetch App ID for stamp, using default/fallback logic");
+                }
+
+                // 2. Check host premium status with retry logic
+                let hostHasPremium = false;
+                let retryCount = 0;
+                const maxRetries = 3;
+                
+                while (retryCount < maxRetries) {
+                    try {
+                        hostHasPremium = await checkPremiumStatus(null, playerData.uid);
+                        console.log("🔄 HOST: Premium status checked:", hostHasPremium);
+                        break; // Success, exit retry loop
+                    } catch (err) {
+                        retryCount++;
+                        console.warn(`🔄 HOST: Premium check attempt ${retryCount} failed:`, err);
+                        
+                        if (retryCount < maxRetries) {
+                            // Exponential backoff: 1s, 2s, 4s
+                            const delay = Math.pow(2, retryCount - 1) * 1000;
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                        } else {
+                            console.warn("🔄 HOST: All premium check attempts failed, defaulting to false");
+                            hostHasPremium = false;
+                        }
+                    }
                 }
 
                 await set(roomRef, {
@@ -177,7 +244,8 @@ export default function HostScreen({ navigation, route }) {
                     hostId: playerData.uid,
                     hostAvatar: playerData.avatarId,
                     hostAvatarConfig: playerData.customAvatarConfig || null,
-                    agoraAppId: stampedAppId // <--- THE LOBBY STAMP 🏷️
+                    agoraAppId: appId, // <--- THE LOBBY STAMP 🏷️
+                    hostHasPremium: hostHasPremium // <--- NEW FIELD FOR PREMIUM STATUS
                 });
             }
 
@@ -238,8 +306,9 @@ export default function HostScreen({ navigation, route }) {
     }, [navigation, playerData, roomCode, existingRoomCode]);
 
     // Voice Chat Integration - Manual join only
-    const { isJoined, joinChannel, leaveChannel } = useVoiceChat();
+    const { isJoined, joinChannel, leaveChannel, setRoomCodeForPremiumMonitoring, clearRoomCodeForPremiumMonitoring } = useVoiceChat();
     const [voiceParticipants, setVoiceParticipants] = useState([]);
+    const [stampedAppId, setStampedAppId] = useState(null);
 
     // Track voice participants in Firebase
     useVoiceParticipantsTracker(
@@ -249,6 +318,39 @@ export default function HostScreen({ navigation, route }) {
         isJoined,
         setVoiceParticipants
     );
+
+    // Premium status monitoring and synchronization
+    useEffect(() => {
+        if (!roomCode || !playerData) {
+            console.log('🎤 [HOST PREMIUM] No room code or player data, skipping premium monitoring');
+            return;
+        }
+
+        console.log('🎤 [HOST PREMIUM] Setting up premium monitoring for room:', roomCode);
+        
+        // Enable real-time premium status monitoring via VoiceChatContext
+        setRoomCodeForPremiumMonitoring(roomCode);
+
+        // Set up periodic premium status sync to handle mid-session changes
+        const syncInterval = setInterval(async () => {
+            try {
+                console.log('🎤 [HOST PREMIUM] Periodic premium status check...');
+                const currentPremium = await checkPremiumStatus(null, playerData.uid);
+                
+                // Update Firebase with current premium status
+                await updateHostPremiumStatus(roomCode, currentPremium);
+                console.log('🎤 [HOST PREMIUM] Premium status synced:', currentPremium);
+            } catch (error) {
+                console.error('🎤 [HOST PREMIUM] Error syncing premium status:', error);
+            }
+        }, 30000); // Check every 30 seconds
+
+        return () => {
+            console.log('🎤 [HOST PREMIUM] Cleaning up premium monitoring');
+            clearInterval(syncInterval);
+            clearRoomCodeForPremiumMonitoring();
+        };
+    }, [roomCode, playerData, setRoomCodeForPremiumMonitoring, clearRoomCodeForPremiumMonitoring]);
 
     const toggleCategory = (key) => {
         playHaptic('light');
@@ -345,6 +447,13 @@ export default function HostScreen({ navigation, route }) {
         }
     }, [activeTab]);
 
+    // Premium upgrade handler
+    const handlePremiumRequired = useCallback(() => {
+        playHaptic('medium');
+        console.log('🎤 [HOST] Premium upgrade requested');
+        navigation.navigate('Profile');
+    }, [navigation]);
+
     if (!playerData) return null;
 
     return (
@@ -409,79 +518,16 @@ export default function HostScreen({ navigation, route }) {
                 </View>
             ) : activeTab === 'voice' ? (
                 <View style={styles.voiceContainer}>
-                    {!isJoined ? (
-                        <>
-                            <Text style={styles.voiceInstructions}>
-                                VOICE CHAT
-                            </Text>
-                            {voiceParticipants.length > 0 ? (
-                                <Text style={styles.voiceSubInstructions}>
-                                    {voiceParticipants.length} {voiceParticipants.length === 1 ? 'MEMBER' : 'MEMBERS'} IN CALL
-                                </Text>
-                            ) : (
-                                <Text style={styles.voiceSubInstructions}>
-                                    No one in voice chat yet
-                                </Text>
-                            )}
-                            <TouchableOpacity
-                                style={styles.joinVoiceBtn}
-                                onPress={() => {
-                                    playHaptic('heavy');
-                                    joinChannel(roomCode, 0);
-                                }}
-                            >
-                                <View style={styles.joinVoiceInner}>
-                                    <Text
-                                        style={styles.joinVoiceText}
-                                        numberOfLines={1}
-                                        adjustsFontSizeToFit
-                                    >
-                                        JOIN CALL
-                                    </Text>
-                                </View>
-                            </TouchableOpacity>
-                        </>
-                    ) : (
-                        <>
-                            <Text style={styles.voiceInstructions}>
-                                IN VOICE CHAT
-                            </Text>
-
-                            {/* Participants List */}
-                            <View style={styles.voiceParticipantsList}>
-                                {voiceParticipants.map((participant) => (
-                                    <View key={participant.id} style={styles.voiceParticipantRow}>
-                                        {participant.customAvatarConfig ? (
-                                            <CustomBuiltAvatar config={participant.customAvatarConfig} size={32} />
-                                        ) : (
-                                            <CustomAvatar id={participant.avatarId || 1} size={32} />
-                                        )}
-                                        <Text style={styles.voiceParticipantName} numberOfLines={1}>
-                                            {participant.id === 'host-id' ? 'You' : participant.name}
-                                        </Text>
-                                    </View>
-                                ))}
-                            </View>
-
-                            <VoiceControl />
-
-                            <TouchableOpacity
-                                style={styles.leaveVoiceBtn}
-                                onPress={() => {
-                                    playHaptic('medium');
-                                    leaveChannel();
-                                }}
-                            >
-                                <Text
-                                    style={styles.leaveVoiceText}
-                                    numberOfLines={1}
-                                    adjustsFontSizeToFit
-                                >
-                                    LEAVE CALL
-                                </Text>
-                            </TouchableOpacity>
-                        </>
-                    )}
+                    <VoiceTab
+                        roomCode={roomCode}
+                        playerId="host-id"
+                        playerName={playerData.name}
+                        voiceParticipants={voiceParticipants}
+                        isHost={true}
+                        onPremiumRequired={handlePremiumRequired}
+                        context="host"
+                        stampedAppId={stampedAppId}
+                    />
                 </View>
             ) : (
                 <ScrollView

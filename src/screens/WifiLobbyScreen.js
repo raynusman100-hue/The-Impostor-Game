@@ -12,6 +12,7 @@ import { CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
 
 import ChatSystem from '../components/ChatSystem';
 import VoiceControl from '../components/VoiceControl';
+import VoiceTab from '../components/VoiceTab';
 import { useVoiceChat } from '../utils/VoiceChatContext';
 import { useVoiceParticipantsTracker } from '../utils/VoiceParticipantsTracker';
 
@@ -69,7 +70,7 @@ export default function WifiLobbyScreen({ route, navigation }) {
     const [unreadMessages, setUnreadMessages] = useState(0);
 
     // Voice Chat Integration
-    const { isJoined, joinChannel, leaveChannel } = useVoiceChat();
+    const { isJoined } = useVoiceChat();
     const [voiceParticipants, setVoiceParticipants] = useState([]);
 
     // Track voice participants in Firebase
@@ -81,6 +82,18 @@ export default function WifiLobbyScreen({ route, navigation }) {
         setVoiceParticipants
     );
     // Auto-join REMOVED - User must join manually via Voice tab
+
+    // Handle premium upgrade navigation
+    const handlePremiumUpgrade = () => {
+        console.log('🎤 [WifiLobby] Premium upgrade requested - navigating to Profile');
+        // Players cannot upgrade - only host can
+        // Show informative message instead
+        Alert.alert(
+            'Premium Required',
+            'Voice chat requires the host to have premium. Ask the host to upgrade!',
+            [{ text: 'OK' }]
+        );
+    };
 
     // Disable Android back button
     useEffect(() => {
@@ -311,84 +324,16 @@ export default function WifiLobbyScreen({ route, navigation }) {
                         onUnreadChange={handleUnreadChange}
                     />
                 ) : activeTab === 'voice' ? (
-                    <View style={styles.voiceContainer}>
-                        {!isJoined ? (
-                            <>
-                                <Text style={styles.voiceInstructions}>
-                                    VOICE CHAT
-                                </Text>
-                                {voiceParticipants.length > 0 ? (
-                                    <Text style={styles.voiceSubInstructions}>
-                                        {voiceParticipants.length} {voiceParticipants.length === 1 ? 'MEMBER' : 'MEMBERS'} IN CALL
-                                    </Text>
-                                ) : (
-                                    <Text style={styles.voiceSubInstructions}>
-                                        No one in voice chat yet
-                                    </Text>
-                                )}
-                                <TouchableOpacity
-                                    style={styles.joinVoiceBtn}
-                                    onPress={() => {
-                                        playHaptic('heavy');
-                                        console.log('🎤 WifiLobby: Joining with stamped App ID:', stampedAppId);
-                                        joinChannel(roomCode, 0, stampedAppId);
-                                    }}
-                                >
-                                    <View style={styles.joinVoiceInner}>
-                                        <Text
-                                            style={styles.joinVoiceText}
-                                            numberOfLines={1}
-                                            adjustsFontSizeToFit
-                                        >
-                                            JOIN CALL
-                                        </Text>
-                                    </View>
-                                </TouchableOpacity>
-                            </>
-                        ) : (
-                            <>
-                                <Text style={styles.voiceInstructions}>
-                                    IN VOICE CHAT
-                                </Text>
-
-                                {/* Participants List */}
-                                <View style={styles.voiceParticipantsList}>
-                                    {voiceParticipants.map((participant) => (
-                                        <View key={participant.id} style={styles.voiceParticipantRow}>
-                                            {participant.customAvatarConfig ? (
-                                                <CustomBuiltAvatar config={participant.customAvatarConfig} size={32} />
-                                            ) : (
-                                                <CustomAvatar id={participant.avatarId || 1} size={32} />
-                                            )}
-                                            <Text style={styles.voiceParticipantName} numberOfLines={1}>
-                                                {participant.id === playerId ? 'You' : participant.name}
-                                            </Text>
-                                        </View>
-                                    ))}
-                                </View>
-
-                                <Text style={[styles.voiceSubInstructions, { marginTop: 20, color: theme.colors.tertiary }]}>
-                                    Use the floating mic button to mute/unmute
-                                </Text>
-
-                                <TouchableOpacity
-                                    style={styles.leaveVoiceBtn}
-                                    onPress={() => {
-                                        playHaptic('medium');
-                                        leaveChannel();
-                                    }}
-                                >
-                                    <Text
-                                        style={styles.leaveVoiceText}
-                                        numberOfLines={1}
-                                        adjustsFontSizeToFit
-                                    >
-                                        LEAVE CALL
-                                    </Text>
-                                </TouchableOpacity>
-                            </>
-                        )}
-                    </View>
+                    <VoiceTab
+                        roomCode={roomCode}
+                        playerId={playerId}
+                        playerName={playerName}
+                        voiceParticipants={voiceParticipants}
+                        isHost={false}
+                        onPremiumRequired={handlePremiumUpgrade}
+                        context="lobby"
+                        stampedAppId={stampedAppId}
+                    />
                 ) : (
                     <>
                         <View style={styles.loaderContainer}>
@@ -748,100 +693,6 @@ function getStyles(theme) {
         leaveBtn: {
             width: '100%',
             marginBottom: 50,
-        },
-
-        // Voice Tab Styles
-        voiceContainer: {
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-            width: '100%',
-        },
-        voiceInstructions: {
-            fontSize: 24,
-            fontFamily: theme.fonts.header,
-            color: theme.colors.primary,
-            letterSpacing: 2,
-            marginBottom: 10,
-            textAlign: 'center',
-            ...theme.textShadows.glow,
-        },
-        voiceSubInstructions: {
-            fontSize: 14,
-            fontFamily: theme.fonts.medium,
-            color: theme.colors.tertiary,
-            letterSpacing: 1,
-            textAlign: 'center',
-            opacity: 0.8,
-            marginBottom: 30,
-        },
-        voiceParticipantsList: {
-            width: '100%',
-            maxWidth: 300,
-            marginVertical: 20,
-            gap: 12,
-        },
-        voiceParticipantRow: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 12,
-            paddingVertical: 8,
-            paddingHorizontal: 16,
-            borderRadius: 12,
-            backgroundColor: theme.colors.surface,
-            borderWidth: 1,
-            borderColor: theme.colors.primary + '30',
-        },
-        voiceParticipantName: {
-            fontSize: 16,
-            fontFamily: theme.fonts.medium,
-            color: theme.colors.text,
-            letterSpacing: 1,
-            flex: 1,
-        },
-        joinVoiceBtn: {
-            width: 120,
-            height: 120,
-            borderRadius: 60,
-            backgroundColor: theme.colors.primary,
-            justifyContent: 'center',
-            alignItems: 'center',
-            elevation: 10,
-            shadowColor: theme.colors.primary,
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.5,
-            shadowRadius: 10,
-            marginTop: 20,
-        },
-        joinVoiceInner: {
-            width: 110,
-            height: 110,
-            borderRadius: 55,
-            borderWidth: 2,
-            borderColor: theme.colors.secondary,
-            justifyContent: 'center',
-            alignItems: 'center',
-            backgroundColor: theme.colors.primary,
-        },
-        joinVoiceText: {
-            fontFamily: theme.fonts.bold,
-            color: theme.colors.secondary,
-            fontSize: 18,
-            textAlign: 'center',
-        },
-        leaveVoiceBtn: {
-            marginTop: 40,
-            paddingVertical: 10,
-            paddingHorizontal: 20,
-            borderRadius: 8,
-            borderWidth: 1,
-            borderColor: theme.colors.error,
-        },
-        leaveVoiceText: {
-            color: theme.colors.error,
-            fontFamily: theme.fonts.bold,
-            fontSize: 12,
-            letterSpacing: 2,
         },
     });
 }

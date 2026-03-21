@@ -15,7 +15,6 @@ class AdManager {
     constructor() {
         this.interstitial = null;
         this.loaded = false;
-        this.hasPremium = false;
     }
 
     static getInstance() {
@@ -25,25 +24,37 @@ class AdManager {
         return AdManager.instance;
     }
 
-    async updatePremiumStatus(userEmail, userId) {
-        this.hasPremium = await checkPremiumStatus(userEmail, userId);
-        console.log('AdManager: Premium status updated:', this.hasPremium);
-    }
-
-    loadInterstitial() {
-        if (!ADS_ENABLED || isWeb || !shouldShowAds(this.hasPremium)) {
-            console.log('AdManager: DISABLED - loadInterstitial called (Premium:', this.hasPremium, ')');
+    async loadInterstitial(userEmail = null, userId = null) {
+        if (!ADS_ENABLED || isWeb) {
+            console.log('AdManager: DISABLED - ads not enabled or on web platform');
             return;
         }
+
+        // Check premium status in real-time
+        const hasPremium = await checkPremiumStatus(userEmail, userId);
+        if (!shouldShowAds(hasPremium)) {
+            console.log('AdManager: DISABLED - user has premium access');
+            return;
+        }
+
         this._loadInterstitialFull();
     }
 
-    showInterstitial(onAdClosed) {
-        if (!ADS_ENABLED || isWeb || !shouldShowAds(this.hasPremium)) {
-            console.log('AdManager: DISABLED - showInterstitial called (Premium:', this.hasPremium, ')');
+    async showInterstitial(onAdClosed, userEmail = null, userId = null) {
+        if (!ADS_ENABLED || isWeb) {
+            console.log('AdManager: DISABLED - ads not enabled or on web platform');
             onAdClosed?.();
             return;
         }
+
+        // Check premium status in real-time
+        const hasPremium = await checkPremiumStatus(userEmail, userId);
+        if (!shouldShowAds(hasPremium)) {
+            console.log('AdManager: DISABLED - user has premium access');
+            onAdClosed?.();
+            return;
+        }
+
         this._showInterstitialFull(onAdClosed);
     }
 

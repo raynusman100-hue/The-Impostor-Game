@@ -13,11 +13,10 @@ export default function AppInitializer({ navigation }) {
     useEffect(() => {
         const checkPremiumShow = async () => {
             try {
-                // Check premium status first
+                // Check premium status for logging purposes
                 const user = auth.currentUser;
                 if (user) {
                     const hasPremium = await checkPremiumStatus(user.email, user.uid);
-                    await AdManager.updatePremiumStatus(user.email, user.uid);
                     console.log('User premium status:', hasPremium);
                 }
 

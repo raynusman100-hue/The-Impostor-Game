@@ -8,7 +8,8 @@ import { useTheme } from '../utils/ThemeContext';
 import { playHaptic } from '../utils/haptics';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { CustomAvatar, TOTAL_AVATARS } from '../utils/AvatarGenerator';
-import { AvatarBuilder, CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
+import { AvatarBuilder, CustomBuiltAvatar, isPremiumAccessory, isPremiumHairStyle, isPremiumEyeStyle, isPremiumMouthStyle } from '../components/CustomAvatarBuilder';
+import PremiumManager from '../utils/PremiumManager';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android') {
@@ -20,8 +21,9 @@ if (Platform.OS === 'android') {
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // Configure Google Sign-In for native builds
+// Using Play Store OAuth client for production builds
 GoogleSignin.configure({
-    webClientId: '831244408092-g256j85sdka2e5ql548r28ignggbjm7u.apps.googleusercontent.com',
+    webClientId: '831244408092-v3hlt8mhdeomk11nebfbe90vhh9t73cc.apps.googleusercontent.com',
     iosClientId: '831244408092-oifo3c54on55brivq9kupic53ntbgrd2.apps.googleusercontent.com',
     offlineAccess: true,
 });
@@ -387,8 +389,32 @@ export default function ProfileScreen({ navigation }) {
                         setUsername(name);
                         setSelectedAvatarId(parsed.avatarId || 1);
 
-                        // Load config but don't force it to be active unless saved that way
-                        const loadedConfig = parsed.customAvatarConfig || parsed.customAvatar || null;
+                        // Load config but validate premium items
+                        let loadedConfig = parsed.customAvatarConfig || parsed.customAvatar || null;
+                        
+                        // Check if config has premium items and user doesn't have premium
+                        if (loadedConfig) {
+                            const hasPremiumAccessory = loadedConfig.accessory && isPremiumAccessory(loadedConfig.accessory);
+                            const hasPremiumHair = loadedConfig.hairStyle && isPremiumHairStyle(loadedConfig.hairStyle);
+                            const hasPremiumEye = loadedConfig.eyeStyle && isPremiumEyeStyle(loadedConfig.eyeStyle);
+                            const hasPremiumMouth = loadedConfig.mouthStyle && isPremiumMouthStyle(loadedConfig.mouthStyle);
+                            
+                            if (hasPremiumAccessory || hasPremiumHair || hasPremiumEye || hasPremiumMouth) {
+                                const hasPremium = await PremiumManager.checkPremiumStatus();
+                                if (!hasPremium) {
+                                    console.log('User has premium items but no premium - resetting');
+                                    loadedConfig = { ...loadedConfig };
+                                    if (hasPremiumAccessory) loadedConfig.accessory = 'none';
+                                    if (hasPremiumHair) loadedConfig.hairStyle = 'none';
+                                    if (hasPremiumEye) loadedConfig.eyeStyle = 'normal';
+                                    if (hasPremiumMouth) loadedConfig.mouthStyle = 'smile';
+                                    // Update stored profile
+                                    parsed.customAvatarConfig = loadedConfig;
+                                    await AsyncStorage.setItem('user_profile', JSON.stringify(parsed));
+                                }
+                            }
+                        }
+                        
                         setCustomAvatarConfig(loadedConfig);
                         setAvatarMode(parsed.useCustomAvatar ? 'custom' : 'premade');
 
@@ -404,7 +430,29 @@ export default function ProfileScreen({ navigation }) {
                         setUsername(name);
                         setSelectedAvatarId(userData.avatarId || 1);
 
-                        const loadedConfig = userData.customAvatarConfig || userData.customAvatar || null;
+                        // Load config but validate premium items
+                        let loadedConfig = userData.customAvatarConfig || userData.customAvatar || null;
+                        
+                        // Check if config has premium items and user doesn't have premium
+                        if (loadedConfig) {
+                            const hasPremiumAccessory = loadedConfig.accessory && isPremiumAccessory(loadedConfig.accessory);
+                            const hasPremiumHair = loadedConfig.hairStyle && isPremiumHairStyle(loadedConfig.hairStyle);
+                            const hasPremiumEye = loadedConfig.eyeStyle && isPremiumEyeStyle(loadedConfig.eyeStyle);
+                            const hasPremiumMouth = loadedConfig.mouthStyle && isPremiumMouthStyle(loadedConfig.mouthStyle);
+                            
+                            if (hasPremiumAccessory || hasPremiumHair || hasPremiumEye || hasPremiumMouth) {
+                                const hasPremium = await PremiumManager.checkPremiumStatus();
+                                if (!hasPremium) {
+                                    console.log('User has premium items but no premium - resetting');
+                                    loadedConfig = { ...loadedConfig };
+                                    if (hasPremiumAccessory) loadedConfig.accessory = 'none';
+                                    if (hasPremiumHair) loadedConfig.hairStyle = 'none';
+                                    if (hasPremiumEye) loadedConfig.eyeStyle = 'normal';
+                                    if (hasPremiumMouth) loadedConfig.mouthStyle = 'smile';
+                                }
+                            }
+                        }
+                        
                         setCustomAvatarConfig(loadedConfig);
                         setAvatarMode(userData.useCustomAvatar ? 'custom' : 'premade');
 
@@ -751,6 +799,11 @@ export default function ProfileScreen({ navigation }) {
                                 setCustomAvatarConfig(config);
                                 setShowBuilder(false);
                                 playHaptic('success');
+                            }}
+                            onPremiumRequired={() => {
+                                playHaptic('warning');
+                                setShowBuilder(false);
+                                navigation.navigate('Premium');
                             }}
                         />
                     </View>

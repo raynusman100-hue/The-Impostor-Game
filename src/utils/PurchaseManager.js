@@ -1,10 +1,12 @@
 import Purchases from 'react-native-purchases';
 import { Platform } from 'react-native';
 
-// RevenueCat API Keys
+// RevenueCat Public SDK Keys (Safe to include in app)
+// These are PUBLIC keys - they cannot grant premium without actual payment
+// All purchases are verified server-side by Apple/Google through RevenueCat
 const API_KEYS = {
-    apple: 'app06ec5f375b',  // iOS Production Key
-    google: 'goog_appe839010e85',  // Android Production Key - From RevenueCat dashboard
+    apple: 'appl_GidmNgibMGrbuhmiJwrzLeJLEZM',  // iOS Public SDK Key
+    google: 'goog_WeLuvQfgjZEppbpIoqiqCzciCqq',  // Android Public SDK Key
 };
 
 class PurchaseManager {
@@ -13,6 +15,7 @@ class PurchaseManager {
     constructor() {
         this.isPro = false;
         this.listeners = [];
+        this.expirationDate = null;
     }
 
     static getInstance() {
@@ -40,17 +43,32 @@ class PurchaseManager {
         try {
             const customerInfo = await Purchases.getCustomerInfo();
             // "premium" should be the Entitlement ID configured in RevenueCat
-            if (typeof customerInfo.entitlements.active['premium'] !== "undefined") {
+            const premiumEntitlement = customerInfo.entitlements.active['premium'];
+            
+            if (premiumEntitlement) {
                 this.setProStatus(true);
+                // Store expiration info for debugging/UI purposes
+                this.expirationDate = premiumEntitlement.expirationDate;
+                console.log('✅ Premium active, expires:', this.expirationDate);
                 return true;
             } else {
                 this.setProStatus(false);
+                this.expirationDate = null;
+                console.log('❌ No active premium entitlement');
                 return false;
             }
         } catch (error) {
             console.log('Error checking pro status:', error);
-            return false;
+            // Don't change current status on error - RevenueCat handles offline caching
+            // Return current known status instead of defaulting to false
+            console.log('Using last known premium status:', this.isPro);
+            return this.isPro;
         }
+    }
+
+    // Get expiration date for UI display (optional)
+    getExpirationDate() {
+        return this.expirationDate;
     }
 
     // NEW: Fetch current offering to get the display price
@@ -67,14 +85,16 @@ class PurchaseManager {
         }
     }
 
-    async purchaseRemoveAds() {
+    async purchaseRemoveAds(planType) {
         try {
             // Fetch available offerings
             const offerings = await Purchases.getOfferings();
 
             if (offerings.current !== null && offerings.current.availablePackages.length !== 0) {
-                // Assume the first package is the "Remove Ads" one
-                const packageToBuy = offerings.current.availablePackages[0];
+                // Find the package that matches the selected plan (weekly, monthly, yearly)
+                const packageToBuy = offerings.current.availablePackages.find(
+                    (pkg) => pkg.identifier === planType
+                ) || offerings.current.availablePackages[0];
 
                 const { customerInfo } = await Purchases.purchasePackage(packageToBuy);
 

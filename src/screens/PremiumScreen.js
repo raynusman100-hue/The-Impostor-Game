@@ -9,12 +9,12 @@ import PurchaseManager from '../utils/PurchaseManager';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const PricingCard = ({ price, period, duration, isSelected, onSelect, theme, styles, badge, weeklyRate }) => (
+const PricingCard = ({ price, period, duration, isSelected, onPurchase, theme, styles, badge, weeklyRate }) => (
     <TouchableOpacity
         style={[styles.pricingCard, isSelected && styles.selectedCard, badge && styles.bestValueCard]}
         onPress={() => {
-            playHaptic('light');
-            onSelect();
+            playHaptic('medium');
+            onPurchase();
         }}
         activeOpacity={0.8}
     >
@@ -49,7 +49,6 @@ const PricingCard = ({ price, period, duration, isSelected, onSelect, theme, sty
 export default function PremiumScreen({ navigation }) {
     const { theme } = useTheme();
     const styles = getStyles(theme);
-    const [selectedPlan, setSelectedPlan] = useState('yearly'); // Default to best value
     const [isProcessing, setIsProcessing] = useState(false);
 
     const handleClose = () => {
@@ -57,15 +56,14 @@ export default function PremiumScreen({ navigation }) {
         navigation.goBack();
     };
 
-    const handleSubscribe = async () => {
+    const handlePurchase = async (planType) => {
         if (isProcessing) return;
         
-        playHaptic('medium');
         setIsProcessing(true);
 
         try {
-            // Use RevenueCat for actual purchases
-            const result = await PurchaseManager.purchaseRemoveAds();
+            // Use RevenueCat for actual purchases, passing the selected plan
+            const result = await PurchaseManager.purchaseRemoveAds(planType);
             
             if (result.success) {
                 // Purchase successful
@@ -170,8 +168,8 @@ export default function PremiumScreen({ navigation }) {
                             duration="YEARLY"
                             weeklyRate="0.38"
                             badge="BEST VALUE"
-                            isSelected={selectedPlan === 'yearly'}
-                            onSelect={() => setSelectedPlan('yearly')}
+                            isSelected={false}
+                            onPurchase={() => handlePurchase('$rc_annual')}
                             theme={theme}
                             styles={styles}
                         />
@@ -182,8 +180,8 @@ export default function PremiumScreen({ navigation }) {
                                 price="1.99"
                                 period="WEEK"
                                 duration="WEEKLY"
-                                isSelected={selectedPlan === 'weekly'}
-                                onSelect={() => setSelectedPlan('weekly')}
+                                isSelected={false}
+                                onPurchase={() => handlePurchase('$rc_weekly')}
                                 theme={theme}
                                 styles={styles}
                             />
@@ -191,29 +189,13 @@ export default function PremiumScreen({ navigation }) {
                                 price="4.99"
                                 period="MONTH"
                                 duration="MONTHLY"
-                                isSelected={selectedPlan === 'monthly'}
-                                onSelect={() => setSelectedPlan('monthly')}
+                                isSelected={false}
+                                onPurchase={() => handlePurchase('$rc_monthly')}
                                 theme={theme}
                                 styles={styles}
                             />
                         </View>
                     </View>
-
-                    {/* Subscribe Button */}
-                    <TouchableOpacity
-                        style={[
-                            styles.subscribeButton, 
-                            { backgroundColor: theme.colors.primary },
-                            isProcessing && styles.subscribeButtonDisabled
-                        ]}
-                        onPress={handleSubscribe}
-                        activeOpacity={0.8}
-                        disabled={isProcessing}
-                    >
-                        <Text style={[styles.subscribeText, { color: theme.colors.secondary }]}>
-                            {isProcessing ? 'PROCESSING...' : 'SUBSCRIBE NOW'}
-                        </Text>
-                    </TouchableOpacity>
 
                     {/* Secure Payment Note */}
                     <Text style={[styles.comingSoonText, { color: theme.colors.tertiary }]}>
@@ -263,11 +245,11 @@ function getStyles(theme) {
             flex: 1,
             padding: 20,
             paddingTop: Platform.OS === 'ios' ? 100 : 80,
-            justifyContent: 'space-between',
+            paddingBottom: 30,
         },
         header: {
             alignItems: 'center',
-            marginBottom: 16,
+            marginBottom: 20,
         },
         pretitle: {
             fontSize: 12,
@@ -291,7 +273,7 @@ function getStyles(theme) {
             width: '100%',
             borderRadius: 16,
             padding: 18,
-            marginBottom: 16,
+            marginBottom: 24,
             borderWidth: 2,
         },
         featuresList: {
@@ -312,17 +294,17 @@ function getStyles(theme) {
             fontSize: 12,
             fontFamily: 'Teko-Medium',
             letterSpacing: 3,
-            marginBottom: 10,
+            marginBottom: 16,
             textAlign: 'center',
         },
         pricingColumn: {
-            gap: 12,
-            marginBottom: 16,
+            gap: 16,
+            marginBottom: 20,
         },
         pricingRow: {
             flexDirection: 'row',
             justifyContent: 'space-between',
-            gap: 8,
+            gap: 12,
         },
         pricingCard: {
             flex: 1,

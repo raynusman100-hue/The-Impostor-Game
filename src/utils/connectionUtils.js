@@ -51,6 +51,49 @@ export const safeFirebaseUpdate = async (path, updates, maxRetries = 3) => {
 };
 
 /**
+ * Update host premium status in Firebase
+ */
+export const updateHostPremiumStatus = async (roomCode, hasPremium) => {
+    return safeFirebaseUpdate(`rooms/${roomCode}`, { hostHasPremium: hasPremium });
+};
+
+/**
+ * Update Firebase host premium status with comprehensive error handling and logging
+ * This function provides enhanced debugging capabilities for premium status updates
+ */
+export const updateFirebaseHostPremium = async (roomCode, hasPremium) => {
+    console.log(`[updateFirebaseHostPremium] Starting update for room ${roomCode}, premium: ${hasPremium}`);
+    
+    try {
+        // Validate inputs
+        if (!roomCode || typeof roomCode !== 'string') {
+            throw new Error('Invalid room code provided');
+        }
+        
+        if (typeof hasPremium !== 'boolean') {
+            throw new Error('Premium status must be a boolean value');
+        }
+        
+        // Perform the Firebase update with retry logic
+        await safeFirebaseUpdate(`rooms/${roomCode}`, { hostHasPremium: hasPremium });
+        
+        console.log(`[updateFirebaseHostPremium] Successfully updated room ${roomCode} with premium status: ${hasPremium}`);
+        return { success: true, roomCode, hasPremium };
+        
+    } catch (error) {
+        console.error(`[updateFirebaseHostPremium] Failed to update room ${roomCode}:`, {
+            error: error.message,
+            roomCode,
+            hasPremium,
+            timestamp: new Date().toISOString()
+        });
+        
+        // Re-throw the error for upstream handling
+        throw new Error(`Firebase premium update failed for room ${roomCode}: ${error.message}`);
+    }
+};
+
+/**
  * Monitor connection status and provide callbacks
  */
 export const createConnectionMonitor = (onConnected, onDisconnected) => {

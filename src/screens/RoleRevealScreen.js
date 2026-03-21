@@ -52,7 +52,7 @@ export default function RoleRevealScreen({ route, navigation }) {
     const { joinChannel } = useVoiceChat();
     useEffect(() => {
         if (isWifi && params.roomCode) {
-            joinChannel(params.roomCode, 0);
+            joinChannel(params.roomCode, 0, params.roomCode);
         }
     }, [isWifi, params.roomCode]);
 

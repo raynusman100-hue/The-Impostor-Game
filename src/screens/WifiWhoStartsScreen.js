@@ -170,7 +170,7 @@ export default function WifiWhoStartsScreen({ route, navigation }) {
     const { joinChannel } = useVoiceChat();
     useEffect(() => {
         if (roomCode) {
-            joinChannel(roomCode, 0);
+            joinChannel(roomCode, 0, roomCode);
         }
     }, [roomCode]);
 
