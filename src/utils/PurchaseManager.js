@@ -16,6 +16,8 @@ class PurchaseManager {
         this.isPro = false;
         this.listeners = [];
         this.expirationDate = null;
+        this.isConfigured = false; // Track SDK initialization state
+        this.debugText = "Loading RC...";
     }
 
     static getInstance() {
@@ -33,15 +35,49 @@ class PurchaseManager {
                 await Purchases.configure({ apiKey: API_KEYS.google });
             }
 
+            // Mark SDK as configured
+            this.isConfigured = true;
+
+            // Initial check to populate cache
             await this.checkProStatus();
+            
+            // Set up background refresh every 60 seconds to keep cache fresh
+            this.refreshInterval = setInterval(() => {
+                console.log('🔄 Background premium refresh...');
+                this.checkProStatus().catch(err => {
+                    console.log('Background refresh failed:', err);
+                });
+            }, 60000); // 60 seconds
+            
         } catch (error) {
             console.log('PurchaseManager Init Error:', error);
+            this.isConfigured = false;
         }
     }
 
+    // INSTANT: Return cached status synchronously
+    getProStatus() {
+        return this.isPro;
+    }
+
+    // BACKGROUND: Refresh premium status from RevenueCat (async)
     async checkProStatus() {
         try {
             const customerInfo = await Purchases.getCustomerInfo();
+            
+            // 🐛 DIAGNOSTIC LOGGING
+            try {
+                const appUserID = await Purchases.getAppUserID();
+                this.debugText = `RC ID: ${appUserID}\nOrig: ${customerInfo.originalAppUserId}\nActive: ${Object.keys(customerInfo.entitlements.active || {}).join(',') || 'none'}\nAll: ${Object.keys(customerInfo.entitlements.all || {}).join(',') || 'none'}`;
+                console.log('📊 [RC DEBUG] Current App User ID:', appUserID);
+                console.log('📊 [RC DEBUG] Original App User ID:', customerInfo.originalAppUserId);
+                console.log('📊 [RC DEBUG] Active Entitlements:', Object.keys(customerInfo.entitlements.active || {}));
+                console.log('📊 [RC DEBUG] All Entitlements:', Object.keys(customerInfo.entitlements.all || {}));
+            } catch (logErr) {
+                this.debugText = `RC Log Err: ${logErr.message}`;
+                console.warn('📊 [RC DEBUG] Failed to log diagnostics:', logErr);
+            }
+
             // "premium" should be the Entitlement ID configured in RevenueCat
             const premiumEntitlement = customerInfo.entitlements.active['premium'];
             
@@ -69,6 +105,101 @@ class PurchaseManager {
     // Get expiration date for UI display (optional)
     getExpirationDate() {
         return this.expirationDate;
+    }
+
+    /**
+     * Links RevenueCat customer to Firebase user ID
+     * @param {string} firebaseUserId - Firebase UID from auth.currentUser.uid
+     * @param {boolean} retryOnFailure - Optional: retry once after 2 seconds if linking fails
+     * @returns {Promise<{success: boolean, error?: string, diagnostics?: object}>} - Result object with success status and diagnostics
+     */
+    async linkUserToRevenueCat(firebaseUserId, retryOnFailure = false) {
+        try {
+            console.log('🔗 Linking RevenueCat to Firebase UID:', firebaseUserId);
+            
+            // Call RevenueCat logIn with Firebase UID
+            const { customerInfo } = await Purchases.logIn(firebaseUserId);
+            
+            // Update cached premium status from returned customer info
+            const premiumEntitlement = customerInfo.entitlements.active['premium'];
+            this.setProStatus(!!premiumEntitlement);
+            
+            // Log transfer information if it occurred
+            if (customerInfo.originalAppUserId && customerInfo.originalAppUserId !== firebaseUserId) {
+                console.log('📦 Transfer:', customerInfo.originalAppUserId, '->', firebaseUserId);
+            }
+            
+            console.log('✅ RevenueCat linked successfully');
+            return { success: true };
+        } catch (error) {
+            // Capture detailed diagnostics
+            const diagnostics = {
+                sdkInitialized: this.isConfigured,
+                platform: Platform.OS,
+                apiKeyPrefix: API_KEYS[Platform.OS === 'ios' ? 'apple' : 'google'].substring(0, 10),
+                errorCode: error.code || 'UNKNOWN',
+                errorMessage: error.message || 'Unknown error',
+                timestamp: new Date().toISOString(),
+            };
+
+            // Log detailed error information
+            console.error('❌ RevenueCat login failed:', error);
+            console.error('📊 Diagnostics:', JSON.stringify(diagnostics, null, 2));
+
+            // Retry logic for app startup context
+            if (retryOnFailure) {
+                console.log('🔄 Retrying RevenueCat linking in 2 seconds...');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                try {
+                    const { customerInfo } = await Purchases.logIn(firebaseUserId);
+                    const premiumEntitlement = customerInfo.entitlements.active['premium'];
+                    this.setProStatus(!!premiumEntitlement);
+                    
+                    if (customerInfo.originalAppUserId && customerInfo.originalAppUserId !== firebaseUserId) {
+                        console.log('📦 Transfer:', customerInfo.originalAppUserId, '->', firebaseUserId);
+                    }
+                    
+                    console.log('✅ RevenueCat linked successfully (after retry)');
+                    return { success: true };
+                } catch (retryError) {
+                    const retryDiagnostics = {
+                        ...diagnostics,
+                        retryAttempted: true,
+                        retryErrorCode: retryError.code || 'UNKNOWN',
+                        retryErrorMessage: retryError.message || 'Unknown error',
+                    };
+                    console.error('❌ RevenueCat login retry failed:', retryError);
+                    console.error('📊 Retry Diagnostics:', JSON.stringify(retryDiagnostics, null, 2));
+                    return { success: false, error: retryError.message, diagnostics: retryDiagnostics };
+                }
+            }
+
+            // Return error with diagnostics
+            return { success: false, error: error.message, diagnostics };
+        }
+    }
+
+    /**
+     * Unlinks RevenueCat customer (logout)
+     * @returns {Promise<void>}
+     */
+    async unlinkUser() {
+        try {
+            console.log('🔓 Unlinking RevenueCat user...');
+            
+            // Call RevenueCat logOut
+            await Purchases.logOut();
+            
+            // Reset cached premium status
+            this.setProStatus(false);
+            this.expirationDate = null;
+            
+            console.log('✅ RevenueCat unlinked successfully');
+        } catch (error) {
+            console.error('❌ RevenueCat logout failed:', error);
+            // Don't throw - allow app to continue with sign-out
+        }
     }
 
     // NEW: Fetch current offering to get the display price
@@ -122,6 +253,25 @@ class PurchaseManager {
             return false;
         } catch (error) {
             return false;
+        }
+    }
+
+    // Force a fresh sync bypassing the local cache
+    async forceSyncPurchases() {
+        try {
+            console.log('🔄 [RC DEBUG] Forcing RevenueCat sync...');
+            if (Platform.OS === 'ios') {
+                // Syncs purchases with App Store
+                await Purchases.syncPurchases();
+            }
+            // Clears local cache to force a backend fetch on next getCustomerInfo
+            if (Purchases.invalidateCustomerInfoCache) {
+                await Purchases.invalidateCustomerInfoCache();
+            }
+            return await this.checkProStatus();
+        } catch (error) {
+            console.error('❌ [RC DEBUG] Force sync failed:', error);
+            return this.isPro;
         }
     }
 

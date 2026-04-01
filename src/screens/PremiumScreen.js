@@ -4,12 +4,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../utils/ThemeContext';
 import { playHaptic } from '../utils/haptics';
-import { setPremiumStatus } from '../utils/PremiumManager';
+import PremiumManager from '../utils/PremiumManager';
 import PurchaseManager from '../utils/PurchaseManager';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const PricingCard = ({ price, period, duration, isSelected, onPurchase, theme, styles, badge, weeklyRate }) => (
+const PricingCard = ({ price, period, duration, isSelected, onPurchase, theme, styles, badge, yearlyPrice }) => (
     <TouchableOpacity
         style={[styles.pricingCard, isSelected && styles.selectedCard, badge && styles.bestValueCard]}
         onPress={() => {
@@ -32,9 +32,9 @@ const PricingCard = ({ price, period, duration, isSelected, onPurchase, theme, s
                 <Text style={[styles.price, { color: isSelected ? theme.colors.primary : theme.colors.text }]}>{price}</Text>
             </View>
             <Text style={[styles.period, { color: theme.colors.textMuted }]}>/ {period}</Text>
-            {weeklyRate && (
-                <Text style={[styles.weeklyRate, { color: theme.colors.primary }]}>
-                    ${weeklyRate}/week
+            {yearlyPrice && (
+                <Text style={[styles.billedYearly, { color: theme.colors.textMuted }]}>
+                    Billed as ${yearlyPrice}/year
                 </Text>
             )}
         </View>
@@ -53,7 +53,17 @@ export default function PremiumScreen({ navigation }) {
 
     const handleClose = () => {
         playHaptic('medium');
-        navigation.goBack();
+        
+        // Check if there's a custom goBack function (from AppInitializer)
+        if (navigation.goBack && typeof navigation.goBack === 'function') {
+            navigation.goBack();
+        } else if (navigation.canGoBack && navigation.canGoBack()) {
+            // Standard navigation goBack
+            navigation.goBack();
+        } else {
+            // Fallback to Home
+            navigation.navigate('Home');
+        }
     };
 
     const handlePurchase = async (planType) => {
@@ -66,8 +76,8 @@ export default function PremiumScreen({ navigation }) {
             const result = await PurchaseManager.purchaseRemoveAds(planType);
             
             if (result.success) {
-                // Purchase successful
-                await setPremiumStatus(true);
+                // Purchase successful - refresh cache immediately
+                await PremiumManager.refreshPremiumStatus();
                 playHaptic('success');
                 
                 Alert.alert(
@@ -78,7 +88,7 @@ export default function PremiumScreen({ navigation }) {
                             text: 'Awesome!',
                             onPress: () => {
                                 setIsProcessing(false);
-                                navigation.goBack();
+                                navigation.navigate('Home');
                             }
                         }
                     ]
@@ -140,7 +150,7 @@ export default function PremiumScreen({ navigation }) {
                             { icon: 'close-circle', text: 'No Ads' },
                             { icon: 'film', text: '12 Premium Categories' },
                             { icon: 'color-palette', text: 'Custom Avatar Builder' },
-                            { icon: 'game-controller', text: 'Exclusive Game Modes' }
+                            { icon: 'mic', text: 'Host Voice Chat Access' }
                         ].map((feature, i) => (
                             <View key={i} style={styles.featureRow}>
                                 <Ionicons 
@@ -163,10 +173,10 @@ export default function PremiumScreen({ navigation }) {
                     <View style={styles.pricingColumn}>
                         {/* Yearly - Best Value (Top) */}
                         <PricingCard
-                            price="19.99"
-                            period="YEAR"
+                            price="0.38"
+                            period="WEEK"
                             duration="YEARLY"
-                            weeklyRate="0.38"
+                            yearlyPrice="19.99"
                             badge="BEST VALUE"
                             isSelected={false}
                             onPurchase={() => handlePurchase('$rc_annual')}
@@ -197,10 +207,17 @@ export default function PremiumScreen({ navigation }) {
                         </View>
                     </View>
 
-                    {/* Secure Payment Note */}
-                    <Text style={[styles.comingSoonText, { color: theme.colors.tertiary }]}>
+                    {/* Secure Payment Note - Moved to bottom */}
+                    <Text style={[styles.securePaymentText, { color: theme.colors.textMuted }]}>
                         SECURE PAYMENT VIA GOOGLE PLAY
                     </Text>
+
+                    {/* RC UI DEBUG INFO */}
+                    <View style={{ marginTop: 20, padding: 10, backgroundColor: 'rgba(255,0,0,0.2)', borderRadius: 8 }}>
+                        <Text style={{ color: 'white', fontSize: 10, fontFamily: 'Courier', textAlign: 'center' }}>
+                            {PurchaseManager.debugText}
+                        </Text>
+                    </View>
                 </View>
             </View>
 
@@ -237,7 +254,8 @@ function getStyles(theme) {
             borderRadius: 20,
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 100,
+            zIndex: 1000,
+            elevation: 1000,
             borderWidth: 1,
             borderColor: theme.colors.primary + '40',
         },
@@ -245,7 +263,7 @@ function getStyles(theme) {
             flex: 1,
             padding: 20,
             paddingTop: Platform.OS === 'ios' ? 100 : 80,
-            paddingBottom: 30,
+            paddingBottom: 20,
         },
         header: {
             alignItems: 'center',
@@ -297,9 +315,15 @@ function getStyles(theme) {
             marginBottom: 16,
             textAlign: 'center',
         },
+        securePaymentText: {
+            fontSize: 9,
+            fontFamily: 'Panchang-Bold',
+            letterSpacing: 1.5,
+            textAlign: 'center',
+            marginTop: 20,
+        },
         pricingColumn: {
             gap: 16,
-            marginBottom: 20,
         },
         pricingRow: {
             flexDirection: 'row',
@@ -373,9 +397,9 @@ function getStyles(theme) {
             fontFamily: 'Teko-Medium',
             letterSpacing: 1,
         },
-        weeklyRate: {
-            fontSize: 11,
-            fontFamily: 'Panchang-Bold',
+        billedYearly: {
+            fontSize: 9,
+            fontFamily: 'Teko-Medium',
             letterSpacing: 0.5,
             marginTop: 4,
         },
@@ -404,12 +428,7 @@ function getStyles(theme) {
             fontFamily: 'Panchang-Bold',
             letterSpacing: 3,
         },
-        comingSoonText: {
-            fontSize: 10,
-            fontFamily: 'Panchang-Bold',
-            letterSpacing: 2,
-            textAlign: 'center',
-        },
+
         // Film perforations
         filmLeft: {
             position: 'absolute',

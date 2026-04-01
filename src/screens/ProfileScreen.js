@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Platform, Animated, PanResponder, Modal, KeyboardAvoidingView, LayoutAnimation, UIManager, Dimensions, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Platform, Animated, PanResponder, Modal, KeyboardAvoidingView, LayoutAnimation, UIManager, Dimensions, Image, ActivityIndicator, ToastAndroid } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { onAuthStateChanged, signOut, signInWithCredential, GoogleAuthProvider, updateProfile } from 'firebase/auth'; // Added updateProfile
+import { onAuthStateChanged, signOut, signInWithCredential, GoogleAuthProvider, updateProfile } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../utils/firebase';
+import { ref, get, set, child } from 'firebase/database';
+import { auth, db, database } from '../utils/firebase';
 import { useTheme } from '../utils/ThemeContext';
 import { playHaptic } from '../utils/haptics';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { CustomAvatar, TOTAL_AVATARS } from '../utils/AvatarGenerator';
 import { AvatarBuilder, CustomBuiltAvatar, isPremiumAccessory, isPremiumHairStyle, isPremiumEyeStyle, isPremiumMouthStyle } from '../components/CustomAvatarBuilder';
 import PremiumManager from '../utils/PremiumManager';
+import PurchaseManager from '../utils/PurchaseManager';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android') {
@@ -21,9 +23,9 @@ if (Platform.OS === 'android') {
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // Configure Google Sign-In for native builds
-// Using Play Store OAuth client for production builds
+// CRITICAL: webClientId must be the Web OAuth client (type 3), NOT an Android client
 GoogleSignin.configure({
-    webClientId: '831244408092-v3hlt8mhdeomk11nebfbe90vhh9t73cc.apps.googleusercontent.com',
+    webClientId: '831244408092-mn4bhuvq6v4il0nippaiaf7q729o97bu.apps.googleusercontent.com',
     iosClientId: '831244408092-oifo3c54on55brivq9kupic53ntbgrd2.apps.googleusercontent.com',
     offlineAccess: true,
 });
@@ -382,46 +384,63 @@ export default function ProfileScreen({ navigation }) {
             if (currentUser) {
                 try {
                     const localProfile = await AsyncStorage.getItem('user_profile');
+                    
+                    // CRITICAL: Check if cached data belongs to THIS user
                     if (localProfile) {
                         const parsed = JSON.parse(localProfile);
-                        const name = parsed.username || currentUser.displayName || 'Player';
-                        setDisplayName(name);
-                        setUsername(name);
-                        setSelectedAvatarId(parsed.avatarId || 1);
-
-                        // Load config but validate premium items
-                        let loadedConfig = parsed.customAvatarConfig || parsed.customAvatar || null;
                         
-                        // Check if config has premium items and user doesn't have premium
-                        if (loadedConfig) {
-                            const hasPremiumAccessory = loadedConfig.accessory && isPremiumAccessory(loadedConfig.accessory);
-                            const hasPremiumHair = loadedConfig.hairStyle && isPremiumHairStyle(loadedConfig.hairStyle);
-                            const hasPremiumEye = loadedConfig.eyeStyle && isPremiumEyeStyle(loadedConfig.eyeStyle);
-                            const hasPremiumMouth = loadedConfig.mouthStyle && isPremiumMouthStyle(loadedConfig.mouthStyle);
+                        // If cached UID doesn't match current user, ignore cache and fetch from Firestore
+                        if (parsed.uid && parsed.uid !== currentUser.uid) {
+                            console.log('⚠️ Cached profile belongs to different user - fetching fresh data');
+                            // Clear stale cache
+                            await AsyncStorage.removeItem('user_profile');
+                            await AsyncStorage.removeItem('displayName');
+                            // Fall through to Firestore fetch below
+                        } else {
+                            // Cache is valid for this user
+                            const name = parsed.username || currentUser.displayName || 'Player';
+                            setDisplayName(name);
+                            setUsername(name);
+                            setSelectedAvatarId(parsed.avatarId || 1);
+
+                            // Load config WITHOUT premium validation (trust cached data)
+                            let loadedConfig = parsed.customAvatarConfig || parsed.customAvatar || null;
+                            setCustomAvatarConfig(loadedConfig);
+                            setAvatarMode(parsed.useCustomAvatar ? 'custom' : 'premade');
+                            setUser(currentUser);
                             
-                            if (hasPremiumAccessory || hasPremiumHair || hasPremiumEye || hasPremiumMouth) {
-                                const hasPremium = await PremiumManager.checkPremiumStatus();
-                                if (!hasPremium) {
-                                    console.log('User has premium items but no premium - resetting');
-                                    loadedConfig = { ...loadedConfig };
-                                    if (hasPremiumAccessory) loadedConfig.accessory = 'none';
-                                    if (hasPremiumHair) loadedConfig.hairStyle = 'none';
-                                    if (hasPremiumEye) loadedConfig.eyeStyle = 'normal';
-                                    if (hasPremiumMouth) loadedConfig.mouthStyle = 'smile';
-                                    // Update stored profile
-                                    parsed.customAvatarConfig = loadedConfig;
-                                    await AsyncStorage.setItem('user_profile', JSON.stringify(parsed));
-                                }
+                            // Validate premium items in background (non-blocking)
+                            if (loadedConfig) {
+                                const hasPremiumAccessory = loadedConfig.accessory && isPremiumAccessory(loadedConfig.accessory);
+                                const hasPremiumHair = loadedConfig.hairStyle && isPremiumHairStyle(loadedConfig.hairStyle);
+                                const hasPremiumEye = loadedConfig.eyeStyle && isPremiumEyeStyle(loadedConfig.eyeStyle);
+                                const hasPremiumMouth = loadedConfig.mouthStyle && isPremiumMouthStyle(loadedConfig.mouthStyle);
+                                
+                                if (hasPremiumAccessory || hasPremiumHair || hasPremiumEye || hasPremiumMouth) {
+                                    // Background validation - don't block UI
+                                PremiumManager.refreshPremiumStatus().then(hasPremium => {
+                                    if (!hasPremium) {
+                                        console.log('User has premium items but no premium - resetting');
+                                        const resetConfig = { ...loadedConfig };
+                                        if (hasPremiumAccessory) resetConfig.accessory = 'none';
+                                        if (hasPremiumHair) resetConfig.hairStyle = 'none';
+                                        if (hasPremiumEye) resetConfig.eyeStyle = 'normal';
+                                        if (hasPremiumMouth) resetConfig.mouthStyle = 'smile';
+                                        setCustomAvatarConfig(resetConfig);
+                                        // Update stored profile in background
+                                        parsed.customAvatarConfig = resetConfig;
+                                        AsyncStorage.setItem('user_profile', JSON.stringify(parsed));
+                                    }
+                                }).catch(err => {
+                                    console.error('Background premium validation failed:', err);
+                                });
                             }
+                            }
+                            return; // Exit early - we used cached data
                         }
-                        
-                        setCustomAvatarConfig(loadedConfig);
-                        setAvatarMode(parsed.useCustomAvatar ? 'custom' : 'premade');
-
-                        setUser(currentUser);
-                        return;
                     }
 
+                    // Fetch from Firestore (either no cache or cache was invalid)
                     const userDoc = await getDoc(doc(db, "users", currentUser.uid));
                     if (userDoc.exists()) {
                         const userData = userDoc.data();
@@ -430,10 +449,13 @@ export default function ProfileScreen({ navigation }) {
                         setUsername(name);
                         setSelectedAvatarId(userData.avatarId || 1);
 
-                        // Load config but validate premium items
+                        // Load config WITHOUT premium validation (trust cached data)
                         let loadedConfig = userData.customAvatarConfig || userData.customAvatar || null;
+                        setCustomAvatarConfig(loadedConfig);
+                        setAvatarMode(userData.useCustomAvatar ? 'custom' : 'premade');
+                        setUser(currentUser);
                         
-                        // Check if config has premium items and user doesn't have premium
+                        // Validate premium items in background (non-blocking)
                         if (loadedConfig) {
                             const hasPremiumAccessory = loadedConfig.accessory && isPremiumAccessory(loadedConfig.accessory);
                             const hasPremiumHair = loadedConfig.hairStyle && isPremiumHairStyle(loadedConfig.hairStyle);
@@ -441,28 +463,31 @@ export default function ProfileScreen({ navigation }) {
                             const hasPremiumMouth = loadedConfig.mouthStyle && isPremiumMouthStyle(loadedConfig.mouthStyle);
                             
                             if (hasPremiumAccessory || hasPremiumHair || hasPremiumEye || hasPremiumMouth) {
-                                const hasPremium = await PremiumManager.checkPremiumStatus();
-                                if (!hasPremium) {
-                                    console.log('User has premium items but no premium - resetting');
-                                    loadedConfig = { ...loadedConfig };
-                                    if (hasPremiumAccessory) loadedConfig.accessory = 'none';
-                                    if (hasPremiumHair) loadedConfig.hairStyle = 'none';
-                                    if (hasPremiumEye) loadedConfig.eyeStyle = 'normal';
-                                    if (hasPremiumMouth) loadedConfig.mouthStyle = 'smile';
-                                }
+                                // Background validation - don't block UI
+                                PremiumManager.refreshPremiumStatus().then(hasPremium => {
+                                    if (!hasPremium) {
+                                        console.log('User has premium items but no premium - resetting');
+                                        const resetConfig = { ...loadedConfig };
+                                        if (hasPremiumAccessory) resetConfig.accessory = 'none';
+                                        if (hasPremiumHair) resetConfig.hairStyle = 'none';
+                                        if (hasPremiumEye) resetConfig.eyeStyle = 'normal';
+                                        if (hasPremiumMouth) resetConfig.mouthStyle = 'smile';
+                                        setCustomAvatarConfig(resetConfig);
+                                    }
+                                }).catch(err => {
+                                    console.error('Background premium validation failed:', err);
+                                });
                             }
                         }
                         
-                        setCustomAvatarConfig(loadedConfig);
-                        setAvatarMode(userData.useCustomAvatar ? 'custom' : 'premade');
-
-                        setUser(currentUser);
                         // Save back to local storage for faster next load
                         await AsyncStorage.setItem('user_profile', JSON.stringify(userData));
                     } else {
+                        // New user - no Firestore document yet
                         const name = currentUser.displayName || currentUser.email?.split('@')[0] || 'Player';
                         setDisplayName(name);
                         setUsername(name);
+                        setSelectedAvatarId(1);
                         setCustomAvatarConfig(null);
                         setAvatarMode('premade');
                         setUser(currentUser);
@@ -472,13 +497,16 @@ export default function ProfileScreen({ navigation }) {
                     const name = currentUser.displayName || currentUser.email?.split('@')[0] || 'Player';
                     setDisplayName(name);
                     setUsername(name);
+                    setSelectedAvatarId(1);
                     setUser(currentUser);
                     setAvatarMode('premade');
                 }
             } else {
+                // No user signed in
                 setUser(null);
                 setDisplayName('');
                 setUsername('');
+                setSelectedAvatarId(1);
                 setCustomAvatarConfig(null);
                 setAvatarMode('premade');
             }
@@ -501,6 +529,22 @@ export default function ProfileScreen({ navigation }) {
                 const userCredential = await signInWithCredential(auth, credential);
                 const user = userCredential.user;
                 const newDisplayName = user.displayName || user.email?.split('@')[0] || 'Player';
+
+                // Link RevenueCat to Firebase User
+                const linkingResult = await PurchaseManager.linkUserToRevenueCat(user.uid);
+                
+                // Check if linking failed - show toast notification
+                if (linkingResult && !linkingResult.success) {
+                    console.warn('RevenueCat linking failed:', linkingResult.diagnostics);
+                    
+                    // Show toast notification (non-blocking)
+                    if (Platform.OS === 'android') {
+                        ToastAndroid.show('Premium sync issue - purchases may be delayed', ToastAndroid.SHORT);
+                    } else {
+                        // iOS: Use a brief alert that auto-dismisses feel
+                        Alert.alert('Notice', 'Premium sync issue - purchases may be delayed', [{ text: 'OK' }]);
+                    }
+                }
 
                 const userProfile = {
                     username: newDisplayName,
@@ -543,6 +587,63 @@ export default function ProfileScreen({ navigation }) {
     };
 
     // FIXED: Optimistic Save (Local First -> Navigate -> Background Cloud Sync)
+    // BUT with username availability checking FIRST
+    const checkUsernameOwner = async (name) => {
+        const usernameRef = child(ref(database), `usernames/${name.toLowerCase()}`);
+        const snapshot = await get(usernameRef);
+        if (!snapshot.exists()) return null;
+
+        const data = snapshot.val();
+        let ownerUid = null;
+
+        if (typeof data === 'string') {
+            ownerUid = data;
+        } else if (data.releasedAt) {
+            // Username was released - check cooldown
+            const cooldownMs = 2 * 60 * 1000; // 2 minutes
+            if (Date.now() - data.releasedAt >= cooldownMs) {
+                // Cooldown passed, username is available - clean it up
+                await set(ref(database, `usernames/${name.toLowerCase()}`), null);
+                return null;
+            }
+            ownerUid = data.uid;
+        } else {
+            ownerUid = data.uid || data;
+        }
+
+        // IMPORTANT: Verify the owner UID still exists (account not deleted)
+        if (ownerUid) {
+            try {
+                const userRef = child(ref(database), `users/${ownerUid}`);
+                const userSnapshot = await get(userRef);
+
+                // If user doesn't exist in database, the username is orphaned - clean it up
+                if (!userSnapshot.exists()) {
+                    await set(ref(database, `usernames/${name.toLowerCase()}`), null);
+                    return null;
+                }
+            } catch (error) {
+                // If we can't verify, assume username is taken to be safe
+                console.log('Error verifying username owner:', error);
+            }
+        }
+
+        return ownerUid;
+    };
+
+    const releaseUsername = async (oldName) => {
+        if (!oldName || !user) return;
+        const usernameRef = ref(database, `usernames/${oldName.toLowerCase()}`);
+        const snapshot = await get(usernameRef);
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            const ownerUid = typeof data === 'string' ? data : data.uid;
+            if (ownerUid === user.uid) {
+                await set(usernameRef, { uid: user.uid, releasedAt: Date.now() });
+            }
+        }
+    };
+
     const handleSaveProfile = async () => {
         const trimmedUsername = username.trim();
         if (!trimmedUsername) {
@@ -557,31 +658,56 @@ export default function ProfileScreen({ navigation }) {
         setIsSaving(true);
         playHaptic('medium');
 
-        const userProfile = {
-            username: trimmedUsername,
-            email: user.email,
-            avatarId: selectedAvatarId,
-            customAvatar: customAvatarConfig,
-            useCustomAvatar: avatarMode === 'custom', // Use explicit mode
-            customAvatarConfig: customAvatarConfig,
-            uid: user.uid,
-            photoURL: user.photoURL,
-            lastLogin: new Date().toISOString()
-        };
-
         try {
-            console.log('Saving profile (Optimistic)...');
+            // STEP 1: Check username availability (BLOCKING - must complete first)
+            console.log('Checking username availability...');
+            const ownerUid = await checkUsernameOwner(trimmedUsername);
+            
+            if (ownerUid && ownerUid !== user.uid) {
+                playHaptic('error');
+                Alert.alert('Username Taken', 'This username is already taken. Please choose another one.');
+                setIsSaving(false);
+                return;
+            }
 
-            // 1. FAST SAVE: Local Storage (AsyncStorage)
-            // This is blocking but fast (ms). Ensures next screen has data.
+            // STEP 2: Release old username if changed
+            const oldUsername = displayName;
+            if (oldUsername && oldUsername.toLowerCase() !== trimmedUsername.toLowerCase()) {
+                console.log('Releasing old username:', oldUsername);
+                await releaseUsername(oldUsername);
+            }
+
+            // STEP 3: Reserve new username in Realtime Database
+            console.log('Reserving username:', trimmedUsername);
+            await set(ref(database, `usernames/${trimmedUsername.toLowerCase()}`), { uid: user.uid });
+
+            // STEP 4: Save to Realtime Database (for username verification)
+            await set(ref(database, `users/${user.uid}`), {
+                username: trimmedUsername,
+                avatarId: selectedAvatarId,
+                updatedAt: Date.now()
+            });
+
+            const userProfile = {
+                username: trimmedUsername,
+                email: user.email,
+                avatarId: selectedAvatarId,
+                customAvatar: customAvatarConfig,
+                useCustomAvatar: avatarMode === 'custom',
+                customAvatarConfig: customAvatarConfig,
+                uid: user.uid,
+                photoURL: user.photoURL,
+                lastLogin: new Date().toISOString()
+            };
+
+            // STEP 5: FAST SAVE: Local Storage (AsyncStorage)
             await AsyncStorage.setItem('user_profile', JSON.stringify(userProfile));
             await AsyncStorage.setItem('displayName', trimmedUsername);
 
             // Update local state
             setDisplayName(trimmedUsername);
 
-            // 2. BACKGROUND SAVE: Cloud Sync
-            // Fire and forget. We don't block navigation for this.
+            // STEP 6: BACKGROUND SAVE: Cloud Sync (Firestore + Auth)
             const backgroundSync = async () => {
                 try {
                     await Promise.all([
@@ -591,46 +717,129 @@ export default function ProfileScreen({ navigation }) {
                     console.log('Background cloud sync complete');
                 } catch (err) {
                     console.warn('Background cloud sync failed:', err);
-                    // Silently fail or retry next time opens app
                 }
             };
             backgroundSync();
 
-            // 3. Navigate Immediately
-            console.log('Local save done, navigating home...');
+            // STEP 7: Navigate Immediately
+            console.log('Local save done, navigating...');
             playHaptic('success');
             
-            // Check if we should show premium (every 3rd save)
-            const saveCountStr = await AsyncStorage.getItem('profile_save_count');
-            const saveCount = saveCountStr ? parseInt(saveCountStr, 10) : 0;
-            const newSaveCount = saveCount + 1;
-            await AsyncStorage.setItem('profile_save_count', newSaveCount.toString());
-            console.log('Profile saved ' + newSaveCount + ' times');
-
-            // Show premium every 3rd save
-            if (newSaveCount % 3 === 0 && newSaveCount > 0) {
-                console.log('Navigating to Premium (save counter triggered)');
+            // Check if user has premium first
+            const hasPremium = await PremiumManager.checkPremiumStatus();
+            
+            // Load counter from AsyncStorage
+            const counterStr = await AsyncStorage.getItem('profile_save_count');
+            let counter = counterStr ? parseInt(counterStr, 10) : 0;
+            
+            // Increment counter
+            counter = counter + 1;
+            
+            // Check if counter is 3 (show premium every 3rd save)
+            let shouldShowPremium = false;
+            if (counter === 3) {
+                shouldShowPremium = !hasPremium;
+                counter = 1;
+            }
+            
+            // Save counter back to AsyncStorage
+            await AsyncStorage.setItem('profile_save_count', counter.toString());
+            
+            if (shouldShowPremium) {
+                console.log('Navigating to Premium (3rd save)');
+                setIsSaving(false);
                 navigation.navigate('Premium');
             } else {
+                console.log('Navigating to Home');
+                setIsSaving(false);
                 navigation.navigate('Home');
             }
         } catch (error) {
-            console.error('Local save failed:', error);
+            console.error('Save profile failed:', error);
             playHaptic('error');
-            Alert.alert('Error', 'Failed to save profile locally. Please try again.');
+            Alert.alert('Error', 'Failed to save profile. Please try again.');
             setIsSaving(false);
+        }
+    };
+
+    // 🔍 DIAGNOSTIC: Check RevenueCat status
+    const runRevenueCatDiagnostics = async () => {
+        try {
+            const Purchases = (await import('react-native-purchases')).default;
+            
+            console.log('=== REVENUCAT DIAGNOSTICS START ===');
+            
+            // 1. Get current RevenueCat App User ID
+            const rcAppUserId = await Purchases.getAppUserID();
+            console.log('1. RC App User ID:', rcAppUserId);
+            
+            // 2. Get Firebase User ID
+            const firebaseUserId = auth.currentUser?.uid || 'NOT_SIGNED_IN';
+            console.log('2. Firebase User ID:', firebaseUserId);
+            
+            // 3. Check if they match
+            const idsMatch = rcAppUserId === firebaseUserId;
+            console.log('3. IDs Match?', idsMatch);
+            
+            // 4. Get customer info
+            const customerInfo = await Purchases.getCustomerInfo();
+            console.log('4. Original App User ID:', customerInfo.originalAppUserId);
+            
+            const activeEntitlements = Object.keys(customerInfo.entitlements.active);
+            const allEntitlements = Object.keys(customerInfo.entitlements.all);
+            console.log('5. Active Entitlements:', activeEntitlements);
+            console.log('6. All Entitlements:', allEntitlements);
+            
+            // 7. Check specific premium entitlement
+            const premiumEntitlement = customerInfo.entitlements.all['premium'];
+            let premiumStatus = 'NOT FOUND';
+            if (premiumEntitlement) {
+                premiumStatus = `Found - Active: ${premiumEntitlement.isActive}, Expires: ${premiumEntitlement.expirationDate || 'Never'}`;
+                console.log('7. Premium Entitlement:', premiumStatus);
+            } else {
+                console.log('7. Premium Entitlement: NOT FOUND');
+            }
+            
+            console.log('=== REVENUCAT DIAGNOSTICS END ===');
+            
+            // Show alert with key info
+            Alert.alert(
+                '🔍 RevenueCat Diagnostics',
+                `RC ID:\n${rcAppUserId}\n\nFirebase ID:\n${firebaseUserId}\n\nMatch: ${idsMatch ? '✅ YES' : '❌ NO'}\n\nActive:\n${activeEntitlements.join(', ') || 'none'}\n\nAll:\n${allEntitlements.join(', ') || 'none'}\n\nPremium:\n${premiumStatus}`,
+                [
+                    { text: 'Copy RC ID', onPress: () => console.log('RC ID:', rcAppUserId) },
+                    { text: 'OK' }
+                ]
+            );
+            
+        } catch (error) {
+            console.error('Diagnostic Error:', error);
+            Alert.alert('Diagnostic Error', error.message);
         }
     };
 
     const handleSignOut = async () => {
         try {
+            // Unlink RevenueCat before signing out
+            await PurchaseManager.unlinkUser();
+            
+            // CRITICAL: Clear AsyncStorage to prevent old user data from persisting
+            await AsyncStorage.removeItem('user_profile');
+            await AsyncStorage.removeItem('displayName');
+            await AsyncStorage.removeItem('profile_save_count');
+            
             await GoogleSignin.signOut();
             await signOut(auth);
+            
+            // Reset all state
             setUser(null);
             setDisplayName('');
             setUsername('');
+            setSelectedAvatarId(1);
             setCustomAvatarConfig(null);
             setAvatarMode('premade');
+            
+            console.log('✅ Sign out complete - all data cleared');
         } catch (error) {
             console.error('Error signing out:', error);
             Alert.alert('Error', 'Failed to sign out');
@@ -739,6 +948,15 @@ export default function ProfileScreen({ navigation }) {
                                         onPress={handleSignOut}
                                     >
                                         <Text style={[styles.buttonTextSmall, { color: theme.colors.error }]}>LOGOUT</Text>
+                                    </TouchableOpacity>
+                                </View>
+
+                                {/* 🔍 DIAGNOSTIC BUTTON - Remove after debugging */}
+                                <TouchableOpacity
+                                    style={[styles.diagnosticButton, { borderColor: theme.colors.accent || '#FFD700' }]}
+                                    onPress={runRevenueCatDiagnostics}
+                                >
+                                    <Text style={[styles.buttonTextSmall, { color: theme.colors.accent || '#FFD700' }]}>🔍 RC DEBUG</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>
