@@ -281,10 +281,20 @@ const FullVoiceChatProvider = ({ children }) => {
         console.log('🎤 [PREMIUM LISTENER] Setting up real-time premium status listener for room:', currentRoomCode);
         setPremiumStatusLoading(true);
 
+        // Set a timeout to prevent infinite loading
+        const loadingTimeout = setTimeout(() => {
+            console.log('🎤 [PREMIUM LISTENER] ⚠️ Loading timeout reached, defaulting to no premium');
+            setHostHasPremium(false);
+            setPremiumStatusLoading(false);
+        }, 5000); // 5 second timeout
+
         const premiumRef = ref(database, `rooms/${currentRoomCode}/hostHasPremium`);
         let previousPremiumStatus = null;
 
         const unsubscribe = onValue(premiumRef, (snapshot) => {
+            // Clear timeout since we got a response
+            clearTimeout(loadingTimeout);
+            
             const premiumStatus = snapshot.val();
             console.log('🎤 [PREMIUM LISTENER] Premium status update:', premiumStatus);
             
@@ -312,6 +322,9 @@ const FullVoiceChatProvider = ({ children }) => {
             setHostHasPremium(newPremiumStatus);
             setPremiumStatusLoading(false);
         }, (error) => {
+            // Clear timeout on error
+            clearTimeout(loadingTimeout);
+            
             console.error('🎤 [PREMIUM LISTENER] Error listening to premium status:', error);
             // On error, default to no premium for security
             setHostHasPremium(false);
@@ -323,6 +336,7 @@ const FullVoiceChatProvider = ({ children }) => {
 
         return () => {
             console.log('🎤 [PREMIUM LISTENER] Cleaning up premium status listener');
+            clearTimeout(loadingTimeout);
             if (premiumListenerRef.current) {
                 premiumListenerRef.current();
                 premiumListenerRef.current = null;

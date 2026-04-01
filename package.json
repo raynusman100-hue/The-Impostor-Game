@@ -6,7 +6,12 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "test": "jest",
+    "test:bug-condition": "jest .kiro/specs/old-premium-system-cleanup/bug-condition-exploration.test.js"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
   },
   "dependencies": {
     "@expo/metro-config": "~54.0.12",

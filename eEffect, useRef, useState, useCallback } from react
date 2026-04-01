@@ -1,0 +1,225 @@
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, Animated, TouchableOpacity, Dimensions, Platform, Image } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from '../utils/ThemeContext';
+import { playHaptic } from '../utils/haptics';
+import { CustomAvatar } from '../utils/AvatarGenerator';
+import { CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// Film perforation component for Kodak aesthetic (same as SetupScreen)
+const FilmPerforations = ({ side, theme }) => {
+    const perforationColor = theme.colors.primary + '40'; // 40 = 25% opacity
+
+    return (
+        <View style={[filmStyles.perforationStrip, side === 'left' ? filmStyles.leftStrip : filmStyles.rightStrip]}>
+            {[...Array(12)].map((_, i) => (
+                <View key={i} style={[filmStyles.perforation, { backgroundColor: perforationColor }]} />
+            ))}
+        </View>
+    );
+};
+
+const filmStyles = StyleSheet.create({
+    perforationStrip: {
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        width: 18,
+        justifyContent: 'space-evenly',
+        alignItems: 'center',
+        paddingVertical: 40,
+        zIndex: 1,
+    },
+    leftStrip: { left: 2 },
+    rightStrip: { right: 2 },
+    perforation: {
+        width: 10,
+        height: 14,
+        borderRadius: 2,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 184, 0, 0.3)',
+    },
+});
+
+// Simple Menu Button - Clean and minimal
+const SimpleMenuButton = ({ title, onPress, isPrimary }) => {
+    const scaleAnim = useRef(new Animated.Value(1)).current;
+
+    const handlePressIn = () => {
+        Animated.spring(scaleAnim, { toValue: 0.95, friction: 8, useNativeDriver: true }).start();
+    };
+
+    const handlePressOut = () => {
+        Animated.spring(scaleAnim, { toValue: 1, friction: 4, useNativeDriver: true }).start();
+    };
+
+    return (
+        <Animated.View style={[{ transform: [{ scale: scaleAnim }], flex: 1 }]}>
+            <TouchableOpacity
+                onPressIn={handlePressIn}
+                onPressOut={handlePressOut}
+                onPress={() => { playHaptic('medium'); onPress(); }}
+                activeOpacity={0.8}
+                style={[
+                    simpleButtonStyles.button,
+                    isPrimary ? simpleButtonStyles.primaryButton : simpleButtonStyles.secondaryButton
+                ]}
+            >
+                <Text style={[
+                    simpleButtonStyles.buttonText,
+                    isPrimary ? simpleButtonStyles.primaryText : simpleButtonStyles.secondaryText
+                ]}>
+                    {title}
+                </Text>
+            </TouchableOpacity>
+        </Animated.View>
+    );
+};
+
+const simpleButtonStyles = StyleSheet.create({
+    button: {
+        height: 52,
+        borderRadius: 26,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    primaryButton: {
+        backgroundColor: '#FFB800',
+    },
+    secondaryButton: {
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        borderColor: '#FFB800',
+    },
+    buttonText: {
+        fontSize: 14,
+        fontFamily: 'CabinetGrotesk-Black',
+        letterSpacing: 2,
+    },
+    primaryText: {
+        color: '#0a0a0a',
+    },
+    secondaryText: {
+        color: '#FFB800',
+    },
+});
+
+export default function HomeScreen({ navigation }) {
+    const { theme } = useTheme();
+    const styles = getStyles(theme);
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(30)).current;
+    const titleFlickerAnim = useRef(new Animated.Value(1)).current;
+    const filmGrainAnim = useRef(new Animated.Value(0)).current;
+    const [userProfile, setUserProfile] = useState(null);
+
+    useFocusEffect(
+        useCallback(() => {
+            const loadProfile = async () => {
+                try {
+                    const savedProfile = await AsyncStorage.getItem('user_profile');
+                    if (savedProfile) {
+                        setUserProfile(JSON.parse(savedProfile));
+                    } else {
+                        setUserProfile(null);
+                    }
+                } catch (e) {
+                    console.log('Failed to load profile');
+                }
+            };
+            loadProfile();
+        }, [])
+    );
+
+    useEffect(() => {
+        // Delay entry animation slightly to sync with splash fade-out
+        const animationTimeout = setTimeout(() => {
+            // Entry animation - smooth fade and slide
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 500,
+                    useNativeDriver: true,
+                }),
+                Animated.spring(slideAnim, {
+                    toValue: 0,
+                    friction: 10,
+                    tension: 50,
+                    useNativeDriver: true,
+                }),
+            ]).start();
+        }, 100);
+
+        // Subtle title flicker effect (like old cinema) - start after initial animation
+        const flickerTimeout = setTimeout(() => {
+            const flicker = Animated.sequence([
+                Animated.timing(titleFlickerAnim, { toValue: 0.92, duration: 80, useNativeDriver: true }),
+                Animated.timing(titleFlickerAnim, { toValue: 1, duration: 80, useNativeDriver: true }),
+                Animated.delay(4000),
+            ]);
+            Animated.loop(flicker).start();
+        }, 600);
+
+        // Film grain animation
+        const grain = Animated.loop(
+            Animated.sequence([
+                Animated.timing(filmGrainAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
+                Animated.timing(filmGrainAnim, { toValue: 0, duration: 100, useNativeDriver: true }),
+            ])
+        );
+        grain.start();
+
+        return () => {
+            clearTimeout(animationTimeout);
+            clearTimeout(flickerTimeout);
+        };
+    }, []);
+
+    return (
+        <LinearGradient
+            colors={theme.colors.backgroundGradient}
+            style={styles.container}
+        >
+            {/* Film perforations */}
+            <FilmPerforations side="left" theme={theme} />
+            <FilmPerforations side="right" theme={theme} />
+
+            {/* Settings button - top left */}
+            <TouchableOpacity
+                onPress={() => { playHaptic('light'); navigation.navigate('Settings'); }}
+                style={styles.settingsButton}
+            >
+                <View style={styles.gearIcon}>
+                    {/* Gear teeth */}
+                    {[0, 45, 90, 135].map((rotation) => (
+                        <View
+                            key={rotation}
+                            style={[
+                                styles.gearTooth,
+                                {
+                                    backgroundColor: theme.colors.primary,
+                                    transform: [{ rotate: `${rotation}deg` }]
+                                }
+                            ]}
+                        />
+                    ))}
+                    {/* Center circle */}
+                    <View style={[styles.gearCenter, { backgroundColor: theme.colors.surface, borderColor: theme.colors.primary }]}>
+                        <View style={[styles.gearDot, { backgroundColor: theme.colors.primary }]} />
+                    </View>
+                </View>
+            </TouchableOpacity>
+
+            {/* Profile button - top right */}
+            <TouchableOpacity
+                onPress={() => { playHaptic('light'); navigation.navigate('Profile'); }}
+                style={styles.profileButton}
+            >
+                {userProfile ? (
+                    userProfile.useCustomAvatar && userProfile.customAvatarConfig ? (
+                        <CustomBuiltAvatar config={userProfile.customAvatarConfig} size={34} />
+             

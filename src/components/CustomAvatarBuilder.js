@@ -164,45 +164,43 @@ const CustomAvatarBuilder = ({ initialConfig, onSave, onCancel, theme, onPremium
 
     // Check premium status on mount and when config changes
     useEffect(() => {
-        const checkPremium = async () => {
-            const premium = await PremiumManager.checkPremiumStatus();
-            setHasPremium(premium);
+        // INSTANT: Get cached premium status
+        const premium = PremiumManager.checkPremiumStatus();
+        setHasPremium(premium);
+        
+        // If user doesn't have premium and current config has premium items, reset them
+        if (!premium) {
+            let needsUpdate = false;
+            const newConfig = { ...config };
             
-            // If user doesn't have premium and current config has premium items, reset them
-            if (!premium) {
-                let needsUpdate = false;
-                const newConfig = { ...config };
-                
-                if (config.accessory && PREMIUM_ACCESSORIES.includes(config.accessory)) {
-                    console.log('User lost premium access, resetting premium accessory to none');
-                    newConfig.accessory = 'none';
-                    needsUpdate = true;
-                }
-                
-                if (config.hairStyle && PREMIUM_HAIR_STYLES.includes(config.hairStyle)) {
-                    console.log('User lost premium access, resetting premium hair style to none');
-                    newConfig.hairStyle = 'none';
-                    needsUpdate = true;
-                }
-                
-                if (config.eyeStyle && PREMIUM_EYE_STYLES.includes(config.eyeStyle)) {
-                    console.log('User lost premium access, resetting premium eye style to normal');
-                    newConfig.eyeStyle = 'normal';
-                    needsUpdate = true;
-                }
-                
-                if (config.mouthStyle && PREMIUM_MOUTH_STYLES.includes(config.mouthStyle)) {
-                    console.log('User lost premium access, resetting premium mouth style to smile');
-                    newConfig.mouthStyle = 'smile';
-                    needsUpdate = true;
-                }
-                
-                if (needsUpdate) {
-                    setConfig(newConfig);
-                }
+            if (config.accessory && PREMIUM_ACCESSORIES.includes(config.accessory)) {
+                console.log('User lost premium access, resetting premium accessory to none');
+                newConfig.accessory = 'none';
+                needsUpdate = true;
             }
-        };
-        checkPremium();
+            
+            if (config.hairStyle && PREMIUM_HAIR_STYLES.includes(config.hairStyle)) {
+                console.log('User lost premium access, resetting premium hair style to none');
+                newConfig.hairStyle = 'none';
+                needsUpdate = true;
+            }
+            
+            if (config.eyeStyle && PREMIUM_EYE_STYLES.includes(config.eyeStyle)) {
+                console.log('User lost premium access, resetting premium eye style to normal');
+                newConfig.eyeStyle = 'normal';
+                needsUpdate = true;
+            }
+            
+            if (config.mouthStyle && PREMIUM_MOUTH_STYLES.includes(config.mouthStyle)) {
+                console.log('User lost premium access, resetting premium mouth style to smile');
+                newConfig.mouthStyle = 'smile';
+                needsUpdate = true;
+            }
+            
+            if (needsUpdate) {
+                setConfig(newConfig);
+            }
+        }
     }, [initialConfig]); // Re-run when initialConfig changes
 
     const update = (key, value) => { 

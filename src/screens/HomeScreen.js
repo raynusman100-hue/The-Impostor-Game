@@ -45,13 +45,12 @@ const filmStyles = StyleSheet.create({
     },
 });
 
-// Premium Crystal Glass Button - Clean and sophisticated
-const GlassmorphicButton = ({ title, onPress, isPrimary }) => {
+// Simple Menu Button - Clean and minimal (from screenshot)
+const SimpleMenuButton = ({ title, onPress, isPrimary }) => {
     const scaleAnim = useRef(new Animated.Value(1)).current;
-    const { theme } = useTheme();
 
     const handlePressIn = () => {
-        Animated.spring(scaleAnim, { toValue: 0.98, friction: 8, useNativeDriver: true }).start();
+        Animated.spring(scaleAnim, { toValue: 0.95, friction: 8, useNativeDriver: true }).start();
     };
 
     const handlePressOut = () => {
@@ -59,94 +58,54 @@ const GlassmorphicButton = ({ title, onPress, isPrimary }) => {
     };
 
     return (
-        <Animated.View style={[glassStyles.container, { transform: [{ scale: scaleAnim }] }]}>
+        <Animated.View style={[{ transform: [{ scale: scaleAnim }] }]}>
             <TouchableOpacity
                 onPressIn={handlePressIn}
                 onPressOut={handlePressOut}
                 onPress={() => { playHaptic('medium'); onPress(); }}
-                activeOpacity={0.9}
-                style={glassStyles.touchable}
+                activeOpacity={0.8}
+                style={[
+                    simpleButtonStyles.button,
+                    isPrimary ? simpleButtonStyles.primaryButton : simpleButtonStyles.secondaryButton
+                ]}
             >
-                {/* Crystal glass background */}
-                <LinearGradient
-                    colors={isPrimary 
-                        ? [theme.colors.primary, theme.colors.primary]
-                        : ['rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.05)']
-                    }
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 0, y: 1 }}
-                    style={[
-                        glassStyles.glass,
-                        {
-                            borderColor: isPrimary 
-                                ? 'rgba(255, 255, 255, 0.3)'
-                                : 'rgba(255, 255, 255, 0.15)',
-                        }
-                    ]}
-                >
-                    {/* Subtle top shine - very minimal */}
-                    <View style={glassStyles.shineTop} />
-                    
-                    {/* Bottom subtle glow */}
-                    <View style={glassStyles.glowBottom} />
-                    
-                    <Text style={[
-                        glassStyles.title,
-                        { 
-                            color: isPrimary ? theme.colors.secondary : theme.colors.text,
-                        }
-                    ]}>
-                        {title}
-                    </Text>
-                </LinearGradient>
+                <Text style={[
+                    simpleButtonStyles.buttonText,
+                    isPrimary ? simpleButtonStyles.primaryText : simpleButtonStyles.secondaryText
+                ]}>
+                    {title}
+                </Text>
             </TouchableOpacity>
         </Animated.View>
     );
 };
 
-const glassStyles = StyleSheet.create({
-    container: {
-        width: '100%',
-        marginBottom: 10,
-    },
-    touchable: {
-        width: '100%',
-    },
-    glass: {
-        height: 48,
-        borderRadius: 24,
-        borderWidth: 1,
-        overflow: 'hidden',
+const simpleButtonStyles = StyleSheet.create({
+    button: {
+        height: 56,  // Thicker buttons
+        borderRadius: 28,  // Well-rounded edges
         justifyContent: 'center',
         alignItems: 'center',
-        // Premium shadow
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.2,
-        shadowRadius: 16,
-        elevation: 8,
+        marginBottom: 14,  // Better spacing between buttons
     },
-    shineTop: {
-        position: 'absolute',
-        top: 0,
-        left: '10%',
-        right: '10%',
-        height: 1,
-        backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    primaryButton: {
+        backgroundColor: '#FFB800',
     },
-    glowBottom: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: 1,
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    secondaryButton: {
+        backgroundColor: 'transparent',
+        borderWidth: 2.5,  // Thicker border for outlined buttons
+        borderColor: '#FFB800',
     },
-    title: {
-        fontSize: 13,
-        fontFamily: 'Panchang-Bold',
-        letterSpacing: 1.5,
-        zIndex: 1,
+    buttonText: {
+        fontSize: 14,
+        fontFamily: 'CabinetGrotesk-Black',
+        letterSpacing: 2,
+    },
+    primaryText: {
+        color: '#0a0a0a',
+    },
+    secondaryText: {
+        color: '#FFB800',
     },
 });
 
@@ -319,26 +278,26 @@ export default function HomeScreen({ navigation }) {
                 {/* Character Image */}
                 <AnimatedCharacter theme={theme} />
 
-                {/* Menu - Glassmorphism Style */}
+                {/* Menu - Simple and clean (from screenshot) */}
                 <View style={styles.menuContainer}>
                     <View style={styles.menuContent}>
                         <View style={styles.buttonColumn}>
-                            <GlassmorphicButton
+                            <SimpleMenuButton
                                 title="PASS & PLAY"
                                 onPress={() => navigation.navigate('Setup')}
                                 isPrimary={true}
                             />
-                            <GlassmorphicButton
-                                title="ONLINE MODE"
+                            <SimpleMenuButton
+                                title="WI-FI MODE"
                                 onPress={() => navigation.navigate('WifiModeSelector')}
                                 isPrimary={true}
                             />
-                            <GlassmorphicButton
+                            <SimpleMenuButton
                                 title="THEMES"
                                 onPress={() => navigation.navigate('ThemeSelector')}
                                 isPrimary={false}
                             />
-                            <GlassmorphicButton
+                            <SimpleMenuButton
                                 title="HOW TO PLAY"
                                 onPress={() => navigation.navigate('HowToPlay')}
                                 isPrimary={false}
@@ -596,10 +555,10 @@ function getStyles(theme) {
         marginTop: -4,
         zIndex: 1,
     },
-    // Menu - positioned at bottom, simple
+    // Menu - positioned at bottom with adequate spacing
     menuContainer: {
         position: 'absolute',
-        bottom: Platform.OS === 'ios' ? 40 : 30, // Reduced bottom space
+        bottom: Platform.OS === 'ios' ? 50 : 40,  // More space from bottom
         left: 26,
         right: 26,
     },
@@ -607,7 +566,7 @@ function getStyles(theme) {
         paddingVertical: 8,
     },
     buttonColumn: {
-        gap: 12,
+        // Buttons have their own marginBottom now
     },
     // Film frame footer
     filmFrameBottom: {

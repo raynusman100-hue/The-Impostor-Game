@@ -117,15 +117,13 @@ export default function CategorySelectionModal({ visible, onClose, selectedCateg
     const [hasPremium, setHasPremium] = useState(false);
 
     useEffect(() => {
-        const checkPremium = async () => {
+        if (visible) {
+            // INSTANT: Get cached premium status
             const user = auth.currentUser;
             if (user) {
-                const premium = await checkPremiumStatus(user.email, user.uid);
+                const premium = checkPremiumStatus(user.email, user.uid);
                 setHasPremium(premium);
             }
-        };
-        if (visible) {
-            checkPremium();
         }
     }, [visible]);
 

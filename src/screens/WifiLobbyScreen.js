@@ -85,14 +85,8 @@ export default function WifiLobbyScreen({ route, navigation }) {
 
     // Handle premium upgrade navigation
     const handlePremiumUpgrade = () => {
-        console.log('🎤 [WifiLobby] Premium upgrade requested - navigating to Profile');
-        // Players cannot upgrade - only host can
-        // Show informative message instead
-        Alert.alert(
-            'Premium Required',
-            'Voice chat requires the host to have premium. Ask the host to upgrade!',
-            [{ text: 'OK' }]
-        );
+        console.log('🎤 [WifiLobby] Premium upgrade requested - navigating to Premium');
+        navigation.navigate('Premium');
     };
 
     // Disable Android back button

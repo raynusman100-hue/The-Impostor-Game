@@ -5,6 +5,7 @@ import PremiumScreen from './PremiumScreen';
 import { checkPremiumStatus } from '../utils/PremiumManager';
 import AdManager from '../utils/AdManager';
 import { auth } from '../utils/firebase';
+import PurchaseManager from '../utils/PurchaseManager';
 
 export default function AppInitializer({ navigation }) {
     const [showPremium, setShowPremium] = useState(false);
@@ -13,11 +14,20 @@ export default function AppInitializer({ navigation }) {
     useEffect(() => {
         const checkPremiumShow = async () => {
             try {
-                // Check premium status for logging purposes
+                // INSTANT: Check cached premium status for logging purposes
                 const user = auth.currentUser;
                 if (user) {
-                    const hasPremium = await checkPremiumStatus(user.email, user.uid);
-                    console.log('User premium status:', hasPremium);
+                    const hasPremium = checkPremiumStatus(user.email, user.uid);
+                    console.log('User premium status (cached):', hasPremium);
+                    
+                    // Link user to RevenueCat if signed in (for existing users and new sessions)
+                    console.log('🔗 Linking user to RevenueCat on app startup...');
+                    const linkingResult = await PurchaseManager.linkUserToRevenueCat(user.uid, true); // Enable retry for app startup
+                    
+                    // Log diagnostics if linking failed
+                    if (linkingResult && !linkingResult.success) {
+                        console.warn('RevenueCat linking failed on app startup:', linkingResult.diagnostics);
+                    }
                 }
 
                 // Check if this is a fresh app launch (not just navigation)
@@ -37,11 +47,18 @@ export default function AppInitializer({ navigation }) {
                     await AsyncStorage.setItem('premium_last_check', now.toString());
                     console.log(`📊 App opened ${newCount} times`);
 
+                    // Check if user has premium before showing premium screen
+                    const hasPremium = user ? checkPremiumStatus(user.email, user.uid) : false;
+
                     // Show premium every 2nd open (2, 4, 6...) - AGGRESSIVE for app launches
-                    if (newCount % 2 === 0 && newCount > 0) {
+                    // BUT only if user doesn't have premium
+                    if (newCount % 2 === 0 && newCount > 0 && !hasPremium) {
                         console.log('🎁 Premium screen should show (counter triggered)');
                         setShowPremium(true);
                     } else {
+                        if (hasPremium) {
+                            console.log('⏭️ Skipping premium screen (user has premium)');
+                        }
                         setShowPremium(false);
                     }
                 } else {

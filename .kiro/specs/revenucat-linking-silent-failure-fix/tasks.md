@@ -1,0 +1,148 @@
+# Implementation Plan
+
+- [x] 1. Write bug condition exploration test
+  - **Property 1: Bug Condition** - Silent Failure Without Diagnostics
+  - **CRITICAL**: This test MUST FAIL on unfixed code - failure confirms the bug exists
+  - **DO NOT attempt to fix the test or the code when it fails**
+  - **NOTE**: This test encodes the expected behavior - it will validate the fix when it passes after implementation
+  - **GOAL**: Surface counterexamples that demonstrate the bug exists
+  - **Scoped PBT Approach**: Test concrete failure scenarios (SDK not initialized, network failure, platform mismatch) to ensure reproducibility
+  - Test that when `linkUserToRevenueCat()` fails, the UNFIXED code does NOT capture diagnostic information (SDK state, platform, API key prefix, network status)
+  - Test that when linking fails during sign-in context, the UNFIXED code does NOT display user warning
+  - Test that when linking fails during app-startup context, the UNFIXED code does NOT attempt retry
+  - The test assertions should match the Expected Behavior Properties from design:
+    - ASSERT diagnostics.sdkInitialized is captured
+    - ASSERT diagnostics.platform is captured
+    - ASSERT diagnostics.apiKeyPrefix is captured
+    - ASSERT userWarningDisplayed === true (for sign-in context)
+    - ASSERT retryAttempted === true (for app-startup context)
+  - Run test on UNFIXED code
+  - **EXPECTED OUTCOME**: Test FAILS (this is correct - it proves the bug exists)
+  - Document counterexamples found:
+    - SDK not initialized error without SDK state diagnostic
+    - Network failure without network diagnostic
+    - Platform mismatch without platform/API key diagnostic
+    - Sign-in failure without user warning
+    - App startup failure without retry
+  - Mark task complete when test is written, run, and failure is documented
+  - _Requirements: 2.1, 2.2, 2.5_
+
+- [x] 2. Write preservation property tests (BEFORE implementing fix)
+  - **Property 2: Preservation** - Successful Linking Behavior Unchanged
+  - **IMPORTANT**: Follow observation-first methodology
+  - Observe behavior on UNFIXED code for successful linking scenarios:
+    - Observe: `linkUserToRevenueCat('test-uid')` returns true when SDK returns customer info
+    - Observe: Premium status is cached from returned customer info
+    - Observe: Transfer is logged when originalAppUserId differs from input UID
+    - Observe: Firebase UID is used as RevenueCat customer ID
+  - Write property-based tests capturing observed behavior patterns from Preservation Requirements:
+    - Property: For all successful linking calls, premium status is updated from customer info
+    - Property: For all successful linking calls with transfer, transfer is logged
+    - Property: For all successful linking calls, return value is true
+    - Property: For all successful linking calls, Firebase UID is used as customer ID
+  - Property-based testing generates many test cases for stronger guarantees
+  - Run tests on UNFIXED code
+  - **EXPECTED OUTCOME**: Tests PASS (this confirms baseline behavior to preserve)
+  - Mark task complete when tests are written, run, and passing on unfixed code
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
+
+- [x] 3. Fix for RevenueCat linking silent failure
+
+  - [x] 3.1 Add SDK initialization state tracking to PurchaseManager
+    - Add class property `isConfigured = false` to PurchaseManager class
+    - Set `this.isConfigured = true` after `Purchases.configure()` completes in `initialize()` method
+    - _Bug_Condition: isBugCondition(input) where linkUserToRevenueCat throws error AND no diagnostics captured_
+    - _Expected_Behavior: Diagnostic information including SDK state is captured on failure_
+    - _Preservation: Successful linking continues to work identically_
+    - _Requirements: 2.1, 2.2, 2.5, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
+
+  - [x] 3.2 Enhance error logging in linkUserToRevenueCat catch block
+    - Capture detailed diagnostics object with:
+      - `sdkInitialized: this.isConfigured`
+      - `platform: Platform.OS`
+      - `apiKeyPrefix: API_KEYS[Platform.OS === 'ios' ? 'apple' : 'google'].substring(0, 10)`
+      - `errorCode: error.code`
+      - `errorMessage: error.message`
+    - Log diagnostics object to console with clear formatting
+    - _Bug_Condition: isBugCondition(input) where linkUserToRevenueCat throws error AND no diagnostics captured_
+    - _Expected_Behavior: Detailed diagnostic information is logged on failure_
+    - _Preservation: Successful linking continues to work identically_
+    - _Requirements: 2.1, 2.2, 2.5_
+
+  - [x] 3.3 Return enhanced error object from linkUserToRevenueCat
+    - Change return type from `boolean` to `{ success: boolean, error?: string, diagnostics?: object }`
+    - On success: return `{ success: true }`
+    - On failure: return `{ success: false, error: error.message, diagnostics: {...} }`
+    - Update JSDoc comment to reflect new return type
+    - _Bug_Condition: isBugCondition(input) where linkUserToRevenueCat throws error AND calling code has no diagnostic info_
+    - _Expected_Behavior: Calling code receives diagnostic information to act on_
+    - _Preservation: Successful linking continues to work identically_
+    - _Requirements: 2.1, 2.2, 2.5_
+
+  - [x] 3.4 Add optional retry logic to linkUserToRevenueCat
+    - Add optional parameter `retryOnFailure = false` to function signature
+    - If `retryOnFailure === true` and first attempt fails, wait 2 seconds and retry once
+    - Log retry attempt and result
+    - Return diagnostics from final attempt (after retry if applicable)
+    - _Bug_Condition: isBugCondition(input) where context === 'app-startup' AND no retry attempted_
+    - _Expected_Behavior: Retry is attempted for app startup context failures_
+    - _Preservation: Successful linking continues to work identically_
+    - _Requirements: 2.2_
+
+  - [x] 3.5 Update ProfileScreen.js to handle linking failure during sign-in
+    - Change line 514 from `await PurchaseManager.linkUserToRevenueCat(user.uid)` to capture result
+    - Check if `result.success === false`
+    - If failure, display non-blocking Alert warning user that premium features may not be available
+    - Log diagnostics object for developer visibility
+    - Allow sign-in flow to continue regardless of linking result
+    - _Bug_Condition: isBugCondition(input) where context === 'sign-in' AND user sees no warning_
+    - _Expected_Behavior: User is warned about potential premium feature unavailability_
+    - _Preservation: Sign-in flow continues to complete successfully_
+    - _Requirements: 2.1, 3.3_
+
+  - [x] 3.6 Update AppInitializer.js to enable retry for app startup linking
+    - Change line 25 to pass `retryOnFailure: true` parameter to `linkUserToRevenueCat()`
+    - Capture result and log diagnostics if linking fails after retry
+    - Continue app initialization regardless of linking result
+    - _Bug_Condition: isBugCondition(input) where context === 'app-startup' AND no retry attempted_
+    - _Expected_Behavior: Retry is attempted for app startup failures_
+    - _Preservation: App initialization continues normally_
+    - _Requirements: 2.2, 3.5_
+
+  - [x] 3.7 Verify bug condition exploration test now passes
+    - **Property 1: Expected Behavior** - Diagnostics Captured on Failure
+    - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
+    - The test from task 1 encodes the expected behavior
+    - When this test passes, it confirms the expected behavior is satisfied
+    - Run bug condition exploration test from step 1
+    - **EXPECTED OUTCOME**: Test PASSES (confirms bug is fixed)
+    - Verify diagnostics are captured for all failure scenarios:
+      - SDK not initialized error includes SDK state diagnostic
+      - Network failure includes network diagnostic
+      - Platform mismatch includes platform/API key diagnostic
+      - Sign-in failure displays user warning
+      - App startup failure attempts retry
+    - _Requirements: 2.1, 2.2, 2.5_
+
+  - [x] 3.8 Verify preservation tests still pass
+    - **Property 2: Preservation** - Successful Linking Behavior Unchanged
+    - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
+    - Run preservation property tests from step 2
+    - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions)
+    - Confirm all successful linking behaviors are preserved:
+      - Premium status is updated from customer info
+      - Transfer is logged when originalAppUserId differs
+      - Return value structure is compatible (true or { success: true })
+      - Firebase UID is used as customer ID
+    - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
+
+- [x] 4. Checkpoint - Ensure all tests pass
+  - Run all bug condition exploration tests - verify they pass
+  - Run all preservation property tests - verify they pass
+  - Verify no regressions in existing functionality
+  - Test manual scenarios:
+    - Sign in with Google when RevenueCat SDK not initialized - verify warning displayed
+    - Open app with existing signed-in user when network is slow - verify retry attempted
+    - Sign in with Google when RevenueCat linking succeeds - verify no warning, normal flow
+    - Open app with existing signed-in user when linking succeeds - verify normal flow
+  - Ensure all tests pass, ask the user if questions arise

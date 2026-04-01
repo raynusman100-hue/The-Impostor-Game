@@ -30,8 +30,8 @@ class AdManager {
             return;
         }
 
-        // Check premium status in real-time
-        const hasPremium = await checkPremiumStatus(userEmail, userId);
+        // INSTANT: Check cached premium status
+        const hasPremium = checkPremiumStatus(userEmail, userId);
         if (!shouldShowAds(hasPremium)) {
             console.log('AdManager: DISABLED - user has premium access');
             return;
@@ -47,8 +47,8 @@ class AdManager {
             return;
         }
 
-        // Check premium status in real-time
-        const hasPremium = await checkPremiumStatus(userEmail, userId);
+        // INSTANT: Check cached premium status
+        const hasPremium = checkPremiumStatus(userEmail, userId);
         if (!shouldShowAds(hasPremium)) {
             console.log('AdManager: DISABLED - user has premium access');
             onAdClosed?.();

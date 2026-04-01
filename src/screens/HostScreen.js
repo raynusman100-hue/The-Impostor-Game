@@ -164,30 +164,9 @@ export default function HostScreen({ navigation, route }) {
                     console.warn("🔄 HOST: Failed to retrieve stamped App ID from existing room:", err);
                 }
 
-                // Check and update host premium status for existing room with retry logic
-                let hostHasPremium = false;
-                let retryCount = 0;
-                const maxRetries = 3;
-                
-                while (retryCount < maxRetries) {
-                    try {
-                        hostHasPremium = await checkPremiumStatus(null, playerData.uid);
-                        console.log("🔄 HOST: Premium status checked for existing room:", hostHasPremium);
-                        break; // Success, exit retry loop
-                    } catch (err) {
-                        retryCount++;
-                        console.warn(`🔄 HOST: Premium check attempt ${retryCount} failed for existing room:`, err);
-                        
-                        if (retryCount < maxRetries) {
-                            // Exponential backoff: 1s, 2s, 4s
-                            const delay = Math.pow(2, retryCount - 1) * 1000;
-                            await new Promise(resolve => setTimeout(resolve, delay));
-                        } else {
-                            console.warn("🔄 HOST: All premium check attempts failed for existing room, defaulting to false");
-                            hostHasPremium = false;
-                        }
-                    }
-                }
+                // Check and update host premium status for existing room (INSTANT - uses cache)
+                const hostHasPremium = checkPremiumStatus(null, playerData.uid);
+                console.log("🔄 HOST: Premium status (cached) for existing room:", hostHasPremium);
 
                 await update(roomRef, {
                     status: 'lobby',
@@ -212,30 +191,9 @@ export default function HostScreen({ navigation, route }) {
                     console.warn("🔄 HOST: Failed to fetch App ID for stamp, using default/fallback logic");
                 }
 
-                // 2. Check host premium status with retry logic
-                let hostHasPremium = false;
-                let retryCount = 0;
-                const maxRetries = 3;
-                
-                while (retryCount < maxRetries) {
-                    try {
-                        hostHasPremium = await checkPremiumStatus(null, playerData.uid);
-                        console.log("🔄 HOST: Premium status checked:", hostHasPremium);
-                        break; // Success, exit retry loop
-                    } catch (err) {
-                        retryCount++;
-                        console.warn(`🔄 HOST: Premium check attempt ${retryCount} failed:`, err);
-                        
-                        if (retryCount < maxRetries) {
-                            // Exponential backoff: 1s, 2s, 4s
-                            const delay = Math.pow(2, retryCount - 1) * 1000;
-                            await new Promise(resolve => setTimeout(resolve, delay));
-                        } else {
-                            console.warn("🔄 HOST: All premium check attempts failed, defaulting to false");
-                            hostHasPremium = false;
-                        }
-                    }
-                }
+                // 2. Check host premium status (INSTANT - uses cache)
+                const hostHasPremium = checkPremiumStatus(null, playerData.uid);
+                console.log("🔄 HOST: Premium status (cached):", hostHasPremium);
 
                 await set(roomRef, {
                     status: 'lobby',
@@ -335,7 +293,7 @@ export default function HostScreen({ navigation, route }) {
         const syncInterval = setInterval(async () => {
             try {
                 console.log('🎤 [HOST PREMIUM] Periodic premium status check...');
-                const currentPremium = await checkPremiumStatus(null, playerData.uid);
+                const currentPremium = checkPremiumStatus(null, playerData.uid);
                 
                 // Update Firebase with current premium status
                 await updateHostPremiumStatus(roomCode, currentPremium);
