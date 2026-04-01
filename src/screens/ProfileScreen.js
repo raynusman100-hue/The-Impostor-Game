@@ -12,6 +12,7 @@ import { CustomAvatar, TOTAL_AVATARS } from '../utils/AvatarGenerator';
 import { AvatarBuilder, CustomBuiltAvatar, isPremiumAccessory, isPremiumHairStyle, isPremiumEyeStyle, isPremiumMouthStyle } from '../components/CustomAvatarBuilder';
 import PremiumManager from '../utils/PremiumManager';
 import PurchaseManager from '../utils/PurchaseManager';
+import Purchases from 'react-native-purchases';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android') {
@@ -765,8 +766,6 @@ export default function ProfileScreen({ navigation }) {
     // 🔍 DIAGNOSTIC: Check RevenueCat status
     const runRevenueCatDiagnostics = async () => {
         try {
-            const Purchases = (await import('react-native-purchases')).default;
-            
             console.log('=== REVENUCAT DIAGNOSTICS START ===');
             
             // 1. Get current RevenueCat App User ID
@@ -957,8 +956,7 @@ export default function ProfileScreen({ navigation }) {
                                     onPress={runRevenueCatDiagnostics}
                                 >
                                     <Text style={[styles.buttonTextSmall, { color: theme.colors.accent || '#FFD700' }]}>🔍 RC DEBUG</Text>
-                                    </TouchableOpacity>
-                                </View>
+                                </TouchableOpacity>
                             </View>
                         </View>
                     ) : (
@@ -1066,6 +1064,8 @@ function getStyles(theme) {
 
         signOutButton: { flex: 1, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', borderWidth: 2 },
         buttonTextSmall: { fontSize: 14, fontFamily: 'Panchang-Bold', letterSpacing: 1 },
+        
+        diagnosticButton: { width: '100%', height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', borderWidth: 2, marginTop: 12 },
 
         // Signed Out Styles
         signedOutContainer: { flex: 1, padding: 40, alignItems: 'center', justifyContent: 'center' },
