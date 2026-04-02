@@ -1,13 +1,12 @@
 workflows:
   android-production-aab:
-    name: Android Production AAB (Signed)
+    name: Android Production AAB (Signed with EAS)
     max_build_duration: 60
     instance_type: mac_mini_m1
     environment:
-      android_signing:
-        - keystore_reference
       vars:
         PACKAGE_NAME: "com.rayn100.impostor"
+        EXPO_TOKEN: $EXPO_TOKEN
       node: 20
     triggering:
       events:
@@ -23,13 +22,12 @@ workflows:
       - name: Install dependencies
         script: |
           npm install
-      - name: Prebuild Android project
+      - name: Install EAS CLI
         script: |
-          npx expo prebuild --platform android --clean
-      - name: Build Android AAB
+          npm install -g eas-cli
+      - name: Build with EAS
         script: |
-          cd android
-          ./gradlew bundleRelease
+          eas build --platform android --profile production --non-interactive --no-wait
     artifacts:
       - android/app/build/outputs/**/*.aab
     publishing:
