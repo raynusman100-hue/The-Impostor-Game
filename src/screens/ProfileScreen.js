@@ -13,6 +13,7 @@ import { AvatarBuilder, CustomBuiltAvatar, isPremiumAccessory, isPremiumHairStyl
 import PremiumManager from '../utils/PremiumManager';
 import PurchaseManager from '../utils/PurchaseManager';
 import Purchases from 'react-native-purchases';
+import { navigateToPremiumIfNeeded } from '../utils/NavigationHelpers';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android') {
@@ -521,58 +522,77 @@ export default function ProfileScreen({ navigation }) {
         console.log('Starting Google Sign-In process...');
 
         try {
+            // STEP 1: Google Sign-In (MUST complete first)
             await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
             const userInfo = await GoogleSignin.signIn();
             const idToken = userInfo.data?.idToken || userInfo.idToken;
 
-            if (idToken) {
-                const credential = GoogleAuthProvider.credential(idToken);
-                const userCredential = await signInWithCredential(auth, credential);
-                const user = userCredential.user;
-                const newDisplayName = user.displayName || user.email?.split('@')[0] || 'Player';
-
-                // Link RevenueCat to Firebase User
-                const linkingResult = await PurchaseManager.linkUserToRevenueCat(user.uid);
-                
-                // Check if linking failed - show toast notification
-                if (linkingResult && !linkingResult.success) {
-                    console.warn('RevenueCat linking failed:', linkingResult.diagnostics);
-                    
-                    // Show toast notification (non-blocking)
-                    if (Platform.OS === 'android') {
-                        ToastAndroid.show('Premium sync issue - purchases may be delayed', ToastAndroid.SHORT);
-                    } else {
-                        // iOS: Use a brief alert that auto-dismisses feel
-                        Alert.alert('Notice', 'Premium sync issue - purchases may be delayed', [{ text: 'OK' }]);
-                    }
-                }
-
-                const userProfile = {
-                    username: newDisplayName,
-                    email: user.email,
-                    avatarId: 1,
-                    customAvatar: null,
-                    useCustomAvatar: false,
-                    uid: user.uid,
-                    photoURL: user.photoURL,
-                    lastLogin: new Date().toISOString()
-                };
-
-                await setDoc(doc(db, "users", user.uid), userProfile, { merge: true });
-                await AsyncStorage.setItem('user_profile', JSON.stringify(userProfile));
-                await AsyncStorage.setItem('displayName', newDisplayName);
-                await new Promise(resolve => setTimeout(resolve, 150));
-
-                setUser(user);
-                setDisplayName(newDisplayName);
-                setUsername(newDisplayName);
-                setAvatarMode('premade');
-                playHaptic('success');
-            } else {
+            if (!idToken) {
                 throw new Error('No ID token received from Google');
             }
+
+            // STEP 2: Firebase Authentication (MUST complete first)
+            const credential = GoogleAuthProvider.credential(idToken);
+            const userCredential = await signInWithCredential(auth, credential);
+            const user = userCredential.user;
+            const newDisplayName = user.displayName || user.email?.split('@')[0] || 'Player';
+
+            // STEP 3: Create user profile object
+            const userProfile = {
+                username: newDisplayName,
+                email: user.email,
+                avatarId: 1,
+                customAvatar: null,
+                useCustomAvatar: false,
+                uid: user.uid,
+                photoURL: user.photoURL,
+                lastLogin: new Date().toISOString()
+            };
+
+            // STEP 4: FAST - Save to local storage FIRST (instant UI update)
+            await AsyncStorage.setItem('user_profile', JSON.stringify(userProfile));
+            await AsyncStorage.setItem('displayName', newDisplayName);
+
+            // STEP 5: Update UI immediately (don't wait for cloud sync)
+            setUser(user);
+            setDisplayName(newDisplayName);
+            setUsername(newDisplayName);
+            setAvatarMode('premade');
+            setIsLoading(false); // Hide loading immediately
+            playHaptic('success');
+
+            // STEP 6: BACKGROUND - Cloud sync and RevenueCat linking (non-blocking)
+            const backgroundSync = async () => {
+                try {
+                    // Run Firestore save and RevenueCat linking in parallel
+                    const [_, linkingResult] = await Promise.all([
+                        setDoc(doc(db, "users", user.uid), userProfile, { merge: true }),
+                        PurchaseManager.linkUserToRevenueCat(user.uid)
+                    ]);
+                    
+                    console.log('✅ Background sync complete');
+                    
+                    // Check if linking failed - show toast notification
+                    if (linkingResult && !linkingResult.success) {
+                        console.warn('RevenueCat linking failed:', linkingResult.diagnostics);
+                        
+                        // Show toast notification (non-blocking)
+                        if (Platform.OS === 'android') {
+                            ToastAndroid.show('Premium sync issue - purchases may be delayed', ToastAndroid.SHORT);
+                        }
+                    }
+                } catch (err) {
+                    console.warn('Background sync failed:', err);
+                }
+            };
+            
+            // Start background sync but don't wait for it
+            backgroundSync();
+
         } catch (error) {
             console.error('Google Sign-In error:', error);
+            setIsLoading(false);
+            
             if (error.code === statusCodes.SIGN_IN_CANCELLED) {
                 console.log('User cancelled sign-in');
             } else if (error.code === statusCodes.IN_PROGRESS) {
@@ -582,8 +602,6 @@ export default function ProfileScreen({ navigation }) {
             } else {
                 Alert.alert('Sign-In Error', error.message || 'Something went wrong during sign-in. Please try again.');
             }
-        } finally {
-            setIsLoading(false);
         }
     };
 
@@ -749,7 +767,7 @@ export default function ProfileScreen({ navigation }) {
             if (shouldShowPremium) {
                 console.log('Navigating to Premium (3rd save)');
                 setIsSaving(false);
-                navigation.navigate('Premium');
+                navigateToPremiumIfNeeded(navigation);
             } else {
                 console.log('Navigating to Home');
                 setIsSaving(false);
@@ -1019,7 +1037,7 @@ export default function ProfileScreen({ navigation }) {
                             onPremiumRequired={() => {
                                 playHaptic('warning');
                                 setShowBuilder(false);
-                                navigation.navigate('Premium');
+                                navigateToPremiumIfNeeded(navigation);
                             }}
                         />
                     </View>

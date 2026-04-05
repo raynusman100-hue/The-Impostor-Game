@@ -22,6 +22,7 @@ import CategorySelectionModal from '../components/CategorySelectionModal';
 import { useVoiceParticipantsTracker } from '../utils/VoiceParticipantsTracker';
 import { checkPremiumStatus, checkAndSyncHostPremium } from '../utils/PremiumManager';
 import { updateHostPremiumStatus } from '../utils/connectionUtils';
+import { navigateToPremiumIfNeeded } from '../utils/NavigationHelpers';
 
 // Film perforation component for Kodak aesthetic
 const FilmPerforations = ({ side, theme }) => {
@@ -409,7 +410,7 @@ export default function HostScreen({ navigation, route }) {
     const handlePremiumRequired = useCallback(() => {
         playHaptic('medium');
         console.log('🎤 [HOST] Premium upgrade requested');
-        navigation.navigate('Profile');
+        navigateToPremiumIfNeeded(navigation);
     }, [navigation]);
 
     if (!playerData) return null;

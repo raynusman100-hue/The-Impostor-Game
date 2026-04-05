@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, Dimensions, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Dimensions, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../utils/ThemeContext';
@@ -50,6 +50,43 @@ export default function PremiumScreen({ navigation }) {
     const { theme } = useTheme();
     const styles = getStyles(theme);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [hasPremium, setHasPremium] = useState(null); // null = loading, true/false = status
+    const [premiumExpiry, setPremiumExpiry] = useState(null);
+
+    // Check premium status on mount
+    useEffect(() => {
+        checkPremiumStatus();
+        
+        // Listen for premium status changes
+        const unsubscribe = PurchaseManager.addListener((isPremium) => {
+            setHasPremium(isPremium);
+            if (isPremium) {
+                setPremiumExpiry(PurchaseManager.getExpirationDate());
+            }
+        });
+        
+        return () => unsubscribe();
+    }, []);
+
+    const checkPremiumStatus = async () => {
+        try {
+            // Check cached status first for instant response
+            const cachedStatus = PremiumManager.checkPremiumStatus();
+            setHasPremium(cachedStatus);
+            
+            // Then refresh from RevenueCat in background
+            const isPremium = await PremiumManager.refreshPremiumStatus();
+            setHasPremium(isPremium);
+            
+            if (isPremium) {
+                setPremiumExpiry(PurchaseManager.getExpirationDate());
+            }
+        } catch (error) {
+            console.error('Error checking premium status:', error);
+            // Fallback to cached status
+            setHasPremium(PremiumManager.checkPremiumStatus());
+        }
+    };
 
     const handleClose = () => {
         playHaptic('medium');
@@ -78,6 +115,7 @@ export default function PremiumScreen({ navigation }) {
             if (result.success) {
                 // Purchase successful - refresh cache immediately
                 await PremiumManager.refreshPremiumStatus();
+                setHasPremium(true);
                 playHaptic('success');
                 
                 Alert.alert(
@@ -115,6 +153,171 @@ export default function PremiumScreen({ navigation }) {
             );
         }
     };
+
+    const handleRestorePurchases = async () => {
+        if (isProcessing) return;
+        
+        setIsProcessing(true);
+        playHaptic('medium');
+
+        try {
+            const restored = await PurchaseManager.restorePurchases();
+            
+            if (restored) {
+                await PremiumManager.refreshPremiumStatus();
+                setHasPremium(true);
+                playHaptic('success');
+                
+                Alert.alert(
+                    '✅ Purchases Restored!',
+                    'Your premium subscription has been restored.',
+                    [
+                        {
+                            text: 'Great!',
+                            onPress: () => {
+                                setIsProcessing(false);
+                                navigation.navigate('Home');
+                            }
+                        }
+                    ]
+                );
+            } else {
+                setIsProcessing(false);
+                Alert.alert(
+                    'No Purchases Found',
+                    'We couldn\'t find any previous purchases to restore.',
+                    [{ text: 'OK' }]
+                );
+            }
+        } catch (error) {
+            console.error('Restore error:', error);
+            setIsProcessing(false);
+            Alert.alert(
+                'Restore Failed',
+                'Unable to restore purchases. Please try again.',
+                [{ text: 'OK' }]
+            );
+        }
+    };
+
+    // Loading state
+    if (hasPremium === null) {
+        return (
+            <View style={styles.container}>
+                <LinearGradient
+                    colors={theme.colors.backgroundGradient || ['#000000', '#1a1a1a', '#050505']}
+                    style={styles.background}
+                />
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={theme.colors.primary} />
+                    <Text style={[styles.loadingText, { color: theme.colors.text }]}>
+                        Checking Premium Status...
+                    </Text>
+                </View>
+            </View>
+        );
+    }
+
+    // Already Premium - Show status screen
+    if (hasPremium) {
+        return (
+            <View style={styles.container}>
+                <LinearGradient
+                    colors={theme.colors.backgroundGradient || ['#000000', '#1a1a1a', '#050505']}
+                    style={styles.background}
+                />
+
+                {/* Close Button */}
+                <TouchableOpacity
+                    style={[styles.closeButton, { backgroundColor: theme.colors.surface }]}
+                    onPress={handleClose}
+                    activeOpacity={0.7}
+                >
+                    <Ionicons name="close" size={24} color={theme.colors.text} />
+                </TouchableOpacity>
+
+                <View style={styles.content}>
+                    {/* Premium Active Header */}
+                    <View style={styles.header}>
+                        <Ionicons name="checkmark-circle" size={80} color={theme.colors.primary} />
+                        <Text style={[styles.pretitle, { color: theme.colors.primary, marginTop: 20 }]}>
+                            YOU'RE PREMIUM
+                        </Text>
+                        <Text style={[styles.title, { color: theme.colors.text }]}>ACTIVE</Text>
+                        <View style={[styles.titleUnderline, { backgroundColor: theme.colors.primary }]} />
+                        
+                        {premiumExpiry && (
+                            <Text style={[styles.expiryText, { color: theme.colors.textMuted, marginTop: 16 }]}>
+                                Expires: {new Date(premiumExpiry).toLocaleDateString()}
+                            </Text>
+                        )}
+                    </View>
+
+                    {/* Active Features */}
+                    <View style={[styles.featuresCard, {
+                        backgroundColor: theme.colors.surface,
+                        borderColor: theme.colors.primary + '40'
+                    }]}>
+                        <Text style={[styles.activeFeaturesTitle, { color: theme.colors.primary }]}>
+                            YOUR PREMIUM FEATURES
+                        </Text>
+                        <View style={styles.featuresList}>
+                            {[
+                                { icon: 'close-circle', text: 'No Ads' },
+                                { icon: 'film', text: '12 Premium Categories' },
+                                { icon: 'color-palette', text: 'Custom Avatar Builder' },
+                                { icon: 'mic', text: 'Host Voice Chat Access' }
+                            ].map((feature, i) => (
+                                <View key={i} style={styles.featureRow}>
+                                    <Ionicons 
+                                        name={feature.icon} 
+                                        size={20} 
+                                        color={theme.colors.primary} 
+                                    />
+                                    <Text style={[styles.featureText, { color: theme.colors.text }]}>
+                                        {feature.text}
+                                    </Text>
+                                    <Ionicons name="checkmark" size={20} color={theme.colors.primary} />
+                                </View>
+                            ))}
+                        </View>
+                    </View>
+
+                    {/* Back to Home Button */}
+                    <TouchableOpacity
+                        style={[styles.backButton, { backgroundColor: theme.colors.primary }]}
+                        onPress={handleClose}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={[styles.backButtonText, { color: theme.colors.secondary }]}>
+                            BACK TO HOME
+                        </Text>
+                    </TouchableOpacity>
+
+                    {/* RC UI DEBUG INFO */}
+                    <View style={{ marginTop: 20, padding: 10, backgroundColor: 'rgba(0,255,0,0.2)', borderRadius: 8 }}>
+                        <Text style={{ color: 'white', fontSize: 10, fontFamily: 'Courier', textAlign: 'center' }}>
+                            {PurchaseManager.debugText}
+                        </Text>
+                    </View>
+                </View>
+
+                {/* Film perforations */}
+                <View style={styles.filmLeft}>
+                    {[...Array(15)].map((_, i) => (
+                        <View key={i} style={[styles.filmHole, { backgroundColor: theme.colors.primary }]} />
+                    ))}
+                </View>
+                <View style={styles.filmRight}>
+                    {[...Array(15)].map((_, i) => (
+                        <View key={i} style={[styles.filmHole, { backgroundColor: theme.colors.primary }]} />
+                    ))}
+                </View>
+            </View>
+        );
+    }
+
+    // Not Premium - Show paywall
 
     return (
         <View style={styles.container}>
@@ -211,6 +414,18 @@ export default function PremiumScreen({ navigation }) {
                     <Text style={[styles.securePaymentText, { color: theme.colors.textMuted }]}>
                         SECURE PAYMENT VIA GOOGLE PLAY
                     </Text>
+
+                    {/* Restore Purchases Button */}
+                    <TouchableOpacity
+                        style={styles.restoreButton}
+                        onPress={handleRestorePurchases}
+                        disabled={isProcessing}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={[styles.restoreButtonText, { color: theme.colors.primary }]}>
+                            Restore Purchases
+                        </Text>
+                    </TouchableOpacity>
 
                     {/* RC UI DEBUG INFO */}
                     <View style={{ marginTop: 20, padding: 10, backgroundColor: 'rgba(255,0,0,0.2)', borderRadius: 8 }}>
@@ -427,6 +642,53 @@ function getStyles(theme) {
             fontSize: 15,
             fontFamily: 'Panchang-Bold',
             letterSpacing: 3,
+        },
+        loadingContainer: {
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: 16,
+        },
+        loadingText: {
+            fontSize: 14,
+            fontFamily: 'CabinetGrotesk-Bold',
+            letterSpacing: 1,
+        },
+        expiryText: {
+            fontSize: 12,
+            fontFamily: 'Teko-Medium',
+            letterSpacing: 1,
+        },
+        activeFeaturesTitle: {
+            fontSize: 12,
+            fontFamily: 'Teko-Medium',
+            letterSpacing: 3,
+            marginBottom: 12,
+            textAlign: 'center',
+        },
+        backButton: {
+            width: '100%',
+            paddingVertical: 16,
+            borderRadius: 12,
+            alignItems: 'center',
+            marginTop: 24,
+        },
+        backButtonText: {
+            fontSize: 15,
+            fontFamily: 'Panchang-Bold',
+            letterSpacing: 3,
+        },
+        restoreButton: {
+            width: '100%',
+            paddingVertical: 12,
+            alignItems: 'center',
+            marginTop: 16,
+        },
+        restoreButtonText: {
+            fontSize: 12,
+            fontFamily: 'CabinetGrotesk-Bold',
+            letterSpacing: 1,
+            textDecorationLine: 'underline',
         },
 
         // Film perforations

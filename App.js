@@ -50,6 +50,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import ConsentScreen from './src/screens/ConsentScreen';
+import { auth } from './src/utils/firebase';
 
 console.log('🚀 App.js: TOP LEVEL - File is loading');
 
@@ -155,6 +156,25 @@ export default function App() {
     seedConfig(); 
     // Initialize RevenueCat
     PurchaseManager.initialize();
+    
+    // CRITICAL: Listen for auth state and link RevenueCat when user is logged in
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        console.log('🔗 [APP] User logged in, linking to RevenueCat...');
+        try {
+          await PurchaseManager.linkUserToRevenueCat(user.uid, true);
+          console.log('✅ [APP] RevenueCat linked successfully');
+          // Refresh premium status after linking
+          await PurchaseManager.checkProStatus();
+        } catch (error) {
+          console.error('❌ [APP] Failed to link RevenueCat:', error);
+        }
+      } else {
+        console.log('👤 [APP] User logged out');
+      }
+    });
+    
+    return () => unsubscribe();
   }, []);
 
   const [appIsReady, setAppIsReady] = useState(false);

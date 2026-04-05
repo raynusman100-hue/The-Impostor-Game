@@ -20,6 +20,7 @@ import { ref, remove } from 'firebase/database';
 import { useTheme } from '../utils/ThemeContext';
 import { useSettings } from '../utils/SettingsContext';
 import { playHaptic } from '../utils/haptics';
+import { navigateToPremiumIfNeeded } from '../utils/NavigationHelpers';
 
 // Film perforation component
 const FilmPerforations = ({ side, theme }) => {
@@ -409,7 +410,7 @@ export default function SettingsScreen({ navigation }) {
                 <SettingButton
                     label="Test Premium Screen"
                     description="Manually open premium page"
-                    onPress={() => navigation.navigate('Premium')}
+                    onPress={() => navigateToPremiumIfNeeded(navigation)}
                     theme={theme}
                 />
                 <SettingButton

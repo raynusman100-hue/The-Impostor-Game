@@ -14,20 +14,20 @@ export default function AppInitializer({ navigation }) {
     useEffect(() => {
         const checkPremiumShow = async () => {
             try {
-                // INSTANT: Check cached premium status for logging purposes
+                // CRITICAL FIX: Link user to RevenueCat FIRST, then check premium status
                 const user = auth.currentUser;
                 if (user) {
-                    const hasPremium = checkPremiumStatus(user.email, user.uid);
-                    console.log('User premium status (cached):', hasPremium);
-                    
-                    // Link user to RevenueCat if signed in (for existing users and new sessions)
-                    console.log('🔗 Linking user to RevenueCat on app startup...');
-                    const linkingResult = await PurchaseManager.linkUserToRevenueCat(user.uid, true); // Enable retry for app startup
+                    console.log('🔗 [INIT] Linking user to RevenueCat...');
+                    const linkingResult = await PurchaseManager.linkUserToRevenueCat(user.uid, true);
                     
                     // Log diagnostics if linking failed
                     if (linkingResult && !linkingResult.success) {
                         console.warn('RevenueCat linking failed on app startup:', linkingResult.diagnostics);
                     }
+                    
+                    // THEN refresh premium status from RevenueCat
+                    console.log('🔄 [INIT] Refreshing premium status...');
+                    await PurchaseManager.checkProStatus();
                 }
 
                 // Check if this is a fresh app launch (not just navigation)
@@ -47,8 +47,10 @@ export default function AppInitializer({ navigation }) {
                     await AsyncStorage.setItem('premium_last_check', now.toString());
                     console.log(`📊 App opened ${newCount} times`);
 
-                    // Check if user has premium before showing premium screen
+                    // CRITICAL: Check premium status AFTER linking completes
+                    // Use cached status (which was just refreshed above)
                     const hasPremium = user ? checkPremiumStatus(user.email, user.uid) : false;
+                    console.log('✅ [INIT] User premium status (after linking):', hasPremium);
 
                     // Show premium every 2nd open (2, 4, 6...) - AGGRESSIVE for app launches
                     // BUT only if user doesn't have premium

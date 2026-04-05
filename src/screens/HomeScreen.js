@@ -7,6 +7,7 @@ import { useTheme } from '../utils/ThemeContext';
 import { playHaptic } from '../utils/haptics';
 import { CustomAvatar } from '../utils/AvatarGenerator';
 import { CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
+import { navigateToPremiumIfNeeded } from '../utils/NavigationHelpers';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -238,7 +239,7 @@ export default function HomeScreen({ navigation }) {
             <TouchableOpacity
                 onPress={() => { 
                     playHaptic('medium'); 
-                    navigation.navigate('Premium'); 
+                    navigateToPremiumIfNeeded(navigation); 
                 }}
                 style={styles.premiumButton}
                 activeOpacity={0.7}

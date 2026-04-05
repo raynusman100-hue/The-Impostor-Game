@@ -27,7 +27,7 @@
     },
     "android": {
       "package": "com.rayn100.impostor",
-      "versionCode": 10,
+      "versionCode": 12,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0a0a0a"
@@ -55,7 +55,7 @@
       [
         "react-native-google-mobile-ads",
         {
-          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "androidAppId": "ca-app-pub-7729962731169324~3612955915",
           "iosAppId": "ca-app-pub-3940256099942544~1458002511"
         }
       ],
@@ -90,7 +90,7 @@
     }
   },
   "react-native-google-mobile-ads": {
-    "android_app_id": "ca-app-pub-3940256099942544~3347511713",
+    "android_app_id": "ca-app-pub-7729962731169324~3612955915",
     "ios_app_id": "ca-app-pub-3940256099942544~1458002511"
   }
 }

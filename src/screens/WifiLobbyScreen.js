@@ -86,7 +86,7 @@ export default function WifiLobbyScreen({ route, navigation }) {
     // Handle premium upgrade navigation
     const handlePremiumUpgrade = () => {
         console.log('🎤 [WifiLobby] Premium upgrade requested - navigating to Premium');
-        navigation.navigate('Premium');
+        navigateToPremiumIfNeeded(navigation);
     };
 
     // Disable Android back button

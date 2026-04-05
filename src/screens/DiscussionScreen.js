@@ -15,6 +15,7 @@ import ChatSystem from '../components/ChatSystem';
 import VoiceControl from '../components/VoiceControl';
 import { useVoiceChat } from '../utils/VoiceChatContext';
 import PremiumRequiredMessage from '../components/PremiumRequiredMessage';
+import { navigateToPremiumIfNeeded } from '../utils/NavigationHelpers';
 
 // Film perforation component for Kodak aesthetic (same as SetupScreen)
 const FilmPerforations = ({ side, theme }) => {
@@ -646,7 +647,7 @@ export default function DiscussionScreen({ route, navigation }) {
                         <PremiumRequiredMessage 
                             type="discussion"
                             isHost={playerId === 'host-id'}
-                            onUpgrade={() => navigation.navigate('Profile')}
+                            onUpgrade={() => navigateToPremiumIfNeeded(navigation)}
                             compact={true}
                         />
                     </View>

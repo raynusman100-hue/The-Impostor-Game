@@ -7,6 +7,8 @@ import VoiceControl from './VoiceControl';
 import PremiumRequiredMessage from './PremiumRequiredMessage';
 import { CustomAvatar } from '../utils/AvatarGenerator';
 import { CustomBuiltAvatar } from '../components/CustomAvatarBuilder';
+import { checkPremiumStatus } from '../utils/PremiumManager';
+import { auth } from '../utils/firebase';
 
 /**
  * VoiceTab Component
@@ -47,9 +49,34 @@ export default function VoiceTab({
         error
     } = useVoiceChat();
 
-    // Set up premium monitoring for this room
+    // Local premium status for host
+    const [localHostPremium, setLocalHostPremium] = useState(false);
+    const [checkingLocalPremium, setCheckingLocalPremium] = useState(isHost);
+
+    // Check local premium status if user is host
     useEffect(() => {
-        if (roomCode) {
+        if (isHost) {
+            const checkLocalPremium = async () => {
+                try {
+                    const user = auth.currentUser;
+                    if (user) {
+                        const hasPremium = checkPremiumStatus(user.email, user.uid);
+                        console.log('🎤 [VoiceTab] Host local premium status:', hasPremium);
+                        setLocalHostPremium(hasPremium);
+                    }
+                } catch (error) {
+                    console.error('🎤 [VoiceTab] Error checking local premium:', error);
+                } finally {
+                    setCheckingLocalPremium(false);
+                }
+            };
+            checkLocalPremium();
+        }
+    }, [isHost]);
+
+    // Set up premium monitoring for this room (for non-host players)
+    useEffect(() => {
+        if (roomCode && !isHost) {
             console.log('🎤 [VoiceTab] Setting up premium monitoring for room:', roomCode);
             setRoomCodeForPremiumMonitoring(roomCode);
         }
@@ -58,7 +85,7 @@ export default function VoiceTab({
             // Don't clear monitoring here as other components might need it
             // The context will handle cleanup when appropriate
         };
-    }, [roomCode, setRoomCodeForPremiumMonitoring]);
+    }, [roomCode, isHost, setRoomCodeForPremiumMonitoring]);
 
     // Handle voice chat join with premium check and error handling
     const handleJoinVoice = async () => {
@@ -91,18 +118,25 @@ export default function VoiceTab({
         leaveChannel();
     };
 
+    // Determine effective premium status
+    // Host uses their local premium status, non-host uses Firebase hostHasPremium
+    const effectivePremiumStatus = isHost ? localHostPremium : hostHasPremium;
+    const effectiveLoading = isHost ? checkingLocalPremium : premiumStatusLoading;
+
     // Show loading state while checking premium status
-    if (premiumStatusLoading) {
+    if (effectiveLoading) {
         return (
             <View style={styles.container}>
                 <ActivityIndicator size="large" color={theme.colors.primary} />
-                <Text style={styles.loadingText}>Checking voice chat availability...</Text>
+                <Text style={styles.loadingText}>
+                    {isHost ? 'Checking your premium status...' : 'Checking voice chat availability...'}
+                </Text>
             </View>
         );
     }
 
     // Show premium required message if host doesn't have premium
-    if (!hostHasPremium) {
+    if (!effectivePremiumStatus) {
         return (
             <View style={styles.container}>
                 <PremiumRequiredMessage

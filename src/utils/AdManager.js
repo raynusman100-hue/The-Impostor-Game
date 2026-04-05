@@ -67,11 +67,11 @@ class AdManager {
         const adUnitId = __DEV__
             ? TestIds.INTERSTITIAL
             : Platform.select({
-                ios: 'ca-app-pub-xxxxxxxxxxxxxxxx/xxxxxxxxxx',
-                android: 'ca-app-pub-xxxxxxxxxxxxxxxx/xxxxxxxxxx',
+                ios: 'ca-app-pub-7729962731169324~3612955915',
+                android: 'ca-app-pub-7729962731169324/8893202750',
             });
 
-        if (PurchaseManager.isPro) return;
+        if (PurchaseManager.getProStatus()) return;
 
         if (this.interstitial) {
             if (this.loaded) return;
@@ -103,7 +103,7 @@ class AdManager {
         const { AdEventType } = require('react-native-google-mobile-ads');
         const PurchaseManager = require('./PurchaseManager').default;
 
-        if (PurchaseManager.isPro) {
+        if (PurchaseManager.getProStatus()) {
             console.log('User is Pro, skipping interstitial');
             onAdClosed?.();
             return;

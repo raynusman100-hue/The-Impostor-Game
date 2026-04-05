@@ -5,6 +5,8 @@ import { CATEGORY_LABELS } from '../utils/words';
 import { useTheme } from '../utils/ThemeContext';
 import { playHaptic } from '../utils/haptics';
 import { checkPremiumStatus } from '../utils/PremiumManager';
+import { navigateToPremiumIfNeeded } from '../utils/NavigationHelpers';
+import PurchaseManager from '../utils/PurchaseManager';
 import { auth } from '../utils/firebase';
 
 const { width } = Dimensions.get('window');
@@ -118,12 +120,20 @@ export default function CategorySelectionModal({ visible, onClose, selectedCateg
 
     useEffect(() => {
         if (visible) {
-            // INSTANT: Get cached premium status
+            // Get initial cached premium status
             const user = auth.currentUser;
             if (user) {
                 const premium = checkPremiumStatus(user.email, user.uid);
                 setHasPremium(premium);
             }
+            
+            // Listen for premium changes while modal is open
+            const unsubscribe = PurchaseManager.addListener((isPremium) => {
+                console.log('📊 [CATEGORY MODAL] Premium status updated:', isPremium);
+                setHasPremium(isPremium);
+            });
+            
+            return () => unsubscribe();
         }
     }, [visible]);
 
@@ -136,7 +146,7 @@ export default function CategorySelectionModal({ visible, onClose, selectedCateg
         playHaptic('medium');
         onClose(); // Close the modal first
         if (navigation) {
-            navigation.navigate('Premium');
+            navigateToPremiumIfNeeded(navigation);
         }
     };
 
