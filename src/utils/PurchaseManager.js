@@ -4,9 +4,12 @@ import { Platform } from 'react-native';
 // RevenueCat Public SDK Keys (Safe to include in app)
 // These are PUBLIC keys - they cannot grant premium without actual payment
 // All purchases are verified server-side by Apple/Google through RevenueCat
+// 
+// ⚠️ IMPORTANT: Use PRODUCTION keys for App Store builds!
+// Get production keys from: RevenueCat Dashboard → Your App → API Keys → Production
 const API_KEYS = {
-    apple: 'appl_GidmNgibMGrbuhmiJwrzLeJLEZM',  // iOS Public SDK Key
-    google: 'goog_WeLuvQfgjZEppbpIoqiqCzciCqq',  // Android Public SDK Key
+    apple: 'appl_GidmNgibMGrbuhmiJwrzLeJLEZM',  // iOS Public SDK Key (Production)
+    google: 'goog_WeLuvQfgjZEppbpIoqiqCzciCqq',  // Android Public SDK Key (Production)
 };
 
 class PurchaseManager {
